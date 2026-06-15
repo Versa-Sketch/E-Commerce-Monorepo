@@ -1,0 +1,10 @@
+{
+  "name": "ecommerce-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:customer": "pnpm --filter customer start",
+    "dev:merchant": "pnpm --filter merchant start",
+    "dev:admin": "pnpm --filter admin dev"
+  }
+}

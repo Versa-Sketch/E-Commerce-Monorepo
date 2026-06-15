@@ -1,0 +1,15 @@
+export const CART_ENDPOINTS = {
+  LIST: '/commerce/carts/',
+  CARTS_PRODUCTS: '/commerce/carts/products/',
+  SHOP_CART: '/commerce/cart/:shopId/',
+  ADD_ITEM: '/commerce/cart/:shopId/items/',
+  BULK_UPDATE: '/commerce/cart/:shopId/items/bulk/',
+  REMOVE_ITEM: '/commerce/cart/:shopId/items/remove/:variantId/',
+  CLEAR: '/commerce/cart/:shopId/clear/',
+  CLEAR_ALL: '/commerce/cart/clear/',
+  CHECKOUT_ALL_PREVIEW: '/commerce/checkout/all/preview/',
+  CHECKOUT_CART_PREVIEW: '/commerce/checkout/carts/:cartId/preview/',
+  CHECKOUT_SHOP: '/commerce/checkout/:shopId/',
+  CHECKOUT_ALL: '/commerce/checkout/all/',
+  PAYMENT_VERIFY: '/commerce/payments/verify/',
+} as const;

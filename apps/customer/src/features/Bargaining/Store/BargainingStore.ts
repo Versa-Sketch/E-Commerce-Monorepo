@@ -1,0 +1,248 @@
+import { makeAutoObservable, runInAction } from 'mobx';
+import { BargainConnectionStatus, IBargainingService, IBargainSocket, IBargainSocketFactory } from '../Services';
+import {
+  BargainCartHistory,
+  BargainCartUpdate,
+  BargainOfferAction,
+  BargainServerEvent,
+  BargainSession,
+  BargainSessionHistory,
+} from '../types/domain';
+import { API_STATUS, ApiStatus } from '../../../Common/Constants';
+import { normalizeError } from '../../../Common/utils/errorNormalizer';
+
+export class BargainingStore {
+  session: BargainSession | null = null;
+  sessionStatus: ApiStatus = API_STATUS.IDLE;
+  sessionError: string | null = null;
+  connectionStatus: BargainConnectionStatus = 'closed';
+  typingUsers: Map<string, boolean> = new Map();
+
+  cartHistory: BargainCartHistory | null = null;
+  cartHistoryStatus: ApiStatus = API_STATUS.IDLE;
+  cartHistoryError: string | null = null;
+
+  sessionHistory: BargainSessionHistory | null = null;
+  sessionHistoryStatus: ApiStatus = API_STATUS.IDLE;
+  sessionHistoryError: string | null = null;
+
+  private socket: IBargainSocket | null = null;
+
+  constructor(private service: IBargainingService, private socketFactory: IBargainSocketFactory) {
+    makeAutoObservable(this, {
+      service: false,
+      socketFactory: false,
+      socket: false,
+    } as never);
+  }
+
+  get isActive(): boolean {
+    return this.session?.status === 'ACTIVE';
+  }
+
+  get offersByCartItem(): Record<string, import('../types/domain').BargainOffer> {
+    return this.session?.offers ?? {};
+  }
+
+  get messages(): import('../types/domain').BargainMessage[] {
+    return this.session?.messages ?? [];
+  }
+
+  get expiresAt(): string | null {
+    return this.session?.expires_at ?? null;
+  }
+
+  async startSession(cartId: string): Promise<BargainSession> {
+    this.sessionStatus = API_STATUS.FETCHING;
+    this.sessionError = null;
+    try {
+      const session = this.normalizeSession(await this.service.startSession(cartId));
+      runInAction(() => {
+        this.session = session;
+        this.sessionStatus = API_STATUS.SUCCESS;
+      });
+      this.connectSocket();
+      return session;
+    } catch (e) {
+      runInAction(() => {
+        this.sessionError = normalizeError(e);
+        this.sessionStatus = API_STATUS.ERROR;
+      });
+      throw e;
+    }
+  }
+
+  async loadSession(sessionId: string): Promise<void> {
+    this.sessionStatus = API_STATUS.FETCHING;
+    this.sessionError = null;
+    try {
+      const session = this.normalizeSession(await this.service.getSession(sessionId));
+      runInAction(() => {
+        this.session = session;
+        this.sessionStatus = API_STATUS.SUCCESS;
+      });
+      this.connectSocket();
+    } catch (e) {
+      runInAction(() => {
+        this.sessionError = normalizeError(e);
+        this.sessionStatus = API_STATUS.ERROR;
+      });
+    }
+  }
+
+  async loadCartHistory(cartId: string): Promise<void> {
+    this.cartHistoryStatus = API_STATUS.FETCHING;
+    this.cartHistoryError = null;
+    try {
+      const history = await this.service.getCartHistory(cartId);
+      runInAction(() => {
+        this.cartHistory = history;
+        this.cartHistoryStatus = API_STATUS.SUCCESS;
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.cartHistoryError = normalizeError(e);
+        this.cartHistoryStatus = API_STATUS.ERROR;
+      });
+    }
+  }
+
+  async loadSessionHistory(sessionId: string): Promise<void> {
+    this.sessionHistoryStatus = API_STATUS.FETCHING;
+    this.sessionHistoryError = null;
+    try {
+      const history = await this.service.getSessionHistory(sessionId);
+      runInAction(() => {
+        this.sessionHistory = history;
+        this.sessionHistoryStatus = API_STATUS.SUCCESS;
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.sessionHistoryError = normalizeError(e);
+        this.sessionHistoryStatus = API_STATUS.ERROR;
+      });
+    }
+  }
+
+  connectSocket(): void {
+    if (!this.session) return;
+    this.disconnect();
+    const socket = this.socketFactory.create();
+    this.socket = socket;
+    socket.connect(
+      this.session.session_id,
+      (event) => this.handleEvent(event),
+      (status) => runInAction(() => (this.connectionStatus = status))
+    );
+  }
+
+  disconnect(): void {
+    this.socket?.disconnect();
+    this.socket = null;
+    this.connectionStatus = 'closed';
+    this.typingUsers.clear();
+  }
+
+  sendOffer(cartItemId: string, offeredAmount: string): void {
+    this.socket?.send({ type: 'bargain_offer', cart_item_id: cartItemId, offered_amount: offeredAmount });
+  }
+
+  respondToOffer(offerId: string, action: BargainOfferAction, counterAmount?: string): void {
+    this.socket?.send({ type: 'bargain_response', offer_id: offerId, action, counter_amount: counterAmount });
+  }
+
+  sendChatMessage(message: string): void {
+    this.socket?.send({ type: 'chat_message', message });
+  }
+
+  setTyping(isTyping: boolean): void {
+    this.socket?.send({ type: 'typing', is_typing: isTyping });
+  }
+
+  markSeen(): void {
+    this.socket?.send({ type: 'mark_seen' });
+  }
+
+  async endSession(): Promise<void> {
+    if (!this.session) return;
+    try {
+      const updated = this.normalizeSession(await this.service.endSession(this.session.session_id));
+      runInAction(() => {
+        this.session = updated;
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.sessionError = normalizeError(e);
+      });
+    } finally {
+      this.disconnect();
+    }
+  }
+
+  private handleEvent(event: BargainServerEvent): void {
+    runInAction(() => {
+      const session = this.session;
+      switch (event.type) {
+        case 'session_started':
+          this.session = this.normalizeSession(event.payload);
+          return;
+        case 'new_offer':
+        case 'offer_rejected':
+        case 'counter_offer':
+          if (!session) return;
+          session.offers[event.payload.offer.cart_item_id] = event.payload.offer;
+          return;
+        case 'offer_accepted':
+          if (!session) return;
+          session.offers[event.payload.offer.cart_item_id] = event.payload.offer;
+          this.applyCartUpdate(event.payload.cart);
+          return;
+        case 'chat_message':
+          session?.messages.push(event.payload);
+          return;
+        case 'messages_seen':
+          if (!session) return;
+          session.seen_by = { ...session.seen_by, [event.payload.user_id]: event.payload.seen_at };
+          return;
+        case 'messages_delivered':
+          if (!session) return;
+          session.delivered_by = { ...session.delivered_by, [event.payload.user_id]: event.payload.delivered_at };
+          return;
+        case 'typing':
+          this.typingUsers.set(event.payload.user_id, event.payload.is_typing);
+          return;
+        case 'cart_updated':
+          this.applyCartUpdate(event.payload);
+          return;
+        case 'session_ended':
+          if (!session) return;
+          session.status = event.payload.status;
+          session.ended_at = event.payload.ended_at;
+          return;
+        case 'session_expired':
+          if (!session) return;
+          session.status = event.payload.status;
+          return;
+        case 'error':
+          this.sessionError = event.payload.message;
+          return;
+      }
+    });
+  }
+
+  private applyCartUpdate(update: BargainCartUpdate): void {
+    if (!this.session) return;
+    this.session.cart = update;
+  }
+
+  /** Ensures optional/new fields the real API may omit are present so the rest of the store can rely on them. */
+  private normalizeSession(session: BargainSession): BargainSession {
+    return {
+      ...session,
+      seen_by: session.seen_by ?? {},
+      delivered_by: session.delivered_by ?? {},
+      messages: session.messages ?? [],
+      offers: session.offers ?? {},
+    };
+  }
+}

@@ -1,0 +1,120 @@
+import React from 'react';
+import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { observer } from 'mobx-react-lite';
+import { useTheme } from '../../../../theme/ThemeContext';
+import { CartItem } from '../../types/domain';
+import { RollingNumber } from '../../../../Common/components/ui/RollingNumber';
+import { useCartStore } from '../../Providers/useCartStore';
+import { useRouter } from 'expo-router';
+import {
+  actionBlockStyle,
+  bargainChipStyle,
+  cartItemRowStyle,
+  deleteBtnStyle,
+  itemDetailsStyle,
+  itemImageStyle,
+  priceRowStyle,
+  qtyBtnStyle,
+  qtyTextStyle,
+  quantityBoxStyle,
+  strikethroughPriceStyle,
+} from './styledcomponents';
+interface CartItemRowProps {
+  item: CartItem;
+  onQtyChange: (item: CartItem, delta: number) => void;
+  onRemove: (item: CartItem) => void;
+  isLast?: boolean;
+}
+export const CartItemRow: React.FC<CartItemRowProps> = observer(({ item, onQtyChange, onRemove, isLast }) => {
+  const { theme } = useTheme();
+  const router = useRouter();
+  const cartStore = useCartStore();
+  const syncing = cartStore.isSyncing(item.product.variantId);
+  const originalPrice = item.product.price;
+  const discountedPrice = item.product.discountPrice ?? item.product.price;
+  const hasDiscount = discountedPrice < originalPrice;
+
+  const handleBargainPrice = async () => {
+    try {
+      if (!cartStore.shopCarts.has(item.product.storeId)) {
+        await cartStore.getShopCart(item.product.storeId);
+      }
+      const shopCart = cartStore.shopCarts.get(item.product.storeId);
+      const cartItemId = shopCart?.items.find((i) => i.variant_id === item.product.variantId)?.cart_item_id;
+      const query = cartItemId ? `?focusCartItemId=${cartItemId}` : '';
+      if (shopCart?.active_bargain_session_id) {
+        router.push(`/customer/bargain/session/${shopCart.active_bargain_session_id}${query}`);
+        return;
+      }
+      const cartId = shopCart?.cart_id;
+      if (!cartId) {
+        Alert.alert('Unable to open bargain history', 'Please try again in a moment.');
+        return;
+      }
+      router.push({
+        pathname: '/customer/bargain/cart/[cartId]',
+        params: cartItemId ? { cartId, focusCartItemId: cartItemId } : { cartId },
+      });
+    } catch (e) {
+      Alert.alert('Unable to open bargain', 'Please try again in a moment.');
+    }
+  };
+  return (
+    <View
+      style={[
+        cartItemRowStyle,
+        !isLast && { borderBottomColor: theme.colors.border, borderBottomWidth: 0.5 },
+      ]}
+    >
+      <Image
+        source={{ uri: item.product.imageUrl }}
+        style={[itemImageStyle, { borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surfaceSecondary }]}
+      />
+      <View style={itemDetailsStyle}>
+        <Text numberOfLines={1} style={[theme.textPresets.bodyMedium, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.semiBold }]}>
+          {item.product.name}
+        </Text>
+        <Text numberOfLines={1} style={[theme.textPresets.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>
+          {item.product.category}
+        </Text>
+        <View style={priceRowStyle}>
+          {hasDiscount && (
+            <Text style={[strikethroughPriceStyle, { color: theme.colors.textMuted }]}>
+              ₹{originalPrice.toFixed(0)}
+            </Text>
+          )}
+          <Text style={[theme.textPresets.bodyMedium, { color: hasDiscount ? theme.colors.success : theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
+            ₹{discountedPrice.toFixed(0)}
+          </Text>
+        </View>
+        {item.product.isBargainable && (
+          <Pressable onPress={handleBargainPrice} style={[bargainChipStyle, { backgroundColor: '#FBEBE4' }]}>
+            <Ionicons name="chatbubbles-outline" size={12} color={theme.colors.accent} style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 10, color: theme.colors.accent, fontFamily: theme.typography.fonts.bold }}>
+              Bargain Price
+            </Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={actionBlockStyle}>
+        <View style={[quantityBoxStyle, { borderColor: theme.colors.border, backgroundColor: theme.colors.background, opacity: syncing ? 0.6 : 1 }]}>
+          <Pressable onPress={() => onQtyChange(item, -1)} style={qtyBtnStyle} disabled={syncing}>
+            <Ionicons name={item.quantity <= 1 ? 'trash-outline' : 'remove'} size={14} color={theme.colors.primary} />
+          </Pressable>
+          <RollingNumber
+            value={item.quantity}
+            style={[qtyTextStyle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }] as any}
+          />
+          <Pressable onPress={() => onQtyChange(item, 1)} style={qtyBtnStyle} disabled={syncing}>
+            <Ionicons name="add" size={14} color={theme.colors.primary} />
+          </Pressable>
+        </View>
+        <Pressable onPress={() => onRemove(item)} style={deleteBtnStyle} disabled={syncing}>
+          <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+export default CartItemRow;
