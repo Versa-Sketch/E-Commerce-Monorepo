@@ -5,6 +5,6 @@
   "scripts": {
     "dev:customer": "pnpm --filter customer start",
     "dev:merchant": "pnpm --filter merchant start",
-    "dev:admin": "pnpm --filter admin dev"
+    "dev:delivery": "pnpm --filter delivery start"
   }
 }

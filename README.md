@@ -1,6 +1,6 @@
 # E-Commerce Monorepo
 
-pnpm workspaces monorepo containing the customer app, merchant app, and admin panel.
+pnpm workspaces monorepo containing the customer app, merchant app, and delivery partner app.
 
 ## Layout
 
@@ -8,7 +8,7 @@ pnpm workspaces monorepo containing the customer app, merchant app, and admin pa
 apps/
   customer/   Expo/React Native customer-facing app
   merchant/   Expo/React Native merchant ("ShopKeeper") app
-  admin/      Vite + React admin web panel
+  delivery/   Expo/React Native delivery partner app
 packages/      Shared packages (currently empty, see packages/README.md)
 ```
 
@@ -23,5 +23,5 @@ pnpm install
 ```bash
 pnpm dev:customer   # expo start (customer app)
 pnpm dev:merchant   # expo start (merchant app)
-pnpm dev:admin      # vite dev server (admin panel)
+pnpm dev:delivery   # expo start (delivery partner app)
 ```
