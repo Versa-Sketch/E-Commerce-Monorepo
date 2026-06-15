@@ -31,6 +31,7 @@ export default observer(function CheckoutScreen() {
   const cartStore = useCartStore();
   const addressStore = useAddressStore();
   const orderStore = useOrderStore();
+
   const authStore = useAuthStore();
   const groups = shopId
     ? cartStore.groupedByStore.filter((g) => g.storeId === shopId)
@@ -132,6 +133,8 @@ export default observer(function CheckoutScreen() {
     setAddressPickerVisible(false);
     router.push('/customer/addresses/form');
   };
+
+
 
   const handlePlaceOrder = async () => {
     if (!activeAddress) {
@@ -329,6 +332,7 @@ export default observer(function CheckoutScreen() {
         />
       </View>
       <Modal visible={addressPickerVisible} onClose={() => setAddressPickerVisible(false)} title="Select delivery address">
+
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
           {addressStore.addresses.map((address) => (
             <Pressable

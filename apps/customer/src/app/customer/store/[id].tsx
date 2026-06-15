@@ -59,7 +59,7 @@ const getFoodType = (product: Product): 'veg' | 'non-veg' | 'egg' => {
 export default observer(function StoreDetailsScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, q } = useLocalSearchParams<{ id: string; q?: string }>();
   const storesStore = useStoresStore();
   const cartStore = useCartStore();
 
@@ -68,13 +68,13 @@ export default observer(function StoreDetailsScreen() {
   React.useEffect(() => {
     if (shopId) {
       storesStore.fetchShopCategories(shopId);
-      storesStore.fetchShopProducts(shopId, { page_size: 5 });
+      storesStore.fetchShopProducts(shopId, { page_size: 5, q });
       if (storesStore.shops.length === 0) {
         storesStore.fetchShops();
       }
       cartStore.getShopCart(shopId);
     }
-  }, [shopId]);
+  }, [shopId, q]);
 
   const shop = storesStore.shops.find((s) => s.id === shopId) || storesStore.shops[0];
 
@@ -82,6 +82,19 @@ export default observer(function StoreDetailsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('All');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    if (!shopId) return;
+    const query = searchQuery.trim();
+    if (!query) {
+      storesStore.searchShopProducts(shopId, { q: '' });
+      return;
+    }
+    const timer = setTimeout(() => {
+      storesStore.searchShopProducts(shopId, { q: query });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [shopId, searchQuery]);
 
   if (!shop) return null;
 
@@ -116,26 +129,27 @@ export default observer(function StoreDetailsScreen() {
     shopProductToProduct(sp, shop.id, shop.name)
   );
 
-  const storeProducts = adaptedProducts;
+  const isSearching = searchQuery.trim().length > 0;
 
-  // Dynamic filter logic
+  const searchAdaptedProducts = storesStore.shopProductSearchResults.map((sp) =>
+    shopProductToProduct(sp, shop.id, shop.name)
+  );
+
+  const storeProducts = isSearching ? searchAdaptedProducts : adaptedProducts;
+
+  // Dynamic filter logic (search relevance is handled server-side; only apply chip filters here)
   const filteredProducts = storeProducts.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    let matchesFilter = true;
     if (selectedFilter === 'In Stock') {
-      matchesFilter = p.inStock;
+      return p.inStock;
     } else if (selectedFilter === 'Offers') {
-      matchesFilter = p.discountPrice !== undefined && p.discountPrice !== null;
+      return p.discountPrice !== undefined && p.discountPrice !== null;
     } else if (selectedFilter === 'Bargainable') {
-      matchesFilter = p.isBargainable;
+      return p.isBargainable;
     }
-
-    return matchesSearch && matchesFilter;
+    return true;
   });
 
-  // Group filtered products by category
+  // Group filtered products by category (only used when not searching)
   const productsByCategory: Record<string, Product[]> = {};
   filteredProducts.forEach((p) => {
     if (!productsByCategory[p.category]) {
@@ -462,11 +476,15 @@ export default observer(function StoreDetailsScreen() {
         {/* Tab content body */}
         <View style={styles.tabContentBody}>
           <LoadingWrapper
-            apiStatus={storesStore.shopProductsStatus}
-            error={storesStore.shopProductsError}
+            apiStatus={isSearching ? storesStore.shopProductSearchStatus : storesStore.shopProductsStatus}
+            error={isSearching ? storesStore.shopProductSearchError : storesStore.shopProductsError}
             retry={() => {
-              storesStore.fetchShopCategories(shopId);
-              storesStore.fetchShopProducts(shopId, { page_size: 5 });
+              if (isSearching) {
+                storesStore.searchShopProducts(shopId, { q: searchQuery.trim() });
+              } else {
+                storesStore.fetchShopCategories(shopId);
+                storesStore.fetchShopProducts(shopId, { page_size: 5 });
+              }
             }}
             renderLoadingUI={() => (
               <View style={styles.productsList}>
@@ -483,8 +501,14 @@ export default observer(function StoreDetailsScreen() {
                       <View style={styles.emptyCatalog}>
                         <Ionicons name="restaurant-outline" size={48} color={theme.colors.textSecondary} />
                         <Text style={[styles.emptyCatalogText, { color: theme.colors.textSecondary }]}>
-                          No items match the selected filters.
+                          {isSearching
+                            ? `No products found for "${searchQuery.trim()}".`
+                            : 'No items match the selected filters.'}
                         </Text>
+                      </View>
+                    ) : isSearching ? (
+                      <View style={styles.listContainer}>
+                        {filteredProducts.map((prod) => renderStoreProductRow(prod))}
                       </View>
                     ) : (
                       Object.keys(productsByCategory).map((catName) => {

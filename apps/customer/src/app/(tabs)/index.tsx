@@ -3,13 +3,14 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
-  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Pressable,
@@ -35,16 +36,25 @@ import { Chip } from "../../Common/components/ui/Chip";
 import { Skeleton } from "../../Common/components/ui/Skeleton";
 import { API_STATUS } from "../../Common/Constants";
 import { MOCK_PRODUCTS } from "../../constants";
+import { useAddressStore } from "../../features/Addresses/Providers/useAddressStore";
 import { useAuthStore } from "../../features/Auth/Providers/useAuthStore";
 import { useCartStore } from "../../features/Cart/Providers/useCartStore";
-import { useProfileStore } from "../../features/Profile/Providers/useProfileStore";
 import { FeaturedShopCard } from "../../features/Stores/components/FeaturedShopCard";
 import { FeaturedShopCardSkeleton } from "../../features/Stores/components/FeaturedShopCard/Skeleton";
 import { ShopCard } from "../../features/Stores/components/ShopCard";
 import { ShopCardSkeleton } from "../../features/Stores/components/ShopCard/Skeleton";
 import { useStoresStore } from "../../features/Stores/Providers/useStoresStore";
+
 import { Colors } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
+import { AddressApi, AddressType } from "../../types/shared";
+
+const ADDRESS_ICON_BY_TYPE: Record<AddressType, keyof typeof Ionicons.glyphMap> = {
+  HOME: "home-outline",
+  WORK: "briefcase-outline",
+  SHOP: "storefront-outline",
+  OTHER: "location-outline",
+};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CART_DELETE_ACTION_WIDTH = 110;
@@ -135,10 +145,12 @@ export default observer(function HomeScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const authStore = useAuthStore();
-  const profileStore = useProfileStore();
   const storesStore = useStoresStore();
   const cartStore = useCartStore();
+  const addressStore = useAddressStore();
+
   const insets = useSafeAreaInsets();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([
@@ -433,10 +445,18 @@ export default observer(function HomeScreen() {
     storesStore.fetchFeaturedShops();
     storesStore.fetchShops();
     cartStore.hydrateAllCarts();
+    addressStore.fetchAddresses();
     return () => {
       storesStore.setTabBarVisible(true);
     };
   }, []);
+
+  // Default-select the first address once addresses load
+  useEffect(() => {
+    if (selectedAddressId && addressStore.addresses.some((a) => a.id === selectedAddressId)) return;
+    const fallback = addressStore.defaultAddress ?? addressStore.addresses[0];
+    setSelectedAddressId(fallback ? fallback.id : null);
+  }, [addressStore.addresses.length]);
 
   // Debounced product/shop search
   useEffect(() => {
@@ -500,8 +520,8 @@ export default observer(function HomeScreen() {
     }
   }, [selectedCategory]);
 
-  const activeAddress = profileStore.selectedAddress;
-  const addresses = profileStore.addresses;
+  const activeAddress: AddressApi | undefined = addressStore.addresses.find((a) => a.id === selectedAddressId);
+  const addresses = addressStore.addresses;
   const filters = storesStore.filters;
   const discountProducts = MOCK_PRODUCTS.filter(
     (p) => p.discountPrice !== undefined,
@@ -516,10 +536,17 @@ export default observer(function HomeScreen() {
     ]).finally(() => setRefreshing(false));
   };
 
-  const handleAddressSelect = (addr: any) => {
-    profileStore.setSelectedAddress(addr);
+  const handleAddressSelect = (addr: AddressApi) => {
+    setSelectedAddressId(addr.id);
     addressSheetRef.current?.dismiss();
   };
+
+  const handleAddAddress = () => {
+    addressSheetRef.current?.dismiss();
+    router.push("/customer/addresses/form");
+  };
+
+
 
   // Render helpers
   const renderTopHeader = () => (
@@ -549,18 +576,20 @@ export default observer(function HomeScreen() {
             style={{ marginRight: 4, marginTop: -1 }}
           />
           <Text
+            numberOfLines={1}
             style={[
               theme.textPresets.bodyLarge,
               {
                 color: "#FFFFFF",
                 fontFamily: theme.typography.fonts.bold,
                 fontSize: 15,
+                maxWidth: SCREEN_WIDTH * 0.6,
               },
             ]}
           >
             {activeAddress
-              ? `${activeAddress.streetAddress}, ${activeAddress.city}`
-              : "Indiranagar, Bengaluru"}
+              ? `${activeAddress.address_line1}${activeAddress.address_line2 ? `, ${activeAddress.address_line2}` : ""}`
+              : "Add a delivery address"}
           </Text>
         </Pressable>
         <Text
@@ -1663,7 +1692,7 @@ export default observer(function HomeScreen() {
               key={shop.id}
               shop={shop}
               onPress={() => {
-                router.push(`/customer/store/${shop.id}`);
+                router.push(`/customer/store/${shop.id}?q=${encodeURIComponent(storesStore.filters.searchQuery)}`);
               }}
               style={{ marginBottom: 16 }}
             />
@@ -2152,7 +2181,7 @@ export default observer(function HomeScreen() {
               <View style={{ marginBottom: 16 }}>
                 <ShopCard
                   shop={shop}
-                  onPress={() => router.push(`/customer/store/${shop.id}`)}
+                  onPress={() => router.push(`/customer/store/${shop.id}?q=${encodeURIComponent(query)}`)}
                 />
                 {hasChips && (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 8 }}>
@@ -2193,7 +2222,7 @@ export default observer(function HomeScreen() {
       backgroundStyle={{ backgroundColor: theme.colors.surface, borderRadius: 28 }}
       handleIndicatorStyle={{ backgroundColor: isDark ? "#374151" : "#E5E7EB" }}
     >
-      <BottomSheetView style={styles.addressSheetContent}>
+      <View style={styles.addressSheetContent}>
         <View style={styles.addressSheetHeader}>
           <Text
             style={[
@@ -2218,84 +2247,113 @@ export default observer(function HomeScreen() {
         >
           Select your location to find stores within a 6 km radius.
         </Text>
-        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
-          {addresses.map((addr) => {
-            const active = activeAddress?.id === addr.id;
-            return (
-              <Pressable
-                key={addr.id}
-                onPress={() => handleAddressSelect(addr)}
-                style={[
-                  styles.addrItem,
-                  {
-                    borderColor: active ? "#10B981" : theme.colors.border,
-                    backgroundColor: active
-                      ? isDark
-                        ? "rgba(16, 185, 129, 0.15)"
-                        : "rgba(16, 185, 129, 0.05)"
-                      : "transparent",
-                  },
-                ]}
-              >
-                <View
+
+        <BottomSheetScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {addresses.length === 0 ? (
+            <Text
+              style={[
+                styles.addrStreet,
+                {
+                  fontFamily: theme.typography.fonts.medium,
+                  color: theme.colors.textSecondary,
+                  textAlign: "center",
+                  marginVertical: 12,
+                },
+              ]}
+            >
+              No saved addresses yet.
+            </Text>
+          ) : (
+            addresses.map((addr) => {
+              const active = activeAddress?.id === addr.id;
+              return (
+                <Pressable
+                  key={addr.id}
+                  onPress={() => handleAddressSelect(addr)}
                   style={[
-                    styles.addrIcon,
+                    styles.addrItem,
                     {
+                      borderColor: active ? "#10B981" : theme.colors.border,
                       backgroundColor: active
-                        ? "#10B981"
-                        : isDark
-                          ? "#1F2937"
-                          : "#ECFDF5",
+                        ? isDark
+                          ? "rgba(16, 185, 129, 0.15)"
+                          : "rgba(16, 185, 129, 0.05)"
+                        : "transparent",
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={
-                      addr.label === "Home"
-                        ? "home-outline"
-                        : addr.label === "Work"
-                          ? "briefcase-outline"
-                          : "location-outline"
-                    }
-                    size={16}
-                    color={active ? "#FFFFFF" : "#10B981"}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
+                  <View
                     style={[
-                      styles.addrLabel,
+                      styles.addrIcon,
                       {
-                        fontFamily: theme.typography.fonts.bold,
-                        color: theme.colors.textPrimary,
+                        backgroundColor: active
+                          ? "#10B981"
+                          : isDark
+                            ? "#1F2937"
+                            : "#ECFDF5",
                       },
                     ]}
                   >
-                    {addr.label}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.addrStreet,
-                      {
-                        fontFamily: theme.typography.fonts.medium,
-                        color: theme.colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {addr.streetAddress}, {addr.city}
-                  </Text>
-                </View>
-                {active ? (
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                ) : (
-                  <View style={[styles.radioCircle, { borderColor: theme.colors.border }]} />
-                )}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </BottomSheetView>
+                    <Ionicons
+                      name={ADDRESS_ICON_BY_TYPE[addr.address_type] ?? "location-outline"}
+                      size={16}
+                      color={active ? "#FFFFFF" : "#10B981"}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.addrLabel,
+                        {
+                          fontFamily: theme.typography.fonts.bold,
+                          color: theme.colors.textPrimary,
+                          textTransform: "capitalize",
+                        },
+                      ]}
+                    >
+                      {addr.address_type.toLowerCase()}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.addrStreet,
+                        {
+                          fontFamily: theme.typography.fonts.medium,
+                          color: theme.colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {addr.address_line1}
+                      {addr.address_line2 ? `, ${addr.address_line2}` : ""}
+                    </Text>
+                  </View>
+                  {active ? (
+                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  ) : (
+                    <View style={[styles.radioCircle, { borderColor: theme.colors.border }]} />
+                  )}
+                </Pressable>
+              );
+            })
+          )}
+        </BottomSheetScrollView>
+        <Pressable
+          onPress={handleAddAddress}
+          style={[
+            styles.addNewAddressBtn,
+            { borderColor: theme.colors.primary, borderRadius: theme.borderRadius.md },
+          ]}
+        >
+          <Text
+            style={[
+              theme.textPresets.button,
+              { color: theme.colors.primary, fontFamily: theme.typography.fonts.semiBold },
+            ]}
+          >
+            Add new address
+          </Text>
+        </Pressable>
+      </View>
     </BottomSheetModal>
   );
 
@@ -2823,7 +2881,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   // Premium Address Sheet Styles
-  addressSheetContent: { padding: 20, paddingBottom: 40 },
+  addressSheetContent: { flex: 1, padding: 20, paddingBottom: 40 },
   addressSheetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2851,6 +2909,13 @@ const styles = StyleSheet.create({
   addrLabel: { fontSize: 14 },
   addrStreet: { fontSize: 12, marginTop: 2 },
   radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5 },
+  addNewAddressBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // New Category List & Bottom Sheet styles
   categoriesSection: { paddingVertical: 4 },

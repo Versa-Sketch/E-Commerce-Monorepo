@@ -1,4 +1,11 @@
-import { IStoreService, StoreFilters, ShopFilters, ShopSearchFilters, ShopProductFilters } from './index';
+import {
+  IStoreService,
+  StoreFilters,
+  ShopFilters,
+  ShopSearchFilters,
+  ShopProductFilters,
+  ShopProductSearchFilters,
+} from './index';
 import { Store, Product, GlobalCategory, Shop, ShopCategory, ShopProduct, Paginated } from '../../../types/shared';
 import { MOCK_STORES, MOCK_PRODUCTS } from '../../../constants';
 import {
@@ -143,8 +150,51 @@ export class StoreFixtureService implements IStoreService {
     if (filters?.in_stock) {
       products = products.filter((p) => p.variants.some((v) => v.is_in_stock));
     }
+    if (filters?.q) {
+      const query = filters.q.toLowerCase();
+      const matches = products.filter((p) =>
+        p.name.toLowerCase().includes(query) ||
+        (p.description && p.description.toLowerCase().includes(query))
+      );
+      const nonMatches = products.filter((p) =>
+        !p.name.toLowerCase().includes(query) &&
+        (!p.description || !p.description.toLowerCase().includes(query))
+      );
+      products = [...matches, ...nonMatches];
+    }
     const page = filters?.page ?? 1;
     const pageSize = filters?.page_size ?? 5;
+    const start = (page - 1) * pageSize;
+    return {
+      status: 200,
+      shop_id: shopId,
+      shop_name: MOCK_SHOPS.find((s) => s.id === shopId)?.name ?? '',
+      count: products.length,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(products.length / pageSize)),
+      data: products.slice(start, start + pageSize),
+    } as Paginated<ShopProduct> & { shop_id: string; shop_name: string };
+  }
+  async searchShopProducts(shopId: string, filters: ShopProductSearchFilters): Promise<Paginated<ShopProduct>> {
+    await new Promise((res) => setTimeout(res, 400));
+    const q = filters.q.toLowerCase();
+    const products = (MOCK_SHOP_PRODUCTS[shopId] ?? []).filter((product) => {
+      const haystack = [
+        product.name,
+        product.description,
+        product.category?.name,
+        product.subcategory?.name,
+        product.brand?.name,
+        ...product.variants.map((v) => v.name),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+    const page = filters.page ?? 1;
+    const pageSize = filters.page_size ?? 20;
     const start = (page - 1) * pageSize;
     return {
       status: 200,

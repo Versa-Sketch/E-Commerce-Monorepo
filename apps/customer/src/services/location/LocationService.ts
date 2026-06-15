@@ -11,6 +11,7 @@ export interface IUserLocation {
   city?: string;
   district?: string;
   street?: string;
+  region?: string;
   postalCode?: string;
   formattedAddress?: string;
   updatedAt: number;
@@ -45,6 +46,7 @@ export const LocationService = {
       city: place.city || '',
       district: place.district || '',
       street: place.street || '',
+      region: place.region || '',
       postalCode: place.postalCode || '',
       formattedAddress: [
         place.street,

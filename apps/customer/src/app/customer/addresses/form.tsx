@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
 import { Button } from '../../../Common/components/ui/Button';
 import { Chip } from '../../../Common/components/ui/Chip';
 import { Input } from '../../../Common/components/ui/Input';
@@ -15,7 +15,8 @@ const ADDRESS_TYPES: AddressType[] = ['HOME', 'WORK', 'OTHER'];
 export default observer(function AddressFormScreen() {
   const { theme } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; lat?: string; lng?: string; line1?: string; state?: string; pincode?: string; formatted?: string }>();
+  const { id } = params;
   const addressStore = useAddressStore();
   const isEditMode = !!id;
 
@@ -43,6 +44,17 @@ export default observer(function AddressFormScreen() {
       setIsDefault(existing.is_default);
     }
   }, [id, addressStore.addresses.length]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    if (!params.lat || !params.lng) return;
+    setAddressType('OTHER');
+    if (params.line1) setAddressLine1(params.line1);
+    if (params.state) setState(params.state);
+    if (params.pincode) setPincode(params.pincode);
+    setLatitude(params.lat);
+    setLongitude(params.lng);
+  }, [isEditMode]);
 
   const handleSave = async () => {
     setSubmitting(true);
@@ -80,6 +92,7 @@ export default observer(function AddressFormScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
         <Text style={[theme.textPresets.label, { color: theme.colors.textPrimary, marginBottom: 8 }]}>
           Address Type
         </Text>
