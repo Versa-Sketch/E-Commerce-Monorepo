@@ -1,5 +1,5 @@
 import { ImageStyle, TextStyle, ViewStyle } from 'react-native';
-export const BANNER_HEIGHT = 150;
+export const BANNER_HEIGHT = 200;
 export const containerStyle: ViewStyle = {
   width: '100%',
   borderRadius: 16,
@@ -42,7 +42,7 @@ export const closedTextStyle: TextStyle = {
   letterSpacing: 1,
 };
 export const infoContainerStyle: ViewStyle = {
-  padding: 12,
+  padding: 14,
 };
 export const headerRowStyle: ViewStyle = {
   flexDirection: 'row',
@@ -59,7 +59,7 @@ export const titleRowStyle: ViewStyle = {
   alignItems: 'center',
 };
 export const titleTextStyle: TextStyle = {
-  fontSize: 18,
+  fontSize: 20,
   flexShrink: 1,
 };
 export const ratingColumnStyle: ViewStyle = {
@@ -69,12 +69,13 @@ export const ratingColumnStyle: ViewStyle = {
 export const ratingBadgeStyle: ViewStyle = {
   flexDirection: 'row',
   alignItems: 'center',
-  borderRadius: 50,
-  paddingHorizontal: 8,
-  paddingVertical: 3,
+  borderRadius: 8,
+  paddingHorizontal: 9,
+  paddingVertical: 5,
 };
 export const ratingTextStyle: TextStyle = {
   fontSize: 13,
+  fontWeight: '700',
 };
 export const reviewCountTextStyle: TextStyle = {
   fontSize: 11,
@@ -83,7 +84,7 @@ export const reviewCountTextStyle: TextStyle = {
 export const chipsRowStyle: ViewStyle = {
   flexDirection: 'row',
   flexWrap: 'wrap',
-  marginTop: 10,
+  marginTop: 8,
   gap: 6,
 };
 export const chipStyle: ViewStyle = {
@@ -99,13 +100,13 @@ export const footerRowStyle: ViewStyle = {
   alignItems: 'center',
   flexWrap: 'wrap',
   marginTop: 12,
-  gap: 14,
+  gap: 16,
 };
 export const footerItemStyle: ViewStyle = {
   flexDirection: 'row',
   alignItems: 'center',
-  gap: 4,
+  gap: 5,
 };
 export const footerTextStyle: TextStyle = {
-  fontSize: 12,
+  fontSize: 13,
 };

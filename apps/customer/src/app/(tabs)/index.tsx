@@ -214,18 +214,12 @@ export default observer(function HomeScreen() {
           ? gradientHeaderHeight.current
           : FLOATING_SEARCH_SCROLL_THRESHOLD;
 
-      let nextShowFloatingSearch = showFloatingSearch;
-      if (currentY <= floatingSearchThreshold) {
-        nextShowFloatingSearch = false;
-      } else if (diff > 0) {
-        nextShowFloatingSearch = false;
-      } else if (diff < 0) {
-        nextShowFloatingSearch = true;
-      }
+      // Show once past the banner — stay shown until scrolled back to top
+      const nextShowFloatingSearch = currentY > floatingSearchThreshold;
       if (nextShowFloatingSearch !== showFloatingSearch) {
         setShowFloatingSearch(nextShowFloatingSearch);
         floatingSearchVisible.value = withTiming(nextShowFloatingSearch ? 1 : 0, {
-          duration: 300,
+          duration: 250,
           easing: Easing.out(Easing.cubic),
         });
       }
@@ -233,14 +227,8 @@ export default observer(function HomeScreen() {
       lastScrollY.current = currentY;
     }
 
-    if (currentY <= 0) {
-      if (!storesStore.isTabBarVisible) {
-        storesStore.setTabBarVisible(true);
-      }
-      if (showFloatingSearch) {
-        setShowFloatingSearch(false);
-        floatingSearchVisible.value = withTiming(0, { duration: 200 });
-      }
+    if (currentY <= 0 && !storesStore.isTabBarVisible) {
+      storesStore.setTabBarVisible(true);
     }
   };
 
@@ -331,7 +319,9 @@ export default observer(function HomeScreen() {
 
   const floatingSearchSpacerStyle = useAnimatedStyle(() => {
     return {
-      height: floatingSearchVisible.value * 60,
+      height: floatingSearchVisible.value * 64,
+      opacity: floatingSearchVisible.value,
+      overflow: 'hidden',
     };
   });
 
@@ -366,6 +356,8 @@ export default observer(function HomeScreen() {
   const bannerScrollRef = useRef<ScrollView>(null);
   const isBannerDragging = useRef(false);
   const [selectedCategory, setSelectedCategoryState] = useState<string>("all");
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const loadedCategories = useRef<Set<string>>(new Set(["all"]));
   const [isCloseBtnVisible, setIsCloseBtnVisible] = useState(false);
 
   const categoryLayouts = useRef<Record<string, { x: number; width: number }>>(
@@ -374,6 +366,9 @@ export default observer(function HomeScreen() {
   const hasInitializedUnderline = useRef(false);
   const underlineX = useSharedValue(0);
   const underlineWidth = useSharedValue(0);
+  const categoriesScrollRef = useRef<ScrollView>(null);
+  const categoriesScrollOffset = useRef(0);
+  const categoriesScrollViewWidth = useRef(0);
   const underlineAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: underlineX.value }],
     width: underlineWidth.value,
@@ -381,9 +376,12 @@ export default observer(function HomeScreen() {
 
   const handleCategorySelect = (categoryId: string) => {
     if (selectedCategory === categoryId) {
-      setSelectedCategoryState("all");
+      const targetId = "all";
+      if (!loadedCategories.current.has(targetId)) setCategoryLoading(true);
+      setSelectedCategoryState(targetId);
       storesStore.fetchShops();
     } else {
+      if (!loadedCategories.current.has(categoryId)) setCategoryLoading(true);
       setSelectedCategoryState(categoryId);
       const isParent = storesStore.globalCategories.some(
         (cat) => cat.id === categoryId,
@@ -394,6 +392,14 @@ export default observer(function HomeScreen() {
         storesStore.fetchShops({ subcategory_id: categoryId });
       }
     }
+
+    // Always center the selected item (clamped at scroll bounds)
+    const layout = categoryLayouts.current[categoryId];
+    if (!layout || !categoriesScrollRef.current) return;
+
+    const viewportWidth = categoriesScrollViewWidth.current;
+    const centeredX = layout.x + layout.width / 2 - viewportWidth / 2;
+    categoriesScrollRef.current.scrollTo({ x: Math.max(0, centeredX), animated: true });
   };
 
   const renderBackdrop = useCallback(
@@ -479,6 +485,18 @@ export default observer(function HomeScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  // Clear category loading state once the fetch settles, and cache the category
+  useEffect(() => {
+    if (
+      categoryLoading &&
+      (storesStore.shopsStatus === API_STATUS.SUCCESS ||
+        storesStore.shopsStatus === API_STATUS.ERROR)
+    ) {
+      setCategoryLoading(false);
+      loadedCategories.current.add(selectedCategory);
+    }
+  }, [storesStore.shopsStatus, categoryLoading, selectedCategory]);
+
   // Default-select the first category once categories load
   useEffect(() => {
     if (selectedCategory === "all" && storesStore.globalCategories.length > 0) {
@@ -491,8 +509,8 @@ export default observer(function HomeScreen() {
     const layout = categoryLayouts.current[selectedCategory];
     if (!layout) return;
     if (hasInitializedUnderline.current) {
-      underlineX.value = withTiming(layout.x, { duration: 250 });
-      underlineWidth.value = withTiming(layout.width, { duration: 250 });
+      underlineX.value = withTiming(layout.x, { duration: 150 });
+      underlineWidth.value = withTiming(layout.width, { duration: 150 });
     } else {
       underlineX.value = layout.x;
       underlineWidth.value = layout.width;
@@ -654,12 +672,12 @@ export default observer(function HomeScreen() {
             {[1, 2, 3, 4, 5].map((i) => (
               <View key={i} style={styles.categoryItem}>
                 <Skeleton
-                  width={46}
-                  height={46}
+                  width={52}
+                  height={52}
                   variant="circle"
-                  style={{ marginBottom: 4 }}
+                  style={{ marginBottom: 8 }}
                 />
-                <Skeleton width={40} height={9} />
+                <Skeleton width={48} height={10} />
               </View>
             ))}
           </ScrollView>
@@ -704,15 +722,23 @@ export default observer(function HomeScreen() {
       );
     }
 
-    // Show only first 5 categories in the horizontal scroll list
-    const visibleCategories = apiCategories.slice(0, 5);
+    // Show first 10 categories, then "See all" for the rest
+    const visibleCategories = apiCategories.slice(0, 10);
 
     return (
       <View style={styles.categoriesSection}>
         <ScrollView
+          ref={categoriesScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesScroll}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            categoriesScrollOffset.current = e.nativeEvent.contentOffset.x;
+          }}
+          onLayout={(e) => {
+            categoriesScrollViewWidth.current = e.nativeEvent.layout.width;
+          }}
         >
           {visibleCategories.map((item) => {
             const isSelected = selectedCategory === item.id;
@@ -731,17 +757,17 @@ export default observer(function HomeScreen() {
                   }
                 }}
               >
-                <View style={styles.categoryImageContainer}>
+                <View pointerEvents="none" style={styles.categoryImageContainer}>
                   {item.image ? (
                     <Image
                       source={{ uri: item.image }}
                       style={styles.categoryImage}
                     />
                   ) : (
-                    <View style={styles.fallbackIconContainer}>
+                    <View pointerEvents="none" style={styles.fallbackIconContainer}>
                       <Ionicons
                         name="grid-outline"
-                        size={18}
+                        size={24}
                         color={theme.colors.textSecondary}
                       />
                     </View>
@@ -774,7 +800,7 @@ export default observer(function HomeScreen() {
             style={styles.categoryItem}
           >
             <View style={styles.seeAllCircle}>
-              <Ionicons name="restaurant" size={18} color="#E11D48" />
+              <Ionicons name="restaurant" size={24} color="#E11D48" />
             </View>
             <View style={styles.seeAllLabelRow}>
               <Text
@@ -798,6 +824,7 @@ export default observer(function HomeScreen() {
           </Pressable>
 
           <Animated.View
+            pointerEvents="none"
             style={[styles.categoryUnderline, underlineAnimatedStyle]}
           />
         </ScrollView>
@@ -810,7 +837,7 @@ export default observer(function HomeScreen() {
 
     // Extract remaining categories that are not shown in the scroll list
     const apiCategories = storesStore.globalCategories || [];
-    const remainingCategories = apiCategories.slice(5);
+    const remainingCategories = apiCategories.slice(10);
 
     return (
       <BottomSheetModal
@@ -1442,6 +1469,7 @@ export default observer(function HomeScreen() {
       return renderSearchResultsSection();
     }
     const isInitialLoading =
+      categoryLoading ||
       (storesStore.shopsStatus === API_STATUS.FETCHING && storesStore.shops.length === 0) ||
       (storesStore.featuredShopsStatus === API_STATUS.FETCHING && storesStore.featuredShops.length === 0);
     const isError =
@@ -2384,7 +2412,9 @@ export default observer(function HomeScreen() {
             { backgroundColor: theme.colors.background },
           ]}
         >
-          <Animated.View style={floatingSearchSpacerStyle} />
+          <Animated.View style={floatingSearchSpacerStyle}>
+            {renderSearchBar()}
+          </Animated.View>
           <Animated.View style={categoriesAnimatedStyle}>
             {renderCategoryList()}
           </Animated.View>
@@ -2394,43 +2424,6 @@ export default observer(function HomeScreen() {
           {renderShopsSection()}
         </Animated.View>
       </ScrollView>
-
-      {/* Floating search bar - appears when scrolling up past the header */}
-      <Animated.View
-        pointerEvents={showFloatingSearch && !isSearchActive ? "auto" : "none"}
-        style={[
-          styles.floatingSearchBar,
-          { top: insets.top + 8 },
-          floatingSearchAnimatedStyle,
-        ]}
-      >
-        <Pressable
-          onPress={activateSearch}
-          style={[
-            styles.searchBarInnerWrapper,
-            { backgroundColor: isDark ? "rgba(31, 41, 55, 0.95)" : "#FFFFFF" },
-          ]}
-        >
-          <Ionicons
-            name="search"
-            size={20}
-            color="#16A34A"
-            style={{ marginLeft: 12, marginRight: 8 }}
-          />
-          <View style={{ flex: 1, justifyContent: "center" }}>
-            <Animated.Text
-              numberOfLines={1}
-              style={[
-                placeholderAnimatedStyle,
-                styles.searchPlaceholderText,
-                { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium },
-              ]}
-            >
-              {SEARCH_PLACEHOLDERS[placeholderIndex]}
-            </Animated.Text>
-          </View>
-        </Pressable>
-      </Animated.View>
 
       {/* Dimmed background overlay */}
       <Animated.View
@@ -2911,48 +2904,48 @@ const styles = StyleSheet.create({
 
   // New Category List & Bottom Sheet styles
   categoriesSection: { paddingVertical: 4 },
-  categoriesScroll: { paddingHorizontal: 20, alignItems: "flex-start" },
+  categoriesScroll: { paddingHorizontal: 20, alignItems: "flex-start", paddingBottom: 10 },
   categoryItem: {
     alignItems: "center",
-    marginRight: 14,
+    marginRight: 16,
     position: "relative",
-    width: 58,
+    width: 68,
   },
   categoryImageContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     overflow: "hidden",
     backgroundColor: "#F9FAFB",
-    marginBottom: 4,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#F3F4F6",
   },
   categoryImageSelected: { borderColor: "#E11D48", borderWidth: 2 },
   categoryImage: { width: "100%", height: "100%", resizeMode: "cover" },
   categoryText: {
-    fontSize: 10,
+    fontSize: 12,
     textAlign: "center",
-    lineHeight: 12,
+    lineHeight: 15,
     color: "#374151",
     paddingHorizontal: 2,
   },
   categoryUnderline: {
     position: "absolute",
     left: 0,
-    bottom: -2,
+    bottom: 2,
     height: 3,
     backgroundColor: "#16A34A",
     borderRadius: 1.5,
   },
   seeAllCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: "#FFE4E6",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#FECDD3",
   },
