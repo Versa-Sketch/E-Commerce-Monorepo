@@ -10,4 +10,5 @@ export const STORE_ENDPOINTS = {
   SEARCH_SHOPS: '/shops/search/shops/',
   SHOP_CATEGORIES: '/shops/user/shops/:id/categories/',
   SHOP_PRODUCTS: '/shops/user/shops/:id/products/',
+  SEARCH_SHOP_PRODUCTS: '/shops/user/shops/:id/products/search/',
 } as const;
