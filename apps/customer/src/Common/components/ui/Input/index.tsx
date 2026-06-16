@@ -27,6 +27,8 @@ interface InputProps {
   labelStyle?: TextStyle;
   onClear?: () => void;
   containerStyle?: ViewStyle;
+  /** Override the underlying TextInput component — e.g. pass BottomSheetTextInput when used inside @gorhom/bottom-sheet */
+  TextInputComponent?: React.ComponentType<React.ComponentProps<typeof TextInput>>;
 }
 export const Input: React.FC<InputProps> = ({
   value,
@@ -45,6 +47,7 @@ export const Input: React.FC<InputProps> = ({
   labelStyle,
   onClear,
   containerStyle: containerStyleProp,
+  TextInputComponent = TextInput,
 }) => {
   const { theme, isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -106,7 +109,7 @@ export const Input: React.FC<InputProps> = ({
       >
         {leftIcon && renderLeftIcon()}
         {leftComponent}
-        <TextInput
+        <TextInputComponent
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}

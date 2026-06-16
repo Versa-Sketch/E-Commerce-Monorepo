@@ -360,7 +360,7 @@ export default observer(function HomeScreen() {
   const cartProgrammaticOpen = useRef<Set<string>>(new Set());
 
   const addressSheetRef = useRef<BottomSheetModal>(null);
-  const addressSnapPoints = useMemo(() => ["55%"], []);
+  const addressSnapPoints = useMemo(() => ["62%"], []);
   const [refreshing, setRefreshing] = useState(false);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
@@ -2218,7 +2218,45 @@ export default observer(function HomeScreen() {
         >
           Select your location to find stores within a 6 km radius.
         </Text>
-        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+        {/* Add new address CTA — above the address list */}
+        <Pressable
+          onPress={() => {
+            addressSheetRef.current?.dismiss();
+            router.push("/customer/addresses/map-picker");
+          }}
+          style={({ pressed }) => [
+            styles.addAddrBtn,
+            { borderColor: theme.colors.border, backgroundColor: pressed ? `${theme.colors.primary}0C` : theme.colors.background },
+          ]}
+        >
+          <View style={[styles.addAddrIconWrap, { backgroundColor: theme.colors.primary }]}>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                styles.addAddrLabel,
+                { color: theme.colors.primary, fontFamily: theme.typography.fonts.bold },
+              ]}
+            >
+              Add new address
+            </Text>
+            <Text
+              style={[
+                styles.addAddrSub,
+                { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium },
+              ]}
+            >
+              Pin your exact location on the map
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+        </Pressable>
+
+        {/* Divider */}
+        <View style={[styles.addrDivider, { backgroundColor: theme.colors.border }]} />
+
+        <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
           {addresses.map((addr) => {
             const active = activeAddress?.id === addr.id;
             return (
@@ -2851,6 +2889,25 @@ const styles = StyleSheet.create({
   addrLabel: { fontSize: 14 },
   addrStreet: { fontSize: 12, marginTop: 2 },
   radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5 },
+  addrDivider: { height: 1, marginVertical: 14, opacity: 0.5 },
+  addAddrBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  addAddrIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  addAddrLabel: { fontSize: 14 },
+  addAddrSub: { fontSize: 11, marginTop: 2 },
 
   // New Category List & Bottom Sheet styles
   categoriesSection: { paddingVertical: 4 },

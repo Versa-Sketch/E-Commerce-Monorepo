@@ -144,6 +144,7 @@ export interface Shop {
   surge_fee: string;
   cod_toggle: boolean;
   shop_types: ShopType[];
+  image?: string;
   logo_url?: string;
   cover_image_url?: string;
   review_count?: number;

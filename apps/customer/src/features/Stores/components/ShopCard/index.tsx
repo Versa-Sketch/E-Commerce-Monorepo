@@ -46,7 +46,8 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
   const [imageError, setImageError] = useState(false);
   const rating = parseFloat(shop.average_rating);
   const minOrder = parseFloat(shop.min_order);
-  const showCover = !!shop.cover_image_url && !imageError;
+  const coverUri = shop.image || shop.cover_image_url;
+  const showCover = !!coverUri && !imageError;
   const placeholder = getShopPlaceholderPalette(shop);
   const reviewCountText = formatReviewCount(shop.review_count) ?? FALLBACK_REVIEW_COUNT_TEXT;
   const etaText = formatEta(shop) ?? FALLBACK_ETA_TEXT;
@@ -89,7 +90,7 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
       <View style={[bannerStyle, { backgroundColor: placeholder.background }]}>
         {showCover ? (
           <Image
-            source={{ uri: shop.cover_image_url }}
+            source={{ uri: coverUri }}
             style={bannerImageStyle}
             resizeMode="cover"
             onError={() => setImageError(true)}

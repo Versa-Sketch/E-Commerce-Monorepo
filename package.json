@@ -6,5 +6,10 @@
     "dev:customer": "pnpm --filter customer start",
     "dev:merchant": "pnpm --filter merchant start",
     "dev:delivery": "pnpm --filter delivery start"
+  },
+  "dependencies": {
+    "expo": "~56.0.0-preview.8",
+    "react": "19.2.3",
+    "react-native": "0.85.3"
   }
 }

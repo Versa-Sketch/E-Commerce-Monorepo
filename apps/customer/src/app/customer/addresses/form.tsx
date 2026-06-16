@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { pickedLocationToAddressFields } from '@ecommerce/maps';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { observer } from 'mobx-react-lite';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
 import { Button } from '../../../Common/components/ui/Button';
 import { Chip } from '../../../Common/components/ui/Chip';
 import { Input } from '../../../Common/components/ui/Input';
+import { LocationPickerSheet } from '../../../features/Addresses/components/LocationPickerSheet';
 import { useAddressStore } from '../../../features/Addresses/Providers/useAddressStore';
+import { consumePendingPickedLocation } from '../../../features/Addresses/Store/mapPickerBridge';
 import { AddressType } from '../../../types/shared';
 import { useTheme } from '../../../theme/ThemeContext';
 
@@ -28,6 +31,7 @@ export default observer(function AddressFormScreen() {
   const [longitude, setLongitude] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [locationSheetVisible, setLocationSheetVisible] = useState(false);
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -43,6 +47,23 @@ export default observer(function AddressFormScreen() {
       setIsDefault(existing.is_default);
     }
   }, [id, addressStore.addresses.length]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const picked = consumePendingPickedLocation();
+      if (!picked) return;
+      const fields = pickedLocationToAddressFields(picked);
+      setLatitude(String(fields.latitude));
+      setLongitude(String(fields.longitude));
+      if (fields.state) setState(fields.state);
+      if (fields.pincode) setPincode(fields.pincode);
+      // Prepend flat/floor number to the geocoded street address when provided
+      const geocodedLine1 = fields.address_line1 ?? '';
+      setAddressLine1(picked.flatNo ? `${picked.flatNo}, ${geocodedLine1}` : geocodedLine1);
+      if (picked.landmark) setAddressLine2(picked.landmark);
+      if (picked.addressType) setAddressType(picked.addressType);
+    }, []),
+  );
 
   const handleSave = async () => {
     setSubmitting(true);
@@ -124,6 +145,14 @@ export default observer(function AddressFormScreen() {
           keyboardType="numeric"
           containerStyle={{ marginBottom: 16 }}
         />
+        <Button
+          label="Set location on map"
+          variant="outline"
+          leftIcon={<Ionicons name="map-outline" size={18} color={theme.colors.primary} />}
+          onPress={() => setLocationSheetVisible(true)}
+          style={{ marginBottom: 16 }}
+        />
+
         <Input
           label="Latitude (optional)"
           value={latitude}
@@ -162,6 +191,15 @@ export default observer(function AddressFormScreen() {
           loading={submitting}
         />
       </View>
+
+      <LocationPickerSheet
+        visible={locationSheetVisible}
+        onClose={() => setLocationSheetVisible(false)}
+        onSelectUsingMaps={() => {
+          setLocationSheetVisible(false);
+          router.push('/customer/addresses/map-picker');
+        }}
+      />
     </View>
   );
 });

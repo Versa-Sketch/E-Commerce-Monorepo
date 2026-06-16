@@ -30,7 +30,8 @@ export const FeaturedShopCard: React.FC<FeaturedShopCardProps> = ({ shop, onPres
   const { theme } = useTheme();
   const [imageError, setImageError] = useState(false);
   const rating = parseFloat(shop.average_rating);
-  const showCover = !!shop.cover_image_url && !imageError;
+  const coverUri = shop.image || shop.cover_image_url;
+  const showCover = !!coverUri && !imageError;
   const placeholder = getShopPlaceholderPalette(shop);
   const reviewCountText = formatReviewCount(shop.review_count);
   const etaText = formatEta(shop);
@@ -56,7 +57,7 @@ export const FeaturedShopCard: React.FC<FeaturedShopCardProps> = ({ shop, onPres
       <View style={[bannerStyle, { backgroundColor: placeholder.background }]}>
         {showCover ? (
           <Image
-            source={{ uri: shop.cover_image_url }}
+            source={{ uri: coverUri }}
             style={bannerImageStyle}
             resizeMode="cover"
             onError={() => setImageError(true)}
