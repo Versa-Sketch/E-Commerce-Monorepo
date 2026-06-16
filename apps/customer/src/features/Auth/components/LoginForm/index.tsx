@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import { Button } from '@/Common/components/ui/Button';
 import { Input } from '@/Common/components/ui/Input';
 import { useTheme } from '../../../../theme/ThemeContext';
+import { useAuthStore } from '../../Providers/useAuthStore';
 import {
   formStyle,
   inputStyle,
@@ -14,16 +15,21 @@ import {
   timerContainer,
   timerText,
 } from './styledcomponents';
+
 interface LoginFormProps {
-  onLogin: (phone: string) => void;
+  onLoginSuccess: () => void;
 }
-export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+
+export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const { theme } = useTheme();
+  const authStore = useAuthStore();
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
+  const [error, setError] = useState<string | null>(null);
   const otpRefs = useRef<Array<TextInput | null>>([]);
+
   useEffect(() => {
     let interval: any;
     if (step === 'otp' && timer > 0) {
@@ -33,18 +39,31 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     }
     return () => clearInterval(interval);
   }, [step, timer]);
-  const handleGetOtp = () => {
-    if (phone && phone.length === 10) {
+
+  const handleGetOtp = async () => {
+    if (phone.length !== 10) return;
+    setError(null);
+    try {
+      await authStore.loginWithPhone(phone);
       setStep('otp');
       setTimer(30);
+    } catch {
+      setError('Failed to send OTP. Please try again.');
     }
   };
-  const handleVerifyOtp = () => {
+
+  const handleVerifyOtp = async () => {
     const enteredOtp = otp.join('');
-    if (enteredOtp.length === 6) {
-      onLogin(phone);
+    if (enteredOtp.length !== 6) return;
+    setError(null);
+    try {
+      await authStore.verifyOtp(phone, enteredOtp);
+      onLoginSuccess();
+    } catch {
+      setError('Invalid OTP. Please try again.');
     }
   };
+
   const handleOtpChange = (text: string, index: number) => {
     const cleanText = text.replace(/[^0-9]/g, '');
     const newOtp = [...otp];
@@ -54,22 +73,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       otpRefs.current[index + 1]?.focus();
     }
   };
+
   const handleKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
   };
-  const handleResendOtp = () => {
-    if (timer === 0) {
+
+  const handleResendOtp = async () => {
+    if (timer > 0) return;
+    setError(null);
+    try {
+      await authStore.loginWithPhone(phone);
       setOtp(['', '', '', '', '', '']);
       setTimer(30);
       otpRefs.current[0]?.focus();
+    } catch {
+      setError('Failed to resend OTP. Please try again.');
     }
   };
+
   const handleEditPhone = () => {
     setStep('phone');
     setOtp(['', '', '', '', '', '']);
+    setError(null);
   };
+
   if (step === 'phone') {
     return (
       <View style={formStyle}>
@@ -82,19 +111,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           leftIcon="call-outline"
           style={inputStyle}
         />
+        {error && (
+          <Text style={{ color: theme.colors.error, fontSize: 13, marginBottom: 8 }}>
+            {error}
+          </Text>
+        )}
         <Button
           label="Get OTP"
           onPress={handleGetOtp}
           variant="solid"
           disabled={phone.length < 10}
+          loading={authStore.isLoading}
           style={loginBtnStyle}
         />
       </View>
     );
   }
+
   return (
     <View style={formStyle}>
-      {}
       <View style={helperRowStyle}>
         <Text style={[theme.textPresets.bodyMedium, { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.manrope500Medium }]}>
           Sent OTP to +91 {phone}
@@ -105,10 +140,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           </Text>
         </Pressable>
       </View>
-      <Text style={[theme.textPresets.caption, { color: theme.colors.textMuted, fontFamily: theme.typography.fonts.manrope400Regular, marginBottom: 8 }]}>
-        Mock Verification: Enter any 6 digits (e.g. 123456)
-      </Text>
-      {}
       <View style={otpContainer}>
         {otp.map((digit, index) => (
           <TextInput
@@ -131,14 +162,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           />
         ))}
       </View>
+      {error && (
+        <Text style={{ color: theme.colors.error, fontSize: 13, marginBottom: 8 }}>
+          {error}
+        </Text>
+      )}
       <Button
         label="Verify & Log In"
         onPress={handleVerifyOtp}
         variant="solid"
         disabled={otp.join('').length < 6}
+        loading={authStore.isLoading}
         style={loginBtnStyle}
       />
-      {}
       <View style={timerContainer}>
         {timer > 0 ? (
           <Text style={[timerText, { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.manrope400Regular }]}>
@@ -158,4 +194,5 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     </View>
   );
 };
+
 export default LoginForm;

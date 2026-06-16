@@ -10,6 +10,8 @@ import { useRouter } from "expo-router";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Pressable,
@@ -35,16 +37,29 @@ import { Chip } from "../../Common/components/ui/Chip";
 import { Skeleton } from "../../Common/components/ui/Skeleton";
 import { API_STATUS } from "../../Common/Constants";
 import { MOCK_PRODUCTS } from "../../constants";
+import { useAddressStore } from "../../features/Addresses/Providers/useAddressStore";
 import { useAuthStore } from "../../features/Auth/Providers/useAuthStore";
 import { useCartStore } from "../../features/Cart/Providers/useCartStore";
-import { useProfileStore } from "../../features/Profile/Providers/useProfileStore";
 import { FeaturedShopCard } from "../../features/Stores/components/FeaturedShopCard";
 import { FeaturedShopCardSkeleton } from "../../features/Stores/components/FeaturedShopCard/Skeleton";
 import { ShopCard } from "../../features/Stores/components/ShopCard";
 import { ShopCardSkeleton } from "../../features/Stores/components/ShopCard/Skeleton";
 import { useStoresStore } from "../../features/Stores/Providers/useStoresStore";
+
 import { Colors } from "../../theme/colors";
 import { useTheme } from "../../theme/ThemeContext";
+import { locationStore } from "../../stores/LocationStore";
+import { AddressApi, AddressType } from "../../types/shared";
+
+const ADDRESS_ICON_BY_TYPE: Record<
+  AddressType,
+  keyof typeof Ionicons.glyphMap
+> = {
+  HOME: "home-outline",
+  WORK: "briefcase-outline",
+  SHOP: "storefront-outline",
+  OTHER: "location-outline",
+};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CART_DELETE_ACTION_WIDTH = 110;
@@ -81,11 +96,11 @@ const StaggeredItem = ({ index, children }: StaggeredItemProps) => {
   useEffect(() => {
     opacity.value = withDelay(
       index * 40,
-      withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) })
+      withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }),
     );
     translateY.value = withDelay(
       index * 40,
-      withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) })
+      withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) }),
     );
   }, [index]);
 
@@ -106,11 +121,11 @@ const StaggeredSearchResult = ({ index, children }: StaggeredItemProps) => {
   useEffect(() => {
     opacity.value = withDelay(
       index * 40,
-      withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) })
+      withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) }),
     );
     translateY.value = withDelay(
       index * 40,
-      withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) })
+      withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) }),
     );
   }, [index]);
 
@@ -135,10 +150,16 @@ export default observer(function HomeScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const authStore = useAuthStore();
-  const profileStore = useProfileStore();
   const storesStore = useStoresStore();
   const cartStore = useCartStore();
+  const addressStore = useAddressStore();
+
   const insets = useSafeAreaInsets();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
+  const [usingCurrentLocation, setUsingCurrentLocation] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([
@@ -280,11 +301,17 @@ export default observer(function HomeScreen() {
     return {
       borderColor: withTiming(
         isSearchActive
-          ? (isDark ? "#4B5563" : "#9CA3AF")
-          : (isDark ? "rgba(75, 85, 99, 0.4)" : "#F3F4F6"),
-        { duration: 280 }
+          ? isDark
+            ? "#4B5563"
+            : "#9CA3AF"
+          : isDark
+            ? "rgba(75, 85, 99, 0.4)"
+            : "#F3F4F6",
+        { duration: 280 },
       ),
-      shadowOpacity: withTiming(isSearchActive ? 0.12 : 0.05, { duration: 280 }),
+      shadowOpacity: withTiming(isSearchActive ? 0.12 : 0.05, {
+        duration: 280,
+      }),
       shadowRadius: withTiming(isSearchActive ? 16 : 12, { duration: 280 }),
     };
   });
@@ -439,22 +466,36 @@ export default observer(function HomeScreen() {
     storesStore.fetchFeaturedShops();
     storesStore.fetchShops();
     cartStore.hydrateAllCarts();
+    addressStore.fetchAddresses();
     return () => {
       storesStore.setTabBarVisible(true);
     };
   }, []);
+
+  // Default-select the first address once addresses load
+  useEffect(() => {
+    if (
+      selectedAddressId &&
+      addressStore.addresses.some((a) => a.id === selectedAddressId)
+    )
+      return;
+    const fallback = addressStore.defaultAddress ?? addressStore.addresses[0];
+    setSelectedAddressId(fallback ? fallback.id : null);
+  }, [addressStore.addresses.length]);
 
   // Debounced product/shop search
   useEffect(() => {
     const query = storesStore.filters.searchQuery;
     if (!query.trim()) {
       setIsSearchPending(false);
-      storesStore.searchShops({ q: '' });
+      storesStore.searchShops({ q: "" });
       return;
     }
     setIsSearchPending(true);
     const timer = setTimeout(() => {
-      storesStore.searchShops({ q: query }).finally(() => setIsSearchPending(false));
+      storesStore
+        .searchShops({ q: query })
+        .finally(() => setIsSearchPending(false));
     }, 400);
     return () => clearTimeout(timer);
   }, [storesStore.filters.searchQuery]);
@@ -464,7 +505,10 @@ export default observer(function HomeScreen() {
     const timer = setInterval(() => {
       if (isBannerDragging.current) return;
       const nextIndex = (activeBannerIndex + 1) % HOME_BANNERS.length;
-      bannerScrollRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated: true });
+      bannerScrollRef.current?.scrollTo({
+        x: nextIndex * SCREEN_WIDTH,
+        animated: true,
+      });
       setActiveBannerIndex(nextIndex);
     }, BANNER_AUTOPLAY_INTERVAL);
     return () => clearInterval(timer);
@@ -518,8 +562,10 @@ export default observer(function HomeScreen() {
     }
   }, [selectedCategory]);
 
-  const activeAddress = profileStore.selectedAddress;
-  const addresses = profileStore.addresses;
+  const activeAddress: AddressApi | undefined = addressStore.addresses.find(
+    (a) => a.id === selectedAddressId,
+  );
+  const addresses = addressStore.addresses;
   const filters = storesStore.filters;
   const discountProducts = MOCK_PRODUCTS.filter(
     (p) => p.discountPrice !== undefined,
@@ -534,9 +580,33 @@ export default observer(function HomeScreen() {
     ]).finally(() => setRefreshing(false));
   };
 
-  const handleAddressSelect = (addr: any) => {
-    profileStore.setSelectedAddress(addr);
+  const handleAddressSelect = (addr: AddressApi) => {
+    setUsingCurrentLocation(false);
+    setSelectedAddressId(addr.id);
     addressSheetRef.current?.dismiss();
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsLocating(true);
+    try {
+      await locationStore.refreshLocation();
+      if (locationStore.location) {
+        setUsingCurrentLocation(true);
+        setSelectedAddressId(null);
+        addressSheetRef.current?.dismiss();
+      } else {
+        Alert.alert("Location unavailable", "Could not detect your location. Please try again or select a saved address.");
+      }
+    } catch {
+      Alert.alert("Location error", "Failed to get your location. Please check permissions and try again.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleAddAddress = () => {
+    addressSheetRef.current?.dismiss();
+    router.push("/customer/addresses/form");
   };
 
   // Render helpers
@@ -567,18 +637,22 @@ export default observer(function HomeScreen() {
             style={{ marginRight: 4, marginTop: -1 }}
           />
           <Text
+            numberOfLines={1}
             style={[
               theme.textPresets.bodyLarge,
               {
                 color: "#FFFFFF",
                 fontFamily: theme.typography.fonts.bold,
                 fontSize: 15,
+                maxWidth: SCREEN_WIDTH * 0.6,
               },
             ]}
           >
-            {activeAddress
-              ? `${activeAddress.streetAddress}, ${activeAddress.city}`
-              : "Indiranagar, Bengaluru"}
+            {usingCurrentLocation && locationStore.location
+              ? locationStore.location.formattedAddress ?? "Current location"
+              : activeAddress
+                ? `${activeAddress.address_line1}${activeAddress.address_line2 ? `, ${activeAddress.address_line2}` : ""}`
+                : "Add a delivery address"}
           </Text>
         </Pressable>
         <Text
@@ -600,11 +674,7 @@ export default observer(function HomeScreen() {
           onPress={() => router.push("/profile")}
           style={styles.headerActionBtn}
         >
-          <Ionicons
-            name="person-circle-outline"
-            size={34}
-            color="#FFFFFF"
-          />
+          <Ionicons name="person-circle-outline" size={34} color="#FFFFFF" />
         </Pressable>
       </View>
     </View>
@@ -623,14 +693,20 @@ export default observer(function HomeScreen() {
         }}
         onMomentumScrollEnd={(e) => {
           isBannerDragging.current = false;
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const index = Math.round(
+            e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+          );
           setActiveBannerIndex(index);
         }}
         scrollEventThrottle={16}
       >
         {HOME_BANNERS.map((uri, index) => (
           <View key={index} style={styles.bannerSlide}>
-            <Image source={{ uri }} style={styles.bannerImage} resizeMode="cover" />
+            <Image
+              source={{ uri }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
           </View>
         ))}
       </ScrollView>
@@ -642,7 +718,11 @@ export default observer(function HomeScreen() {
               styles.bannerDot,
               {
                 backgroundColor:
-                  index === activeBannerIndex ? "#16A34A" : isDark ? "rgba(255,255,255,0.25)" : "#E5E7EB",
+                  index === activeBannerIndex
+                    ? "#16A34A"
+                    : isDark
+                      ? "rgba(255,255,255,0.25)"
+                      : "#E5E7EB",
                 width: index === activeBannerIndex ? 18 : 6,
               },
             ]}
@@ -965,7 +1045,10 @@ export default observer(function HomeScreen() {
       setIsCartCloseBtnVisible(false);
       cartSheetRef.current?.dismiss();
       if (storeId) {
-        router.push({ pathname: "/customer/cart", params: { shopId: storeId } });
+        router.push({
+          pathname: "/customer/cart",
+          params: { shopId: storeId },
+        });
       } else {
         router.push("/customer/cart");
       }
@@ -1428,7 +1511,8 @@ export default observer(function HomeScreen() {
         {storesStore.searchResults.map((shop) => {
           const matchedCategories = shop.matched_categories ?? [];
           const matchedSubcategories = shop.matched_subcategories ?? [];
-          const hasChips = matchedCategories.length + matchedSubcategories.length > 0;
+          const hasChips =
+            matchedCategories.length + matchedSubcategories.length > 0;
           return (
             <View key={shop.id} style={{ marginBottom: 16 }}>
               <ShopCard
@@ -1445,14 +1529,21 @@ export default observer(function HomeScreen() {
                     <Chip
                       key={c.id}
                       label={c.name}
-                      onPress={() => storesStore.searchShops({ q: query, category_id: c.id })}
+                      onPress={() =>
+                        storesStore.searchShops({ q: query, category_id: c.id })
+                      }
                     />
                   ))}
                   {matchedSubcategories.map((c) => (
                     <Chip
                       key={c.id}
                       label={c.name}
-                      onPress={() => storesStore.searchShops({ q: query, subcategory_id: c.id })}
+                      onPress={() =>
+                        storesStore.searchShops({
+                          q: query,
+                          subcategory_id: c.id,
+                        })
+                      }
                     />
                   ))}
                 </ScrollView>
@@ -1473,8 +1564,10 @@ export default observer(function HomeScreen() {
       (storesStore.shopsStatus === API_STATUS.FETCHING && storesStore.shops.length === 0) ||
       (storesStore.featuredShopsStatus === API_STATUS.FETCHING && storesStore.featuredShops.length === 0);
     const isError =
-      (storesStore.shopsStatus === API_STATUS.ERROR && storesStore.shops.length === 0) ||
-      (storesStore.featuredShopsStatus === API_STATUS.ERROR && storesStore.featuredShops.length === 0);
+      (storesStore.shopsStatus === API_STATUS.ERROR &&
+        storesStore.shops.length === 0) ||
+      (storesStore.featuredShopsStatus === API_STATUS.ERROR &&
+        storesStore.featuredShops.length === 0);
 
     if (isInitialLoading) {
       return (
@@ -1578,7 +1671,9 @@ export default observer(function HomeScreen() {
 
     if (storesStore.shops.length === 0) {
       return (
-        <View style={{ paddingHorizontal: 20, marginBottom: 32, marginTop: 20 }}>
+        <View
+          style={{ paddingHorizontal: 20, marginBottom: 32, marginTop: 20 }}
+        >
           <Text
             style={[
               theme.textPresets.bodyLarge,
@@ -1691,7 +1786,9 @@ export default observer(function HomeScreen() {
               key={shop.id}
               shop={shop}
               onPress={() => {
-                router.push(`/customer/store/${shop.id}`);
+                router.push(
+                  `/customer/store/${shop.id}?q=${encodeURIComponent(storesStore.filters.searchQuery)}`,
+                );
               }}
               style={{ marginBottom: 16 }}
             />
@@ -1707,7 +1804,9 @@ export default observer(function HomeScreen() {
         styles.floatingCart,
         {
           backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
-          borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+          borderColor: isDark
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(0, 0, 0, 0.05)",
         },
         floatingCartAnimatedStyle,
       ]}
@@ -1722,7 +1821,9 @@ export default observer(function HomeScreen() {
         <View
           style={[
             styles.cartImageWrapper,
-            { backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#F3F4F6" },
+            {
+              backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#F3F4F6",
+            },
           ]}
         >
           <Image
@@ -1735,7 +1836,11 @@ export default observer(function HomeScreen() {
           <Text
             style={[
               styles.viewCartText,
-              { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold, marginTop: 14 },
+              {
+                color: theme.colors.textPrimary,
+                fontFamily: theme.typography.fonts.bold,
+                marginTop: 14,
+              },
             ]}
             numberOfLines={1}
           >
@@ -1744,7 +1849,10 @@ export default observer(function HomeScreen() {
           <Text
             style={[
               styles.cartQtyText,
-              { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium },
+              {
+                color: theme.colors.textSecondary,
+                fontFamily: theme.typography.fonts.medium,
+              },
             ]}
             numberOfLines={1}
           >
@@ -1769,25 +1877,40 @@ export default observer(function HomeScreen() {
             styles.viewCartFloatingPill,
             {
               backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
-              borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+              borderColor: isDark
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(0, 0, 0, 0.05)",
             },
           ]}
         >
-          <Ionicons name="cart" size={14} color="#16A34A" style={styles.viewCartFloatingPillIcon} />
+          <Ionicons
+            name="cart"
+            size={14}
+            color="#16A34A"
+            style={styles.viewCartFloatingPillIcon}
+          />
           <Text
-            style={[styles.viewCartFloatingPillText, { fontFamily: theme.typography.fonts.bold }]}
+            style={[
+              styles.viewCartFloatingPillText,
+              { fontFamily: theme.typography.fonts.bold },
+            ]}
             numberOfLines={1}
           >
             View Carts
           </Text>
         </Pressable>
-        <View style={styles.viewCartFloatingPillBadgeWrapper} pointerEvents="none">
+        <View
+          style={styles.viewCartFloatingPillBadgeWrapper}
+          pointerEvents="none"
+        >
           <View
             style={[
               styles.viewCartFloatingPillBadge,
               {
                 backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
-                borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
               },
             ]}
           >
@@ -1799,7 +1922,13 @@ export default observer(function HomeScreen() {
   );
 
   const renderSearchBar = () => (
-    <Animated.View style={[styles.searchBarOuterWrapper, searchBarOuterAnimatedStyle, searchBarAnimatedStyle]}>
+    <Animated.View
+      style={[
+        styles.searchBarOuterWrapper,
+        searchBarOuterAnimatedStyle,
+        searchBarAnimatedStyle,
+      ]}
+    >
       <Animated.View
         style={[
           styles.searchBarInnerWrapper,
@@ -1845,7 +1974,11 @@ export default observer(function HomeScreen() {
         </View>
         {isSearchActive && (
           <Pressable onPress={deactivateSearch} style={styles.closeBtn}>
-            <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+            <Ionicons
+              name="close"
+              size={20}
+              color={theme.colors.textSecondary}
+            />
           </Pressable>
         )}
       </Animated.View>
@@ -1930,10 +2063,18 @@ export default observer(function HomeScreen() {
                       </Text>
                     </Pressable>
                     <Pressable
-                      onPress={() => setRecentSearches((prev) => prev.filter((s) => s !== item))}
+                      onPress={() =>
+                        setRecentSearches((prev) =>
+                          prev.filter((s) => s !== item),
+                        )
+                      }
                       style={{ marginLeft: 6, padding: 2 }}
                     >
-                      <Ionicons name="close" size={14} color={theme.colors.textSecondary} />
+                      <Ionicons
+                        name="close"
+                        size={14}
+                        color={theme.colors.textSecondary}
+                      />
                     </Pressable>
                   </View>
                 </StaggeredItem>
@@ -1966,7 +2107,10 @@ export default observer(function HomeScreen() {
             Trending Searches
           </Text>
           {trendingSearches.map((item, idx) => (
-            <StaggeredItem key={`trending-${item}`} index={idx + recentSearches.length}>
+            <StaggeredItem
+              key={`trending-${item}`}
+              index={idx + recentSearches.length}
+            >
               <Pressable
                 onPress={() => storesStore.setSearchQuery(item)}
                 style={styles.suggestionItemRow}
@@ -1982,7 +2126,11 @@ export default observer(function HomeScreen() {
                     marginRight: 12,
                   }}
                 >
-                  <Ionicons name="trending-up" size={16} color={theme.colors.success} />
+                  <Ionicons
+                    name="trending-up"
+                    size={16}
+                    color={theme.colors.success}
+                  />
                 </View>
                 <Text
                   style={{
@@ -1994,7 +2142,11 @@ export default observer(function HomeScreen() {
                 >
                   {item}
                 </Text>
-                <Ionicons name="open-outline" size={16} color={theme.colors.textMuted} />
+                <Ionicons
+                  name="open-outline"
+                  size={16}
+                  color={theme.colors.textMuted}
+                />
               </Pressable>
             </StaggeredItem>
           ))}
@@ -2006,7 +2158,8 @@ export default observer(function HomeScreen() {
   const renderOverlaySearchResults = () => {
     const query = filters.searchQuery;
     const isInitialLoading =
-      (isSearchPending || storesStore.searchResultsStatus === API_STATUS.FETCHING) &&
+      (isSearchPending ||
+        storesStore.searchResultsStatus === API_STATUS.FETCHING) &&
       storesStore.searchResults.length === 0;
     const isError =
       !isSearchPending &&
@@ -2088,9 +2241,16 @@ export default observer(function HomeScreen() {
     }
 
     if (storesStore.searchResults.length === 0) {
-      const popularSearches = ["Groceries", "Pharmacy", "Bakery", "Electronics"];
+      const popularSearches = [
+        "Groceries",
+        "Pharmacy",
+        "Bakery",
+        "Electronics",
+      ];
       return (
-        <View style={{ paddingHorizontal: 20, marginTop: 40, alignItems: "center" }}>
+        <View
+          style={{ paddingHorizontal: 20, marginTop: 40, alignItems: "center" }}
+        >
           <View
             style={{
               width: 64,
@@ -2102,7 +2262,11 @@ export default observer(function HomeScreen() {
               marginBottom: 16,
             }}
           >
-            <Ionicons name="sad-outline" size={28} color={theme.colors.textSecondary} />
+            <Ionicons
+              name="sad-outline"
+              size={28}
+              color={theme.colors.textSecondary}
+            />
           </View>
           <Text
             style={{
@@ -2137,9 +2301,20 @@ export default observer(function HomeScreen() {
           >
             Popular Searches
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              justifyContent: "center",
+            }}
+          >
             {popularSearches.map((item) => (
-              <Chip key={item} label={item} onPress={() => storesStore.setSearchQuery(item)} />
+              <Chip
+                key={item}
+                label={item}
+                onPress={() => storesStore.setSearchQuery(item)}
+              />
             ))}
           </View>
         </View>
@@ -2169,27 +2344,48 @@ export default observer(function HomeScreen() {
             marginBottom: 16,
           }}
         >
-          {storesStore.searchResults.length} shop{storesStore.searchResults.length === 1 ? "" : "s"} found
+          {storesStore.searchResults.length} shop
+          {storesStore.searchResults.length === 1 ? "" : "s"} found
         </Text>
         {storesStore.searchResults.map((shop, idx) => {
           const matchedCategories = shop.matched_categories ?? [];
           const matchedSubcategories = shop.matched_subcategories ?? [];
-          const hasChips = matchedCategories.length + matchedSubcategories.length > 0;
+          const hasChips =
+            matchedCategories.length + matchedSubcategories.length > 0;
           return (
             <StaggeredSearchResult key={shop.id} index={idx}>
               <View style={{ marginBottom: 16 }}>
                 <ShopCard
                   shop={shop}
-                  onPress={() => router.push(`/customer/store/${shop.id}`)}
+                  onPress={() =>
+                    router.push(
+                      `/customer/store/${shop.id}?q=${encodeURIComponent(query)}`,
+                    )
+                  }
                 />
                 {hasChips && (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 8 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      paddingTop: 8,
+                    }}
+                  >
                     {matchedCategories.map((c) => (
                       <Chip
                         key={c.id}
                         label={c.name}
-                        onPress={() => storesStore.searchShops({ q: query, category_id: c.id })}
-                        style={{ backgroundColor: Colors.semantic.infoLight, borderColor: "transparent" }}
+                        onPress={() =>
+                          storesStore.searchShops({
+                            q: query,
+                            category_id: c.id,
+                          })
+                        }
+                        style={{
+                          backgroundColor: Colors.semantic.infoLight,
+                          borderColor: "transparent",
+                        }}
                         textStyle={{ color: Colors.semantic.info }}
                       />
                     ))}
@@ -2197,8 +2393,16 @@ export default observer(function HomeScreen() {
                       <Chip
                         key={c.id}
                         label={c.name}
-                        onPress={() => storesStore.searchShops({ q: query, subcategory_id: c.id })}
-                        style={{ backgroundColor: theme.colors.surfaceSecondary, borderColor: "transparent" }}
+                        onPress={() =>
+                          storesStore.searchShops({
+                            q: query,
+                            subcategory_id: c.id,
+                          })
+                        }
+                        style={{
+                          backgroundColor: theme.colors.surfaceSecondary,
+                          borderColor: "transparent",
+                        }}
                         textStyle={{ color: theme.colors.primary }}
                       />
                     ))}
@@ -2218,88 +2422,96 @@ export default observer(function HomeScreen() {
       snapPoints={addressSnapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: theme.colors.surface, borderRadius: 28 }}
+      backgroundStyle={{
+        backgroundColor: theme.colors.surface,
+        borderRadius: 28,
+      }}
       handleIndicatorStyle={{ backgroundColor: isDark ? "#374151" : "#E5E7EB" }}
     >
       <BottomSheetView style={styles.addressSheetContent}>
+        {/* Header */}
         <View style={styles.addressSheetHeader}>
-          <Text
+          <View
             style={[
-              styles.addressSheetTitle,
-              {
-                fontFamily: theme.typography.fonts.bold,
-                color: theme.colors.textPrimary,
-              },
+              styles.addrSheetIconBadge,
+              { backgroundColor: isDark ? "rgba(16,185,129,0.15)" : "#ECFDF5" },
             ]}
           >
-            Choose Delivery Address
-          </Text>
-        </View>
-        <Text
-          style={[
-            styles.addressSheetSub,
-            {
-              fontFamily: theme.typography.fonts.medium,
-              color: theme.colors.textSecondary,
-            },
-          ]}
-        >
-          Select your location to find stores within a 6 km radius.
-        </Text>
-        {/* Add new address CTA — above the address list */}
-        <Pressable
-          onPress={() => {
-            addressSheetRef.current?.dismiss();
-            router.push("/customer/addresses/map-picker");
-          }}
-          style={({ pressed }) => [
-            styles.addAddrBtn,
-            { borderColor: theme.colors.border, backgroundColor: pressed ? `${theme.colors.primary}0C` : theme.colors.background },
-          ]}
-        >
-          <View style={[styles.addAddrIconWrap, { backgroundColor: theme.colors.primary }]}>
-            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Ionicons name="location-sharp" size={18} color="#10B981" />
           </View>
           <View style={{ flex: 1 }}>
             <Text
               style={[
-                styles.addAddrLabel,
-                { color: theme.colors.primary, fontFamily: theme.typography.fonts.bold },
+                styles.addressSheetTitle,
+                { fontFamily: theme.typography.fonts.bold, color: theme.colors.textPrimary },
               ]}
             >
-              Add new address
+              Delivery address
             </Text>
             <Text
               style={[
-                styles.addAddrSub,
-                { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium },
+                styles.addressSheetSub,
+                { fontFamily: theme.typography.fonts.medium, color: theme.colors.textSecondary },
               ]}
             >
-              Pin your exact location on the map
+              Stores within 6 km of your location
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+        </View>
+
+        {/* Use current location */}
+        <Pressable
+          onPress={handleUseCurrentLocation}
+          disabled={isLocating}
+          style={({ pressed }) => [
+            styles.currentLocBtn,
+            {
+              borderColor: "#10B981",
+              backgroundColor: pressed
+                ? "rgba(16,185,129,0.12)"
+                : isDark ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.06)",
+            },
+          ]}
+        >
+          <View style={[styles.currentLocIconWrap, { backgroundColor: "#10B981" }]}>
+            {isLocating ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="navigate" size={16} color="#FFFFFF" />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.currentLocLabel, { color: "#065F46", fontFamily: theme.typography.fonts.bold }]}>
+              {isLocating ? "Detecting location..." : "Use current location"}
+            </Text>
+            <Text style={[styles.currentLocSub, { color: "#059669", fontFamily: theme.typography.fonts.medium }]}>
+              Detect my location automatically
+            </Text>
+          </View>
+          {!isLocating && (
+            <Ionicons name="chevron-forward" size={16} color="#10B981" />
+          )}
         </Pressable>
 
-        {/* Divider */}
         <View style={[styles.addrDivider, { backgroundColor: theme.colors.border }]} />
 
-        <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+        {/* Address list */}
+        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 260 }}>
           {addresses.map((addr) => {
             const active = activeAddress?.id === addr.id;
             return (
               <Pressable
                 key={addr.id}
                 onPress={() => handleAddressSelect(addr)}
-                style={[
+                style={({ pressed }) => [
                   styles.addrItem,
                   {
                     borderColor: active ? "#10B981" : theme.colors.border,
                     backgroundColor: active
-                      ? isDark
-                        ? "rgba(16, 185, 129, 0.15)"
-                        : "rgba(16, 185, 129, 0.05)"
-                      : "transparent",
+                      ? isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.06)"
+                      : pressed
+                        ? theme.colors.surfaceSecondary
+                        : "transparent",
                   },
                 ]}
               >
@@ -2309,20 +2521,12 @@ export default observer(function HomeScreen() {
                     {
                       backgroundColor: active
                         ? "#10B981"
-                        : isDark
-                          ? "#1F2937"
-                          : "#ECFDF5",
+                        : isDark ? "#1F2937" : "#ECFDF5",
                     },
                   ]}
                 >
                   <Ionicons
-                    name={
-                      addr.label === "Home"
-                        ? "home-outline"
-                        : addr.label === "Work"
-                          ? "briefcase-outline"
-                          : "location-outline"
-                    }
+                    name={ADDRESS_ICON_BY_TYPE[addr.address_type] ?? "location-outline"}
                     size={16}
                     color={active ? "#FFFFFF" : "#10B981"}
                   />
@@ -2334,26 +2538,25 @@ export default observer(function HomeScreen() {
                       {
                         fontFamily: theme.typography.fonts.bold,
                         color: theme.colors.textPrimary,
+                        textTransform: "capitalize",
                       },
                     ]}
                   >
-                    {addr.label}
+                    {addr.address_type.toLowerCase()}
                   </Text>
                   <Text
                     numberOfLines={1}
                     style={[
                       styles.addrStreet,
-                      {
-                        fontFamily: theme.typography.fonts.medium,
-                        color: theme.colors.textSecondary,
-                      },
+                      { fontFamily: theme.typography.fonts.medium, color: theme.colors.textSecondary },
                     ]}
                   >
-                    {addr.streetAddress}, {addr.city}
+                    {addr.address_line1}
+                    {addr.address_line2 ? `, ${addr.address_line2}` : ""}
                   </Text>
                 </View>
                 {active ? (
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={22} color="#10B981" />
                 ) : (
                   <View style={[styles.radioCircle, { borderColor: theme.colors.border }]} />
                 )}
@@ -2361,6 +2564,33 @@ export default observer(function HomeScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Add new address */}
+        <Pressable
+          onPress={() => {
+            addressSheetRef.current?.dismiss();
+            router.push("/customer/addresses/map-picker");
+          }}
+          style={({ pressed }) => [
+            styles.addAddrBtn,
+            {
+              borderColor: theme.colors.primary,
+              backgroundColor: pressed ? `${theme.colors.primary}10` : "transparent",
+            },
+          ]}
+        >
+          <View style={[styles.addAddrIconWrap, { backgroundColor: theme.colors.primary }]}>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+          </View>
+          <Text
+            style={[
+              styles.addAddrLabel,
+              { color: theme.colors.primary, fontFamily: theme.typography.fonts.bold },
+            ]}
+          >
+            Add new address
+          </Text>
+        </Pressable>
       </BottomSheetView>
     </BottomSheetModal>
   );
@@ -2432,7 +2662,9 @@ export default observer(function HomeScreen() {
           styles.dimmerOverlay,
           {
             top: insets.top + SEARCH_OVERLAY_TOP_OFFSET,
-            backgroundColor: isDark ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.25)",
+            backgroundColor: isDark
+              ? "rgba(0, 0, 0, 0.6)"
+              : "rgba(0, 0, 0, 0.25)",
           },
           dimmerAnimatedStyle,
         ]}
@@ -2441,36 +2673,38 @@ export default observer(function HomeScreen() {
       </Animated.View>
 
       {/* Search suggestions & results overlay */}
-      {isSearchActive && (
-        <Animated.View
-          style={[
-            styles.searchOverlayContainer,
-            {
-              top: insets.top + SEARCH_OVERLAY_TOP_OFFSET,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: theme.colors.background,
-            },
-          ]}
-        >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 40 }}
+      {
+        isSearchActive && (
+          <Animated.View
+            style={[
+              styles.searchOverlayContainer,
+              {
+                top: insets.top + SEARCH_OVERLAY_TOP_OFFSET,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: theme.colors.background,
+              },
+            ]}
           >
-            {filters.searchQuery.trim() === ""
-              ? renderSearchSuggestions()
-              : renderOverlaySearchResults()}
-          </ScrollView>
-        </Animated.View>
-      )}
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
+              {filters.searchQuery.trim() === ""
+                ? renderSearchSuggestions()
+                : renderOverlaySearchResults()}
+            </ScrollView>
+          </Animated.View>
+        )
+      }
 
       {!cartStore.isEmpty && !isSearchActive && renderFloatingCart()}
       {renderAddressSheet()}
       {renderCuisinesBottomSheet()}
       {renderCartBottomSheet()}
-    </View>
+    </View >
   );
 });
 
@@ -2853,16 +3087,23 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  // Premium Address Sheet Styles
-  addressSheetContent: { padding: 20, paddingBottom: 40 },
+  // Address Sheet Styles
+  addressSheetContent: { padding: 20, paddingBottom: 32 },
   addressSheetHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    gap: 12,
+    marginBottom: 20,
   },
-  addressSheetTitle: { fontSize: 18, marginBottom: 6 },
-  addressSheetSub: { fontSize: 13, marginBottom: 20 },
+  addrSheetIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addressSheetTitle: { fontSize: 16, marginBottom: 2 },
+  addressSheetSub: { fontSize: 12 },
   addrItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -2873,9 +3114,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   addrIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -2883,15 +3124,16 @@ const styles = StyleSheet.create({
   addrStreet: { fontSize: 12, marginTop: 2 },
   radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5 },
   addrDivider: { height: 1, marginVertical: 14, opacity: 0.5 },
-  addAddrBtn: {
+  currentLocBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 14,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    marginBottom: 4,
   },
-  addAddrIconWrap: {
+  currentLocIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -2899,8 +3141,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexShrink: 0,
   },
+  currentLocLabel: { fontSize: 14 },
+  currentLocSub: { fontSize: 11, marginTop: 2 },
+  addAddrBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  addAddrIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
   addAddrLabel: { fontSize: 14 },
   addAddrSub: { fontSize: 11, marginTop: 2 },
+  addNewAddressBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // New Category List & Bottom Sheet styles
   categoriesSection: { paddingVertical: 4 },

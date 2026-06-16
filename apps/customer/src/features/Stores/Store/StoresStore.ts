@@ -8,7 +8,14 @@ import {
   ShopCategory,
   ShopProduct,
 } from '../../../types/shared';
-import { IStoreService, StoreFilters, ShopFilters, ShopSearchFilters, ShopProductFilters } from '../Services';
+import {
+  IStoreService,
+  StoreFilters,
+  ShopFilters,
+  ShopSearchFilters,
+  ShopProductFilters,
+  ShopProductSearchFilters,
+} from '../Services';
 import { API_STATUS, ApiStatus } from '../../../Common/Constants';
 import { normalizeError } from '../../../Common/utils/errorNormalizer';
 export class StoresStore {
@@ -55,6 +62,11 @@ export class StoresStore {
   shopProductsTotalPages = 1;
   shopProductsStatus: ApiStatus = API_STATUS.IDLE;
   shopProductsError: string | null = null;
+
+  // Selected shop's product search results
+  shopProductSearchResults: ShopProduct[] = [];
+  shopProductSearchStatus: ApiStatus = API_STATUS.IDLE;
+  shopProductSearchError: string | null = null;
 
   constructor(private service: IStoreService) {
     makeAutoObservable(this);
@@ -196,6 +208,33 @@ export class StoresStore {
     }
   }
 
+  async searchShopProducts(shopId: string, filters: ShopProductSearchFilters): Promise<void> {
+    if (!filters.q.trim()) {
+      this.shopProductSearchResults = [];
+      this.shopProductSearchStatus = API_STATUS.IDLE;
+      this.shopProductSearchError = null;
+      return;
+    }
+    this.shopProductSearchStatus = API_STATUS.FETCHING;
+    this.shopProductSearchError = null;
+    try {
+      const response = await this.service.searchShopProducts(shopId, {
+        ...filters,
+        page: 1,
+        page_size: filters.page_size ?? 20,
+      });
+      runInAction(() => {
+        this.shopProductSearchResults = response.data;
+        this.shopProductSearchStatus = API_STATUS.SUCCESS;
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.shopProductSearchError = normalizeError(e);
+        this.shopProductSearchStatus = API_STATUS.ERROR;
+      });
+    }
+  }
+
   resetShopDetail(): void {
     this.shopCategories = [];
     this.shopCategoriesStatus = API_STATUS.IDLE;
@@ -203,6 +242,9 @@ export class StoresStore {
     this.shopProductsPage = 1;
     this.shopProductsTotalPages = 1;
     this.shopProductsStatus = API_STATUS.IDLE;
+    this.shopProductSearchResults = [];
+    this.shopProductSearchStatus = API_STATUS.IDLE;
+    this.shopProductSearchError = null;
   }
   get filteredStores(): Store[] {
     let result = this.stores;
