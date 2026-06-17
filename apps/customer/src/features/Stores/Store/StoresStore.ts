@@ -15,6 +15,7 @@ import {
   ShopSearchFilters,
   ShopProductFilters,
   ShopProductSearchFilters,
+  ShopSortFilter,
 } from '../Services';
 import { API_STATUS, ApiStatus } from '../../../Common/Constants';
 import { normalizeError } from '../../../Common/utils/errorNormalizer';
@@ -67,6 +68,10 @@ export class StoresStore {
   shopProductSearchResults: ShopProduct[] = [];
   shopProductSearchStatus: ApiStatus = API_STATUS.IDLE;
   shopProductSearchError: string | null = null;
+
+  // Selected shop's sort filters
+  shopSortFilters: ShopSortFilter[] = [];
+  shopSortFiltersStatus: ApiStatus = API_STATUS.IDLE;
 
   constructor(private service: IStoreService) {
     makeAutoObservable(this);
@@ -235,6 +240,21 @@ export class StoresStore {
     }
   }
 
+  async fetchShopSortFilters(shopId: string): Promise<void> {
+    this.shopSortFiltersStatus = API_STATUS.FETCHING;
+    try {
+      const filters = await this.service.getShopFilters(shopId);
+      runInAction(() => {
+        this.shopSortFilters = filters;
+        this.shopSortFiltersStatus = API_STATUS.SUCCESS;
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.shopSortFiltersStatus = API_STATUS.ERROR;
+      });
+    }
+  }
+
   resetShopDetail(): void {
     this.shopCategories = [];
     this.shopCategoriesStatus = API_STATUS.IDLE;
@@ -245,6 +265,8 @@ export class StoresStore {
     this.shopProductSearchResults = [];
     this.shopProductSearchStatus = API_STATUS.IDLE;
     this.shopProductSearchError = null;
+    this.shopSortFilters = [];
+    this.shopSortFiltersStatus = API_STATUS.IDLE;
   }
   get filteredStores(): Store[] {
     let result = this.stores;

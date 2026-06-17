@@ -18,6 +18,7 @@ import {
   ShopSearchFilters,
   ShopProductFilters,
   ShopProductSearchFilters,
+  ShopSortFilter,
 } from './index';
 export class StoreApiService implements IStoreService {
   constructor(private client: AxiosInstance) {}
@@ -126,6 +127,7 @@ export class StoreApiService implements IStoreService {
       if (filters?.subcategory_id) params.subcategory_id = filters.subcategory_id;
       if (filters?.in_stock !== undefined) params.in_stock = filters.in_stock;
       if (filters?.q) params.q = filters.q;
+      if (filters?.filter) params.filter = filters.filter;
       if (filters?.page) params.page = filters.page;
       if (filters?.page_size) params.page_size = filters.page_size;
       const response = await this.client.get(
@@ -147,6 +149,16 @@ export class StoreApiService implements IStoreService {
         { params }
       );
       return response.data;
+    } catch (e) {
+      throw new Error(extractErrorMessage(e));
+    }
+  }
+  async getShopFilters(shopId: string): Promise<ShopSortFilter[]> {
+    try {
+      const response = await this.client.get(
+        STORE_ENDPOINTS.SHOP_FILTERS.replace(':id', shopId)
+      );
+      return response.data?.data ?? [];
     } catch (e) {
       throw new Error(extractErrorMessage(e));
     }

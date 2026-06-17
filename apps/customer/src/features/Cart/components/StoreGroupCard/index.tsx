@@ -41,6 +41,27 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
     const activeBargainSessionId = shopCart?.active_bargain_session_id;
     const itemCount = storeGroup.items.reduce((acc, item) => acc + item.quantity, 0);
 
+    const previewCart = cartStore.checkoutPreview?.carts.find(
+      (c) => c.shop_id === storeGroup.storeId
+    );
+    const singlePreview = shopCart?.cart_id
+      ? cartStore.cartCheckoutPreviews.get(shopCart.cart_id)
+      : undefined;
+
+    const deliveryChargeVal = singlePreview
+      ? parseFloat(singlePreview.delivery_charge)
+      : previewCart
+      ? parseFloat(previewCart.delivery_charge)
+      : cartStore.getShopTotals(storeGroup.storeId).deliveryFee;
+
+    const isFreeDelivery = deliveryChargeVal === 0;
+
+    const displayedTotal = singlePreview
+      ? parseFloat(singlePreview.total_amount)
+      : previewCart
+      ? parseFloat(previewCart.subtotal) + parseFloat(previewCart.delivery_charge)
+      : cartStore.getShopTotals(storeGroup.storeId).grandTotal;
+
     const handleBargainShop = async () => {
       try {
         if (!cartStore.shopCarts.has(storeGroup.storeId)) {
@@ -129,7 +150,7 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
               style={[
                 deliveryBadgeStyle,
                 {
-                  backgroundColor: "rgba(0, 109, 119, 0.08)",
+                  backgroundColor: isFreeDelivery ? "rgba(0, 109, 119, 0.08)" : "rgba(107, 114, 128, 0.08)",
                   borderRadius: theme.borderRadius.round,
                 },
               ]}
@@ -138,13 +159,13 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
                 style={[
                   theme.textPresets.caption,
                   {
-                    color: theme.colors.primary,
+                    color: isFreeDelivery ? theme.colors.primary : theme.colors.textSecondary,
                     fontFamily: theme.typography.fonts.bold,
                     fontSize: 11,
                   },
                 ]}
               >
-                Free Delivery
+                {isFreeDelivery ? "Free Delivery" : `Delivery: ₹${deliveryChargeVal.toFixed(0)}`}
               </Text>
             </View>
           </View>
@@ -251,7 +272,7 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
               },
             ]}
           >
-            ₹{cartStore.getShopTotals(storeGroup.storeId).grandTotal.toFixed(0)}
+            ₹{displayedTotal.toFixed(0)}
           </Text>
           <Pressable
             onPress={() => router.push(`/customer/checkout?shopId=${storeGroup.storeId}`)}

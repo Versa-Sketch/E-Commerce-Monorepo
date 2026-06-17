@@ -3,7 +3,8 @@ import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,31 +15,7 @@ import {
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useAuthStore } from '../../../../features/Auth/Providers/useAuthStore';
 import { useTheme } from '../../../../theme/ThemeContext';
-const { width: W } = Dimensions.get('window');
-const DotGrid = () => {
-  const dots = [];
-  for (let r = 0; r < 4; r++)
-    for (let c = 0; c < 4; c++)
-      dots.push(<Circle key={`${r}-${c}`} cx={c * 10 + 5} cy={r * 10 + 5} r="1.8" fill="#D1FAE5" />);
-  return <Svg width="45" height="45" viewBox="0 0 45 45">{dots}</Svg>;
-};
-const PaperPlane = () => (
-  <Svg width="52" height="52" viewBox="0 0 52 52">
-    <Path d="M 8 42 Q 20 28, 38 16" fill="none" stroke="#A7F3D0" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
-    <Path d="M 28 8 L 44 22 L 30 26 L 28 8 Z" fill="#16A34A" opacity="0.9" />
-    <Path d="M 28 8 L 30 26 L 22 20 Z" fill="#059669" />
-    <Path d="M 30 26 L 24 34 L 22 20 Z" fill="#A7F3D0" />
-  </Svg>
-);
-const BottomDecor = () => (
-  <Svg width={W} height={160} viewBox={`0 0 ${W} 160`} style={{ position: 'absolute', bottom: 0, left: 0 }}>
-    <Path d={`M 0 100 Q ${W * 0.25} 60, ${W * 0.5} 90 Q ${W * 0.75} 120, ${W} 80 L ${W} 160 L 0 160 Z`} fill="#ECFDF5" opacity="0.7" />
-    <Path d={`M 0 120 Q ${W * 0.3} 90, ${W * 0.6} 110 Q ${W * 0.8} 125, ${W} 100 L ${W} 160 L 0 160 Z`} fill="#D1FAE5" opacity="0.5" />
-    <Path d={`M ${W - 30} 160 Q ${W - 40} 120, ${W - 20} 80`} fill="none" stroke="#6EE7B7" strokeWidth="2" strokeLinecap="round" />
-    <Path d={`M ${W - 26} 130 Q ${W - 10} 118, ${W - 15} 105 Q ${W - 32} 114, ${W - 26} 130 Z`} fill="#6EE7B7" opacity="0.8" />
-    <Path d={`M ${W - 34} 118 Q ${W - 52} 106, ${W - 48} 92 Q ${W - 30} 102, ${W - 34} 118 Z`} fill="#34D399" opacity="0.7" />
-  </Svg>
-);
+
 const PhoneWithCheck = () => (
   <Svg width="52" height="52" viewBox="0 0 52 52">
     <Rect x="12" y="6" width="26" height="40" rx="5" fill="none" stroke="#16A34A" strokeWidth="2.2" />
@@ -48,11 +25,13 @@ const PhoneWithCheck = () => (
     <Path d="M 32 38 L 35 41 L 40 35" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+
 interface PhoneInputScreenProps {
   onContinue: (phone: string, needsOtp: boolean) => void;
   onBack: () => void;
   onCreateAccount: () => void;
 }
+
 export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
   onContinue,
   onBack,
@@ -64,11 +43,13 @@ export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   const loading = authStore.isLoading;
+
   const handlePhoneChange = (val: string) => {
     const clean = val.replace(/[^0-9]/g, '').slice(0, 10);
     setPhone(clean);
     if (error) setError('');
   };
+
   const handleContinue = async () => {
     if (phone.length !== 10) { setError('Mobile number must be exactly 10 digits.'); return; }
     if (!/^[6-9]\d{9}$/.test(phone)) { setError('Please enter a valid Indian mobile number.'); return; }
@@ -83,35 +64,39 @@ export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
         break;
     }
   };
+
   return (
-    <View style={styles.root}>
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable onPress={onBack} style={styles.circleBtn}>
             <Ionicons name="arrow-back" size={20} color="#111827" />
           </Pressable>
-          <Pressable style={styles.circleBtn}>
-            <Ionicons name="settings-outline" size={20} color="#111827" />
-          </Pressable>
         </View>
-        {/* Icon row */}
-        <View style={styles.iconRow}>
-          <View style={styles.phoneIconBg}><PhoneWithCheck /></View>
-          <View style={{ marginLeft: 12, marginTop: 4 }}><DotGrid /></View>
+
+        {/* Icon */}
+        <View style={styles.phoneIconBg}>
+          <PhoneWithCheck />
         </View>
+
         {/* Heading */}
         <View style={styles.headingBlock}>
           <Text style={[styles.heading, { fontFamily: theme.typography.fonts.inter800ExtraBold }]}>
             Enter your mobile
           </Text>
-          <View style={styles.subtitleRow}>
-            <Text style={[styles.subtitle, { fontFamily: theme.typography.fonts.inter500Medium }]}>
-              We'll send a verification code to confirm your number
-            </Text>
-            <View style={styles.planeWrap}><PaperPlane /></View>
-          </View>
+          <Text style={[styles.subtitle, { fontFamily: theme.typography.fonts.inter500Medium }]}>
+            We'll send a one-time code to verify your number.
+          </Text>
         </View>
+
         {/* Card */}
         <View style={styles.card}>
           <Text style={[styles.fieldLabel, { fontFamily: theme.typography.fonts.inter700Bold }]}>Mobile Number</Text>
@@ -148,10 +133,7 @@ export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
               : <Text style={[styles.ctaText, { fontFamily: theme.typography.fonts.inter700Bold }]}>Continue</Text>
             }
             <View style={styles.ctaArrow}>
-              {loading
-                ? <ActivityIndicator color="#16A34A" size="small" />
-                : <Ionicons name="arrow-forward" size={20} color="#16A34A" />
-              }
+              <Ionicons name="arrow-forward" size={20} color="#16A34A" />
             </View>
           </Pressable>
           <View style={styles.createRow}>
@@ -161,6 +143,7 @@ export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
             </Pressable>
           </View>
         </View>
+
         {/* Security note */}
         <View style={styles.secureRow}>
           <Ionicons name="shield-checkmark" size={16} color="#16A34A" />
@@ -168,24 +151,20 @@ export const PhoneInputScreen: React.FC<PhoneInputScreenProps> = observer(({
             Your data is protected and encrypted
           </Text>
         </View>
-        <View style={{ height: 160 }} />
       </ScrollView>
-      <View style={styles.bottomDecorWrap} pointerEvents="none"><BottomDecor /></View>
-    </View>
+    </KeyboardAvoidingView>
   );
 });
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
-  scroll: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 16 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 },
+  scroll: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 32 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3 },
-  iconRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
-  phoneIconBg: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center' },
+  phoneIconBg: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   headingBlock: { marginBottom: 32 },
-  heading: { fontSize: 32, color: '#111827', lineHeight: 38, marginBottom: 10 },
-  subtitleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  subtitle: { flex: 1, fontSize: 14, color: '#6B7280', lineHeight: 20, paddingRight: 8 },
-  planeWrap: { marginTop: -4 },
+  heading: { fontSize: 32, color: '#111827', lineHeight: 38, marginBottom: 8 },
+  subtitle: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 24, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 20, elevation: 5, borderWidth: 1, borderColor: '#F3F4F6' },
   fieldLabel: { fontSize: 14, color: '#111827', marginBottom: 14 },
   phoneInputRow: { flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', marginBottom: 8, overflow: 'hidden' },
@@ -204,6 +183,6 @@ const styles = StyleSheet.create({
   createLink: { fontSize: 14, color: '#16A34A', textDecorationLine: 'underline' },
   secureRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
   secureText: { fontSize: 12, color: '#6B7280' },
-  bottomDecorWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 },
 });
+
 export default PhoneInputScreen;

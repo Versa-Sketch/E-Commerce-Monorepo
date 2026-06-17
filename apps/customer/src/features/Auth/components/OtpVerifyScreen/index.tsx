@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, Path, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
 import { useAuthStore } from '../../../../features/Auth/Providers/useAuthStore';
 import { useTheme } from '../../../../theme/ThemeContext';
@@ -190,6 +190,10 @@ export const OtpVerifyScreen: React.FC<OtpVerifyScreenProps> = observer(({
     }
   };
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
     <LinearGradient
       colors={['#FFFFFF', '#F9FAFB', '#ECFDF5']}
       start={{ x: 0, y: 0 }}
@@ -323,10 +327,7 @@ export const OtpVerifyScreen: React.FC<OtpVerifyScreenProps> = observer(({
                   </Text>
                 )}
                 <View style={ctaArrowCircleStyle}>
-                  {authStore.isLoading
-                    ? <ActivityIndicator color="#16A34A" size="small" />
-                    : <Ionicons name="arrow-forward" size={18} color="#16A34A" />
-                  }
+                  <Ionicons name="arrow-forward" size={18} color="#16A34A" />
                 </View>
               </Pressable>
             </LinearGradient>
@@ -345,6 +346,7 @@ export const OtpVerifyScreen: React.FC<OtpVerifyScreenProps> = observer(({
         </View>
       </ScrollView>
     </LinearGradient>
+    </KeyboardAvoidingView>
   );
 });
 export default OtpVerifyScreen;

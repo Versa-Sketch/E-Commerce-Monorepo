@@ -1,8 +1,9 @@
 import { SearchBar } from '@/Common/components/ui/SearchBar';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { observer } from 'mobx-react-lite';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -69,6 +70,7 @@ export default observer(function StoreDetailsScreen() {
     if (shopId) {
       storesStore.fetchShopCategories(shopId);
       storesStore.fetchShopProducts(shopId, { page_size: 5, q });
+      storesStore.fetchShopSortFilters(shopId);
       if (storesStore.shops.length === 0) {
         storesStore.fetchShops();
       }
@@ -76,12 +78,24 @@ export default observer(function StoreDetailsScreen() {
     }
   }, [shopId, q]);
 
+  React.useEffect(() => {
+    if (!isSortMounted.current) {
+      isSortMounted.current = true;
+      return;
+    }
+    if (!shopId) return;
+    storesStore.fetchShopProducts(shopId, { page_size: 5, filter: selectedSortSlug ?? undefined });
+  }, [selectedSortSlug]);
+
   const shop = storesStore.shops.find((s) => s.id === shopId) || storesStore.shops[0];
 
   const [activeTab, setActiveTab] = useState<StoreDetailTab>('products');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('All');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [selectedSortSlug, setSelectedSortSlug] = useState<string | null>(null);
+  const sortSheetRef = useRef<BottomSheetModal>(null);
+  const isSortMounted = useRef(false);
 
   React.useEffect(() => {
     if (!shopId) return;
@@ -419,18 +433,22 @@ export default observer(function StoreDetailsScreen() {
                   }}
                 />
                 <Pressable
-                  onPress={() => {
-                    alert('Filter options opened');
-                  }}
+                  onPress={() => sortSheetRef.current?.present()}
                   style={[
                     styles.filterButton,
                     {
-                      backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
-                      borderColor: 'transparent',
+                      backgroundColor: selectedSortSlug ? 'rgba(18,178,38,0.08)' : (isDark ? '#1F2937' : '#F3F4F6'),
+                      borderColor: selectedSortSlug ? '#12B226' : 'transparent',
+                      borderWidth: 1,
                     },
                   ]}
                 >
-                  <Ionicons name="options-outline" size={20} color={theme.colors.textPrimary} />
+                  <Ionicons name="options-outline" size={20} color={selectedSortSlug ? '#0C831F' : theme.colors.textPrimary} />
+                  {selectedSortSlug && (
+                    <View style={styles.sortBadge}>
+                      <Text style={styles.sortBadgeText}>1</Text>
+                    </View>
+                  )}
                 </Pressable>
               </View>
 
@@ -582,6 +600,56 @@ export default observer(function StoreDetailsScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Sort Bottom Sheet */}
+      <BottomSheetModal
+        ref={sortSheetRef}
+        snapPoints={['50%']}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />
+        )}
+      >
+        <BottomSheetView style={styles.sortSheet}>
+          <View style={styles.sortSheetHeader}>
+            <Text style={[styles.sortSheetTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
+              Sort By
+            </Text>
+            {selectedSortSlug && (
+              <Pressable onPress={() => { setSelectedSortSlug(null); sortSheetRef.current?.dismiss(); }}>
+                <Text style={{ color: '#0C831F', fontSize: 13, fontFamily: theme.typography.fonts.medium }}>Clear</Text>
+              </Pressable>
+            )}
+          </View>
+          {storesStore.shopSortFilters.map((sortFilter, index) => {
+            const isSelected = selectedSortSlug === sortFilter.slug;
+            const isLast = index === storesStore.shopSortFilters.length - 1;
+            return (
+              <Pressable
+                key={sortFilter.slug}
+                onPress={() => {
+                  setSelectedSortSlug(isSelected ? null : sortFilter.slug);
+                  sortSheetRef.current?.dismiss();
+                }}
+                style={[styles.sortOption, { borderBottomWidth: isLast ? 0 : 1, borderBottomColor: theme.colors.border }]}
+              >
+                <View style={styles.sortOptionLeft}>
+                  <Text style={[styles.sortOptionName, { color: theme.colors.textPrimary, fontFamily: isSelected ? theme.typography.fonts.bold : theme.typography.fonts.medium }]}>
+                    {sortFilter.name}
+                  </Text>
+                  {sortFilter.description ? (
+                    <Text style={[styles.sortOptionDesc, { color: theme.colors.textSecondary }]}>
+                      {sortFilter.description}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={[styles.sortRadio, { borderColor: isSelected ? '#0C831F' : theme.colors.border }]}>
+                  {isSelected && <View style={styles.sortRadioInner} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </BottomSheetView>
+      </BottomSheetModal>
 
       {/* Floating Cart Bar at the Bottom */}
       {cartStore.getShopItemCount(shopId) > 0 && (
@@ -768,6 +836,18 @@ const styles = StyleSheet.create({
 
   aboutContainer: { padding: 16 },
   aboutDescText: { fontSize: 12, lineHeight: 22 },
+
+  sortBadge: { position: 'absolute', top: 7, right: 7, width: 14, height: 14, borderRadius: 7, backgroundColor: '#0C831F', justifyContent: 'center', alignItems: 'center' },
+  sortBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: 'bold' },
+  sortSheet: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
+  sortSheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sortSheetTitle: { fontSize: 16 },
+  sortOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
+  sortOptionLeft: { flex: 1, paddingRight: 12 },
+  sortOptionName: { fontSize: 14 },
+  sortOptionDesc: { fontSize: 12, marginTop: 3 },
+  sortRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  sortRadioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#0C831F' },
 
   floatingCartBar: { position: 'absolute', bottom: 24, left: 20, right: 20, height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, elevation: 8, shadowColor: 'rgba(0, 77, 87, 0.25)', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 1, shadowRadius: 12, zIndex: 99 },
   cartBarLeft: { flexDirection: 'row', alignItems: 'center' },

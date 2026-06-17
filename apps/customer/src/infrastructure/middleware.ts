@@ -13,7 +13,7 @@ function redirectToLogin(): void {
     StorageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
     StorageService.delete(STORAGE_KEYS.USER_DATA);
   }
-  router.replace('/auth');
+  router.replace('/landing');
 }
 export function applyRequestMiddleware(client: AxiosInstance): void {
   client.interceptors.request.use(

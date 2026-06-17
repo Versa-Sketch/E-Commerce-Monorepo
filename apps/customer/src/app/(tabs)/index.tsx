@@ -18,6 +18,7 @@ import {
   RefreshControl,
   Animated as RNAnimated,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -174,6 +175,7 @@ export default observer(function HomeScreen() {
   const searchProgress = useSharedValue(0);
   const floatingSearchVisible = useSharedValue(0);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
+  const [statusBarStyle, setStatusBarStyle] = useState<'light-content' | 'dark-content'>('light-content');
   const scrollViewRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
   const lastScrollY = useRef(0);
@@ -243,6 +245,13 @@ export default observer(function HomeScreen() {
           duration: 250,
           easing: Easing.out(Easing.cubic),
         });
+      }
+
+      const nextBarStyle = currentY > floatingSearchThreshold
+        ? (isDark ? 'light-content' : 'dark-content')
+        : 'light-content';
+      if (nextBarStyle !== statusBarStyle) {
+        setStatusBarStyle(nextBarStyle);
       }
 
       lastScrollY.current = currentY;
@@ -364,13 +373,16 @@ export default observer(function HomeScreen() {
 
   const cartSheetRef = useRef<BottomSheetModal>(null);
   const cartSnapPoints = useMemo(() => {
-    const groupCount = Math.max(cartStore.groupedByStore.length, 1);
-    const overhead = 155 + insets.bottom;
+    const groupCount = cartStore.groupedByStore.length;
+    // overhead = handle (20) + header (70) + scroll padding top/bottom (60) + swipe hint (25) + footer (64)
+    const overhead = 239 + insets.bottom;
     const rowHeight = 82;
-    const contentHeight = overhead + groupCount * rowHeight;
-    const minHeight = SCREEN_HEIGHT * 0.32;
-    const maxHeight = SCREEN_HEIGHT * 0.75;
-    return [Math.min(Math.max(contentHeight, minHeight), maxHeight)];
+    // empty state: show a taller sheet so the empty illustration fits
+    const contentHeight = groupCount === 0
+      ? SCREEN_HEIGHT * 0.45
+      : overhead + groupCount * rowHeight;
+    const maxHeight = SCREEN_HEIGHT * 0.80;
+    return [Math.min(contentHeight, maxHeight)];
   }, [cartStore.groupedByStore.length, insets.bottom]);
   const [isCartCloseBtnVisible, setIsCartCloseBtnVisible] = useState(false);
   const cartSwipeableRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -1040,6 +1052,8 @@ export default observer(function HomeScreen() {
 
   const renderCartBottomSheet = () => {
     const groups = cartStore.groupedByStore || [];
+    const totalItems = groups.reduce((sum, g) => sum + cartStore.getShopItemCount(g.storeId), 0);
+    const grandTotal = groups.reduce((sum, g) => sum + cartStore.getShopTotals(g.storeId).grandTotal, 0);
 
     const goToCart = (storeId?: string) => {
       setIsCartCloseBtnVisible(false);
@@ -1106,33 +1120,21 @@ export default observer(function HomeScreen() {
           </View>
         )}
       >
-        <View style={[styles.sheetHeaderWrapper, { borderBottomWidth: 0 }]}>
-          <Text
-            style={[
-              styles.sheetTitle,
-              {
-                color: theme.colors.textPrimary,
-                fontFamily: theme.typography.fonts.bold,
-              },
-            ]}
-          >
-            Your Carts ({groups.length})
-          </Text>
+        <View style={[styles.sheetHeaderWrapper, { borderBottomColor: '#F3F4F6' }]}>
+          <View>
+            <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
+              Your carts
+            </Text>
+            {groups.length > 0 && (
+              <Text style={[styles.sheetSubtitle, { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium }]}>
+                {groups.length} store{groups.length !== 1 ? 's' : ''} · {totalItems} item{totalItems !== 1 ? 's' : ''}
+              </Text>
+            )}
+          </View>
           {groups.length > 0 && (
             <Pressable onPress={handleClearAll} style={styles.clearAllBtn}>
-              <Ionicons
-                name="trash-outline"
-                size={16}
-                color={theme.colors.error}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                style={{
-                  color: theme.colors.error,
-                  fontFamily: theme.typography.fonts.bold,
-                  fontSize: 13,
-                }}
-              >
+              <Ionicons name="trash-outline" size={13} color={theme.colors.error} />
+              <Text style={{ color: theme.colors.error, fontFamily: theme.typography.fonts.bold, fontSize: 11 }}>
                 Clear all
               </Text>
             </Pressable>
@@ -1269,137 +1271,68 @@ export default observer(function HomeScreen() {
                       );
                     }}
                   >
-                    <View
-                      style={[
-                        styles.cartRow,
-                        { backgroundColor: theme.colors.surfaceSecondary },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.cartThumbnail,
-                          { backgroundColor: theme.colors.surface },
-                        ]}
-                      >
-                        <Image
-                          source={{ uri: thumbnailUrl }}
-                          style={styles.cartThumbnailImage}
-                          resizeMode="cover"
-                        />
+                    <View style={[styles.cartRow, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                      <View style={[styles.cartThumbnail, { backgroundColor: theme.colors.surface }]}>
+                        <Image source={{ uri: thumbnailUrl }} style={styles.cartThumbnailImage} resizeMode="cover" />
                       </View>
 
                       <View style={styles.cartRowInfo}>
-                        <Text
-                          numberOfLines={1}
-                          style={[
-                            styles.cartCardShopName,
-                            {
-                              color: theme.colors.textPrimary,
-                              fontFamily: theme.typography.fonts.bold,
-                            },
-                          ]}
-                        >
+                        <Text numberOfLines={1} style={[styles.cartCardShopName, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
                           {group.storeName}
                         </Text>
-                        <Text
-                          style={[
-                            styles.cartRowPrice,
-                            {
-                              color: theme.colors.textSecondary,
-                              fontFamily: theme.typography.fonts.medium,
-                            },
-                          ]}
-                        >
-                          ₹{total.toFixed(0)}
+                        <Text style={[styles.cartItemCount, { color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium }]}>
+                          {itemCount} item{itemCount === 1 ? '' : 's'}
                         </Text>
                       </View>
 
-                      <Pressable
-                        onPress={() => goToCart(group.storeId)}
-                        style={[
-                          styles.cartActionPill,
-                          {
-                            backgroundColor: theme.colors.primary,
-                            borderRadius: theme.borderRadius.round,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.cartActionPillTitle,
-                            { fontFamily: theme.typography.fonts.bold },
-                          ]}
-                        >
-                          View Cart
+                      <View style={styles.cartPriceCol}>
+                        <Text style={[styles.cartPriceVal, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
+                          ₹{total.toFixed(0)}
                         </Text>
-                        <Text
-                          style={[
-                            styles.cartActionPillSub,
-                            { fontFamily: theme.typography.fonts.medium },
-                          ]}
-                        >
-                          {itemCount} item{itemCount === 1 ? "" : "s"}
-                        </Text>
-                      </Pressable>
+                        <Pressable onPress={() => goToCart(group.storeId)} style={[styles.cartViewBtn, { backgroundColor: theme.colors.primary }]}>
+                          <Text style={[styles.cartViewBtnText, { fontFamily: theme.typography.fonts.bold }]}>View Cart</Text>
+                        </Pressable>
+                      </View>
 
                       <Pressable
                         onPress={() => {
                           cartProgrammaticOpen.current.add(group.storeId);
-                          cartSwipeableRefs.current
-                            .get(group.storeId)
-                            ?.openRight();
+                          cartSwipeableRefs.current.get(group.storeId)?.openRight();
                         }}
-                        style={[
-                          styles.cartRowDeleteToggle,
-                          {
-                            backgroundColor: isDark
-                              ? "rgba(239, 68, 68, 0.15)"
-                              : "rgba(239, 68, 68, 0.05)",
-                          },
-                        ]}
+                        style={styles.cartRowDeleteToggle}
                       >
-                        <Ionicons
-                          name="close"
-                          size={16}
-                          color={theme.colors.error}
-                        />
+                        <Ionicons name="close" size={14} color={theme.colors.error} />
                       </Pressable>
                     </View>
                   </Swipeable>
                 );
               })}
+              <Text style={[styles.swipeHint, { color: theme.colors.textMuted, fontFamily: theme.typography.fonts.medium }]}>
+                Swipe left on a cart to remove it
+              </Text>
             </BottomSheetScrollView>
 
-            <View
-              style={[
-                styles.cartSheetFooter,
-                { paddingBottom: insets.bottom + 12 },
-              ]}
-            >
+            <View style={[styles.cartSheetFooter, { paddingBottom: insets.bottom + 12 }]}>
               <Pressable
                 onPress={() => goToCart()}
-                style={[
-                  styles.checkoutAllBtn,
-                  {
-                    backgroundColor: theme.colors.primary,
-                    borderRadius: theme.borderRadius.round,
-                  },
-                ]}
+                style={[styles.checkoutAllBtn, { backgroundColor: theme.colors.primary, borderRadius: 14 }]}
               >
-                <Text
-                  style={[
-                    styles.checkoutAllText,
-                    { fontFamily: theme.typography.fonts.bold },
-                  ]}
-                >
-                  Checkout all
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color="#FFFFFF"
-                  style={styles.checkoutAllIcon}
-                />
+                <View style={styles.checkoutAllLeft}>
+                  <Text style={[styles.checkoutAllSub, { fontFamily: theme.typography.fonts.medium }]}>
+                    {totalItems} item{totalItems !== 1 ? 's' : ''} from {groups.length} store{groups.length !== 1 ? 's' : ''}
+                  </Text>
+                  <Text style={[styles.checkoutAllText, { fontFamily: theme.typography.fonts.bold }]}>
+                    Checkout all
+                  </Text>
+                </View>
+                <View style={styles.checkoutAllRight}>
+                  <Text style={[styles.checkoutAllPrice, { fontFamily: theme.typography.fonts.bold }]}>
+                    ₹{grandTotal.toFixed(0)}
+                  </Text>
+                  <View style={styles.checkoutAllCircle}>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                  </View>
+                </View>
               </Pressable>
             </View>
           </View>
@@ -2602,6 +2535,20 @@ export default observer(function HomeScreen() {
         { backgroundColor: theme.colors.background, paddingTop: insets.top },
       ]}
     >
+      <StatusBar barStyle={statusBarStyle} backgroundColor="transparent" translucent />
+      {!showFloatingSearch && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: '#16A34A',
+            zIndex: 10,
+          }}
+        />
+      )}
       <ScrollView
         ref={scrollViewRef}
         scrollEnabled={!isSearchActive}
@@ -3228,7 +3175,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
-    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   customHandleContainer: {
     alignItems: "center",
@@ -3293,12 +3242,18 @@ const styles = StyleSheet.create({
   },
 
   // Cart Bottom Sheet & Cards styling
+  sheetSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   clearAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    position: "absolute",
-    right: 20,
-    top: 20,
+    backgroundColor: "#FFF5F5",
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    gap: 4,
   },
   emptyCartContainer: {
     alignItems: "center",
@@ -3353,47 +3308,78 @@ const styles = StyleSheet.create({
   cartThumbnail: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 10,
     overflow: "hidden",
     marginRight: 12,
+    flexShrink: 0,
   },
   cartThumbnailImage: { width: "100%", height: "100%" },
   cartRowInfo: { flex: 1, marginRight: 8 },
   cartCardShopName: { fontSize: 15, marginBottom: 2 },
-  cartRowPrice: { fontSize: 12 },
-  cartActionPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: "center",
-    minWidth: 70,
+  cartItemCount: { fontSize: 11 },
+  cartPriceCol: {
+    alignItems: "flex-end",
+    gap: 4,
+    flexShrink: 0,
+    marginRight: 8,
   },
-  cartActionPillTitle: { color: "#FFFFFF", fontSize: 12 },
-  cartActionPillSub: {
-    color: "rgba(255, 255, 255, 0.85)",
-    fontSize: 10,
-    marginTop: 1,
+  cartPriceVal: { fontSize: 14 },
+  cartViewBtn: {
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
+  cartViewBtnText: { color: "#FFFFFF", fontSize: 10 },
   cartRowDeleteToggle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#FFF0F0",
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 8,
+  },
+  swipeHint: {
+    fontSize: 10,
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 4,
   },
   cartSheetFooter: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    alignItems: "center",
   },
   checkoutAllBtn: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    width: "100%",
+  },
+  checkoutAllLeft: {
+    flex: 1,
+    gap: 1,
+  },
+  checkoutAllSub: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 10,
+  },
+  checkoutAllText: { color: "#FFFFFF", fontSize: 14 },
+  checkoutAllRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  checkoutAllPrice: {
+    color: "#FFFFFF",
+    fontSize: 14,
+  },
+  checkoutAllCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.25)",
     justifyContent: "center",
     alignItems: "center",
-    height: 34,
-    paddingHorizontal: 20,
-    width: "60%",
   },
-  checkoutAllText: { color: "#FFFFFF", fontSize: 13 },
-  checkoutAllIcon: { marginLeft: 4 },
 });

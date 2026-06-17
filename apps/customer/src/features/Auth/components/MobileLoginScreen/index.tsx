@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,266 +10,71 @@ import {
 import Svg, {
   Circle,
   Defs,
-  Ellipse,
   Path,
-  Rect,
   Stop,
   LinearGradient as SvgLinearGradient,
 } from "react-native-svg";
 import { useTheme } from "../../../../theme/ThemeContext";
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GroceryBagIllustration = () => (
-  <Svg width="160" height="160" viewBox="0 0 160 160">
+
+const HeroIllustration = () => (
+  <Svg width="100" height="100" viewBox="0 0 100 100">
     <Defs>
-      <SvgLinearGradient id="bgCircle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <SvgLinearGradient id="bgC" x1="0%" y1="0%" x2="100%" y2="100%">
         <Stop offset="0%" stopColor="#ECFDF5" />
         <Stop offset="100%" stopColor="#D1FAE5" />
       </SvgLinearGradient>
     </Defs>
-    {}
-    <Circle cx="80" cy="88" r="62" fill="url(#bgCircle)" />
-    {}
-    <Circle cx="22" cy="52" r="5" fill="#BBF7D0" />
-    <Circle cx="138" cy="44" r="4" fill="#A7F3D0" />
-    <Circle cx="30" cy="118" r="3" fill="#6EE7B7" />
-    {}
-    <Rect x="38" y="72" width="84" height="72" rx="10" fill="#FFFFFF" />
-    <Rect
-      x="38"
-      y="72"
-      width="84"
-      height="72"
-      rx="10"
-      fill="none"
-      stroke="#E5E7EB"
-      strokeWidth="1.5"
-    />
-    {}
-    <Path
-      d="M 56 72 C 56 52, 72 46, 80 46 C 88 46, 104 52, 104 72"
-      fill="none"
-      stroke="#D1D5DB"
-      strokeWidth="5"
-      strokeLinecap="round"
-    />
-    {}
-    <Circle cx="80" cy="106" r="14" fill="#ECFDF5" />
-    <Path
-      d="M 80 96 C 75 96, 71 100, 71 105 C 71 112, 80 120, 80 120 C 80 120, 89 112, 89 105 C 89 100, 85 96, 80 96 Z"
-      fill="#16A34A"
-    />
-    <Circle cx="80" cy="105" r="4" fill="#FFFFFF" />
-    {}
-    <Path
-      d="M 48 74 C 44 66, 50 56, 58 60 C 54 62, 52 68, 56 72 Z"
-      fill="#F59E0B"
-    />
-    <Path
-      d="M 50 70 C 48 64, 54 58, 60 62"
-      fill="none"
-      stroke="#D97706"
-      strokeWidth="1"
-      strokeLinecap="round"
-    />
-    {}
-    <Rect x="72" y="46" width="14" height="34" rx="5" fill="#BAE6FD" />
-    <Rect x="75" y="42" width="8" height="8" rx="3" fill="#7DD3FC" />
-    <Rect
-      x="74"
-      y="58"
-      width="12"
-      height="2"
-      rx="1"
-      fill="#7DD3FC"
-      opacity="0.6"
-    />
-    {}
-    <Rect x="90" y="52" width="16" height="26" rx="4" fill="#FDE68A" />
-    <Rect x="90" y="52" width="16" height="8" rx="4" fill="#FCD34D" />
-    {}
-    <Circle cx="108" cy="70" r="9" fill="#EF4444" />
-    <Path
-      d="M 108 61 C 108 61, 110 56, 114 58"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    {}
-    <Path
-      d="M 36 80 C 28 72, 30 60, 40 64 C 36 70, 38 76, 44 78 Z"
-      fill="#4ADE80"
-    />
-    <Path
-      d="M 30 90 C 20 84, 24 72, 34 76 C 30 82, 32 88, 38 90 Z"
-      fill="#86EFAC"
-      opacity="0.8"
-    />
-    {}
-    <Path
-      d="M 124 80 C 132 72, 130 60, 120 64 C 124 70, 122 76, 116 78 Z"
-      fill="#4ADE80"
-    />
+    <Circle cx="50" cy="55" r="40" fill="url(#bgC)" />
+    <Circle cx="14" cy="32" r="4" fill="#BBF7D0" />
+    <Circle cx="86" cy="26" r="3" fill="#A7F3D0" />
+    <Circle cx="18" cy="74" r="2.5" fill="#6EE7B7" />
+    {/* Bag */}
+    <Path d="M 24 46 L 76 46 L 70 88 L 30 88 Z" fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="1" />
+    <Path d="M 35 46 C 35 32, 65 32, 65 46" fill="none" stroke="#D1D5DB" strokeWidth="3.5" strokeLinecap="round" />
+    {/* Location pin */}
+    <Circle cx="50" cy="66" r="9" fill="#ECFDF5" />
+    <Path d="M 50 58 C 45 58, 41 62, 41 67 C 41 73, 50 80, 50 80 C 50 80, 59 73, 59 67 C 59 62, 55 58, 50 58 Z" fill="#16A34A" />
+    <Circle cx="50" cy="67" r="3" fill="#FFFFFF" />
+    {/* Items */}
+    <Path d="M 29 48 C 25 41, 31 34, 37 37 C 33 39, 31 43, 35 46 Z" fill="#F59E0B" />
+    <Path d="M 57 30 L 57 46" stroke="#6EE7B7" strokeWidth="3" strokeLinecap="round" />
+    <Circle cx="57" cy="28" r="4" fill="#34D399" />
+    <Circle cx="67" cy="44" r="6" fill="#EF4444" />
+    <Path d="M 67 38 C 67 38, 69 34, 72 36" fill="none" stroke="#16A34A" strokeWidth="1" strokeLinecap="round" />
   </Svg>
 );
-const GroceryIcon = () => (
-  <Svg width="36" height="36" viewBox="0 0 36 36">
-    <Rect x="4" y="10" width="28" height="22" rx="5" fill="#16A34A" />
-    <Path
-      d="M 10 10 C 10 5, 26 5, 26 10"
-      fill="none"
-      stroke="#15803D"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-    />
-    <Circle cx="12" cy="8" r="3" fill="#FCA5A5" />
-    <Circle cx="24" cy="7" r="2.5" fill="#FCD34D" />
-    <Path d="M 8 16 L 28 16" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.4" />
-    <Rect x="10" y="19" width="6" height="8" rx="2" fill="#86EFAC" />
-    <Rect x="20" y="19" width="6" height="8" rx="2" fill="#FDE68A" />
-  </Svg>
-);
-const PharmacyIcon = () => (
-  <Svg width="36" height="36" viewBox="0 0 36 36">
-    <Rect x="4" y="8" width="28" height="22" rx="6" fill="#EF4444" />
-    <Rect x="14" y="13" width="8" height="12" rx="2" fill="#FFFFFF" />
-    <Rect x="10" y="17" width="16" height="4" rx="2" fill="#FFFFFF" />
-  </Svg>
-);
-const FoodIcon = () => (
-  <Svg width="36" height="36" viewBox="0 0 36 36">
-    <Circle cx="18" cy="20" r="12" fill="#FCD34D" />
-    <Ellipse cx="18" cy="16" rx="9" ry="5" fill="#F59E0B" />
-    <Ellipse cx="18" cy="14" rx="8" ry="4" fill="#FBBF24" />
-    <Rect x="9" y="17" width="18" height="6" rx="1" fill="#92400E" />
-    <Circle cx="13" cy="20" r="2" fill="#EF4444" />
-    <Circle cx="18" cy="20" r="2" fill="#FCD34D" />
-    <Circle cx="23" cy="20" r="2" fill="#EF4444" />
-    <Ellipse cx="18" cy="24" rx="9" ry="4" fill="#D97706" />
-  </Svg>
-);
-const FashionIcon = () => (
-  <Svg width="36" height="36" viewBox="0 0 36 36">
-    <Path
-      d="M 10 14 L 5 19 L 9 22 L 13 19 L 13 30 H 23 L 23 19 L 27 22 L 31 19 L 26 14 Z"
-      fill="#3B82F6"
-    />
-    <Path
-      d="M 13 14 C 13 10, 23 10, 23 14"
-      fill="none"
-      stroke="#2563EB"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </Svg>
-);
-const MoreIcon = () => (
-  <Svg width="36" height="36" viewBox="0 0 36 36">
-    <Rect x="5" y="5" width="11" height="11" rx="3" fill="#8B5CF6" />
-    <Rect x="20" y="5" width="11" height="11" rx="3" fill="#EC4899" />
-    <Rect x="5" y="20" width="11" height="11" rx="3" fill="#F59E0B" />
-    <Rect x="20" y="20" width="11" height="11" rx="3" fill="#16A34A" />
-  </Svg>
-);
-const CATEGORIES = [
-  { id: "1", name: "Grocery", icon: <GroceryIcon />, bg: "#ECFDF5" },
-  { id: "2", name: "Pharmacy", icon: <PharmacyIcon />, bg: "#FEF2F2" },
-  { id: "3", name: "Food", icon: <FoodIcon />, bg: "#FFFBEB" },
-  { id: "4", name: "Fashion", icon: <FashionIcon />, bg: "#EFF6FF" },
-  { id: "5", name: "More", icon: <MoreIcon />, bg: "#F5F3FF" },
-];
-const ScooterIcon = () => (
-  <Svg width="28" height="28" viewBox="0 0 28 28">
-    <Path
-      d="M 6 18 H 22 L 25 11 H 20 L 18 18"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Circle
-      cx="7"
-      cy="20"
-      r="3.5"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-    />
-    <Circle
-      cx="21"
-      cy="20"
-      r="3.5"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-    />
-    <Path
-      d="M 4 9 H 10 L 12 14"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </Svg>
-);
-const ShieldIcon = () => (
-  <Svg width="28" height="28" viewBox="0 0 28 28">
-    <Path
-      d="M 14 3 L 4 7 L 4 14 C 4 19, 8 23, 14 25 C 20 23, 24 19, 24 14 L 24 7 Z"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-      strokeLinejoin="round"
-    />
-    <Path
-      d="M 10 14 L 13 17 L 18 11"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-const PinIcon = () => (
-  <Svg width="28" height="28" viewBox="0 0 28 28">
-    <Path
-      d="M 14 3 C 9 3, 5 7, 5 12 C 5 18, 14 25, 14 25 C 14 25, 23 18, 23 12 C 23 7, 19 3, 14 3 Z"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-    />
-    <Circle
-      cx="14"
-      cy="12"
-      r="3.5"
-      fill="none"
-      stroke="#16A34A"
-      strokeWidth="2"
-    />
-  </Svg>
-);
-const FEATURES = [
+
+const VALUE_PROPS = [
   {
-    icon: <ScooterIcon />,
-    title: "Fast Delivery",
-    desc: "Quick & reliable\ndelivery",
+    emoji: "🥦",
+    bg: "#ECFDF5",
+    title: "Fresh grocery & daily essentials",
+    sub: "Delivered in 30 mins or less",
   },
   {
-    icon: <ShieldIcon />,
-    title: "Secure Payments",
-    desc: "100% safe &\nencrypted",
+    emoji: "💊",
+    bg: "#FEF2F2",
+    title: "Medicines & pharmacy",
+    sub: "From trusted local pharmacies",
   },
   {
-    icon: <PinIcon />,
-    title: "Nearby Stores",
-    desc: "Shop from trusted\nlocal stores",
+    emoji: "🍱",
+    bg: "#FFFBEB",
+    title: "Hot food & restaurants",
+    sub: "Real-time bargaining on food orders",
+  },
+  {
+    emoji: "🏪",
+    bg: "#F5F3FF",
+    title: "Local shops near you",
+    sub: "Support your neighbourhood stores",
   },
 ];
+
 interface MobileLoginScreenProps {
   onGetStarted: () => void;
 }
+
 export const MobileLoginScreen: React.FC<MobileLoginScreenProps> = ({
   onGetStarted,
 }) => {
@@ -281,159 +85,62 @@ export const MobileLoginScreen: React.FC<MobileLoginScreenProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {}
+        {/* Hero */}
         <View style={styles.heroRow}>
           <View style={styles.heroText}>
-            <Text
-              style={[
-                styles.heroHeading,
-                { fontFamily: theme.typography.fonts.inter800ExtraBold },
-              ]}
-            >
-              Everything{"\n"}Delivered{"\n"}
-              <Text style={styles.heroGreen}>Nearby</Text>
+            <Text style={[styles.heroHeading, { fontFamily: theme.typography.fonts.inter800ExtraBold }]}>
+              Shop local,{"\n"}
+              <Text style={styles.heroGreen}>delivered fast</Text>
             </Text>
-            <Text
-              style={[
-                styles.heroSub,
-                { fontFamily: theme.typography.fonts.inter500Medium },
-              ]}
-            >
-              Groceries, medicines, food, fashion and more from trusted local
-              stores.
+            <Text style={[styles.heroSub, { fontFamily: theme.typography.fonts.inter500Medium }]}>
+              Groceries, medicines, food & more from your neighbourhood.
             </Text>
           </View>
-          <GroceryBagIllustration />
+          <HeroIllustration />
         </View>
-        {}
-        <View style={styles.addressCard}>
-          <View style={styles.addressLeft}>
-            <View style={styles.addressIconBg}>
-              <Ionicons name="location" size={18} color="#16A34A" />
-            </View>
-            <View style={styles.addressTexts}>
-              <Text
-                style={[
-                  styles.addressLabel,
-                  { fontFamily: theme.typography.fonts.inter500Medium },
-                ]}
-              >
-                Deliver to
-              </Text>
-              <View style={styles.addressValueRow}>
-                <Text
-                  style={[
-                    styles.addressValue,
-                    { fontFamily: theme.typography.fonts.inter700Bold },
-                  ]}
-                >
-                  Home
+
+        {/* Value prop list */}
+        <View style={styles.valuePropList}>
+          {VALUE_PROPS.map((v, i) => (
+            <View key={i} style={styles.valuePropRow}>
+              <View style={[styles.valueIconCircle, { backgroundColor: v.bg }]}>
+                <Text style={styles.valueEmoji}>{v.emoji}</Text>
+              </View>
+              <View style={styles.valueTexts}>
+                <Text style={[styles.valueTitle, { fontFamily: theme.typography.fonts.inter600SemiBold }]}>
+                  {v.title}
                 </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={14}
-                  color="#111827"
-                  style={{ marginLeft: 4 }}
-                />
+                <Text style={[styles.valueSub, { fontFamily: theme.typography.fonts.inter500Medium }]}>
+                  {v.sub}
+                </Text>
               </View>
             </View>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </View>
-        {}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.catScroll}
-        >
-          {CATEGORIES.map((cat) => (
-            <Pressable
-              key={cat.id}
-              style={[styles.catCard, { backgroundColor: cat.bg }]}
-            >
-              {cat.icon}
-              <Text
-                style={[
-                  styles.catLabel,
-                  { fontFamily: theme.typography.fonts.inter600SemiBold },
-                ]}
-              >
-                {cat.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {}
-        <View style={styles.featuresCard}>
-          {FEATURES.map((f, i) => (
-            <React.Fragment key={i}>
-              <View style={styles.featureCol}>
-                <View style={styles.featureIconWrap}>{f.icon}</View>
-                <Text
-                  style={[
-                    styles.featureTitle,
-                    { fontFamily: theme.typography.fonts.inter700Bold },
-                  ]}
-                >
-                  {f.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.featureDesc,
-                    { fontFamily: theme.typography.fonts.inter500Medium },
-                  ]}
-                >
-                  {f.desc}
-                </Text>
-              </View>
-              {i < FEATURES.length - 1 && (
-                <View style={styles.featureDivider} />
-              )}
-            </React.Fragment>
           ))}
         </View>
-        {}
+
+        {/* CTA */}
         <Pressable style={styles.ctaBtn} onPress={onGetStarted}>
-          <Text
-            style={[
-              styles.ctaText,
-              { fontFamily: theme.typography.fonts.inter700Bold },
-            ]}
-          >
+          <Text style={[styles.ctaText, { fontFamily: theme.typography.fonts.inter700Bold }]}>
             Get Started
           </Text>
           <View style={styles.ctaArrow}>
             <Ionicons name="arrow-forward" size={20} color="#16A34A" />
           </View>
         </Pressable>
-        {}
+
+        {/* Footer */}
         <View style={styles.footerBadge}>
           <Ionicons name="shield-checkmark" size={14} color="#16A34A" />
-          <Text
-            style={[
-              styles.footerBadgeText,
-              { fontFamily: theme.typography.fonts.inter500Medium },
-            ]}
-          >
+          <Text style={[styles.footerBadgeText, { fontFamily: theme.typography.fonts.inter500Medium }]}>
             Your data is protected and encrypted
           </Text>
         </View>
         <View style={styles.footerLinks}>
-          <Text
-            style={[
-              styles.footerLink,
-              { fontFamily: theme.typography.fonts.inter500Medium },
-            ]}
-          >
+          <Text style={[styles.footerLink, { fontFamily: theme.typography.fonts.inter500Medium }]}>
             Terms of Service
           </Text>
           <View style={styles.footerDot} />
-          <Text
-            style={[
-              styles.footerLink,
-              { fontFamily: theme.typography.fonts.inter500Medium },
-            ]}
-          >
+          <Text style={[styles.footerLink, { fontFamily: theme.typography.fonts.inter500Medium }]}>
             Privacy Policy
           </Text>
         </View>
@@ -441,13 +148,14 @@ export const MobileLoginScreen: React.FC<MobileLoginScreenProps> = ({
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
   scroll: {
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 36,
   },
   heroRow: {
@@ -455,15 +163,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   heroText: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 12,
   },
   heroHeading: {
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 28,
+    lineHeight: 36,
     color: "#111827",
     marginBottom: 10,
   },
@@ -475,118 +183,43 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: "#6B7280",
   },
-  addressCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+  valuePropList: {
     marginHorizontal: 24,
-    marginBottom: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    marginBottom: 28,
+    gap: 10,
   },
-  addressLeft: {
+  valuePropRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  addressIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ECFDF5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  addressTexts: {},
-  addressLabel: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  addressValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  addressValue: {
-    fontSize: 16,
-    color: "#111827",
-  },
-  catScroll: {
-    paddingHorizontal: 24,
-    paddingBottom: 4,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     gap: 12,
-    marginBottom: 20,
   },
-  catCard: {
-    width: 76,
-    height: 90,
-    borderRadius: 20,
-    alignItems: "center",
+  valueIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    alignItems: "center",
+    flexShrink: 0,
   },
-  catLabel: {
-    fontSize: 11,
-    color: "#111827",
+  valueEmoji: {
+    fontSize: 20,
   },
-  featuresCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    marginHorizontal: 24,
-    marginBottom: 24,
-    paddingVertical: 20,
-    paddingHorizontal: 8,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  featureCol: {
+  valueTexts: {
     flex: 1,
-    alignItems: "center",
-    gap: 6,
   },
-  featureIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "#ECFDF5",
-    justifyContent: "center",
-    alignItems: "center",
+  valueTitle: {
+    fontSize: 13,
+    color: "#111827",
     marginBottom: 2,
   },
-  featureTitle: {
+  valueSub: {
     fontSize: 11,
-    color: "#111827",
-    textAlign: "center",
-  },
-  featureDesc: {
-    fontSize: 10,
     color: "#9CA3AF",
-    textAlign: "center",
-    lineHeight: 14,
-  },
-  featureDivider: {
-    width: 1,
-    height: "70%",
-    alignSelf: "center",
-    backgroundColor: "#F3F4F6",
+    lineHeight: 16,
   },
   ctaBtn: {
     flexDirection: "row",
@@ -645,4 +278,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
   },
 });
+
 export default MobileLoginScreen;

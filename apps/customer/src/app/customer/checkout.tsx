@@ -16,6 +16,7 @@ import { useOrderStore } from '../../features/Orders/Providers/useOrderStore';
 import { openRazorpayCheckout } from '../../services/payments/RazorpayService';
 import { useTheme } from '../../theme/ThemeContext';
 import { AddressApi, AddressType, OrderApi, PaymentMethod } from '../../types/shared';
+import { API_STATUS } from '../../Common/Constants';
 
 const ICON_BY_TYPE: Record<AddressType, keyof typeof Ionicons.glyphMap> = {
   HOME: 'home-outline',
@@ -37,6 +38,17 @@ export default observer(function CheckoutScreen() {
     ? cartStore.groupedByStore.filter((g) => g.storeId === shopId)
     : cartStore.groupedByStore;
   const totals = shopId ? cartStore.getShopTotals(shopId) : cartStore.totals;
+
+  const cartId = shopId ? cartStore.shopCarts.get(shopId)?.cart_id : undefined;
+  const singlePreview = cartId ? cartStore.cartCheckoutPreviews.get(cartId) : undefined;
+  const allPreview = cartStore.checkoutPreview;
+  const preview = shopId ? singlePreview : allPreview;
+
+  const billSubtotal = preview ? parseFloat(shopId ? singlePreview!.subtotal : allPreview!.grand_subtotal) : totals.subtotal;
+  const billDelivery = preview ? parseFloat(shopId ? singlePreview!.delivery_charge : allPreview!.grand_delivery_charge) : totals.deliveryFee;
+  const billDiscount = preview ? parseFloat(shopId ? singlePreview!.discount_amount : allPreview!.grand_discount_amount) : totals.couponDiscount;
+  const billTotal = preview ? parseFloat(shopId ? singlePreview!.total_amount : allPreview!.grand_total_amount) : totals.grandTotal;
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
   const [isPlacing, setIsPlacing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +73,15 @@ export default observer(function CheckoutScreen() {
             cartStore.hydrateAllCarts(),
             authStore.fetchProfile()
           ]);
+          if (!active) return;
+          if (shopId) {
+            const cid = cartStore.shopCarts.get(shopId)?.cart_id;
+            if (cid) {
+              await cartStore.fetchCartCheckoutPreview(cid);
+            }
+          } else {
+            await cartStore.fetchCheckoutPreview();
+          }
         } catch (err) {
           console.error('Failed loading checkout data:', err);
         } finally {
@@ -71,7 +92,7 @@ export default observer(function CheckoutScreen() {
       return () => {
         active = false;
       };
-    }, [cartStore, authStore])
+    }, [cartStore, authStore, shopId])
   );
 
   const handleQtyChange = async (item: CartItem, delta: number) => {
@@ -311,19 +332,38 @@ export default observer(function CheckoutScreen() {
         ))}
         <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.borderRadius.md }]}>
           <Text style={[theme.textPresets.label, styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
-            Order Total
+            Bill Summary
           </Text>
+          <View style={[styles.itemSummaryRow, { marginBottom: 8 }]}>
+            <Text style={[theme.textPresets.bodySmall, { color: theme.colors.textSecondary }]}>Subtotal</Text>
+            <Text style={[theme.textPresets.bodySmall, { color: theme.colors.textPrimary }]}>₹{billSubtotal.toFixed(0)}</Text>
+          </View>
+          <View style={[styles.itemSummaryRow, { marginBottom: 8 }]}>
+            <Text style={[theme.textPresets.bodySmall, { color: theme.colors.textSecondary }]}>Delivery Charge</Text>
+            {billDelivery === 0 ? (
+              <Text style={[theme.textPresets.bodySmall, { color: theme.colors.primary, fontFamily: theme.typography.fonts.bold }]}>FREE</Text>
+            ) : (
+              <Text style={[theme.textPresets.bodySmall, { color: theme.colors.textPrimary }]}>₹{billDelivery.toFixed(0)}</Text>
+            )}
+          </View>
+          {billDiscount > 0 && (
+            <View style={[styles.itemSummaryRow, { marginBottom: 8 }]}>
+              <Text style={[theme.textPresets.bodySmall, { color: theme.colors.success }]}>Discount</Text>
+              <Text style={[theme.textPresets.bodySmall, { color: theme.colors.success }]}>-₹{billDiscount.toFixed(0)}</Text>
+            </View>
+          )}
+          <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
           <View style={styles.totalSummaryRow}>
-            <Text style={[theme.textPresets.bodySmall, { color: theme.colors.textSecondary }]}>Total Amount</Text>
+            <Text style={[theme.textPresets.bodyLarge, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>Grand Total</Text>
             <Text style={[theme.textPresets.bodyLarge, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
-              ₹{totals.grandTotal.toFixed(0)}
+              ₹{billTotal.toFixed(0)}
             </Text>
           </View>
         </View >
       </ScrollView >
       <View style={[styles.stickyFooter, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
         <Button
-          label={isPlacing ? 'Placing Order...' : `Confirm & Place Order • ₹${totals.grandTotal.toFixed(0)}`}
+          label={isPlacing ? 'Placing Order...' : `Confirm & Place Order • ₹${billTotal.toFixed(0)}`}
           onPress={handlePlaceOrder}
           variant="solid"
           loading={isPlacing}

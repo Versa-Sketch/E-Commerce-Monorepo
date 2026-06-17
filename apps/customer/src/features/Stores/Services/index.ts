@@ -34,6 +34,12 @@ export interface ShopProductFilters {
   q?: string;
   page?: number;
   page_size?: number;
+  filter?: string;
+}
+export interface ShopSortFilter {
+  name: string;
+  slug: string;
+  description: string;
 }
 export interface ShopProductSearchFilters {
   q: string;
@@ -52,4 +58,5 @@ export interface IStoreService {
   getShopCategories(shopId: string, includeEmpty?: boolean): Promise<ShopCategory[]>;
   getShopProducts(shopId: string, filters?: ShopProductFilters): Promise<Paginated<ShopProduct>>;
   searchShopProducts(shopId: string, filters: ShopProductSearchFilters): Promise<Paginated<ShopProduct>>;
+  getShopFilters(shopId: string): Promise<ShopSortFilter[]>;
 }

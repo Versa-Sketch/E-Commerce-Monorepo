@@ -3,6 +3,8 @@ import { observer } from 'mobx-react-lite';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,10 +14,12 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../../../../features/Auth/Providers/useAuthStore';
 import { useTheme } from '../../../../theme/ThemeContext';
+
 interface CreateAccountScreenProps {
   onCreateAccount: (phone: string) => void;
   onBack: () => void;
 }
+
 export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(({
   onCreateAccount,
   onBack,
@@ -31,11 +35,13 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
   const nameRef = useRef<TextInput>(null);
   const loading = authStore.isLoading;
   const isValid = phone.length === 10 && fullName.trim().length >= 2;
+
   const handlePhoneChange = (val: string) => {
     const clean = val.replace(/[^0-9]/g, '').slice(0, 10);
     setPhone(clean);
     if (phoneError) setPhoneError('');
   };
+
   const handleSubmit = async () => {
     let hasError = false;
     if (phone.length !== 10 || !/^[6-9]\d{9}$/.test(phone)) {
@@ -53,15 +59,17 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
     if (hasError) return;
     try {
       await authStore.register(`+91${phone}`, fullName.trim());
-      // Success → navigate to OTP screen
       onCreateAccount(phone);
     } catch (e) {
-      // authStore.error is already set; show it under the phone field
       setPhoneError(authStore.error ?? 'Registration failed. Please try again.');
     }
   };
+
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -72,14 +80,13 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
           <Pressable onPress={onBack} style={styles.circleBtn}>
             <Ionicons name="arrow-back" size={20} color="#111827" />
           </Pressable>
-          <Pressable style={styles.circleBtn}>
-            <Ionicons name="settings-outline" size={20} color="#111827" />
-          </Pressable>
         </View>
+
         {/* Icon */}
         <View style={styles.iconWrap}>
           <Ionicons name="person-add-outline" size={30} color="#16A34A" />
         </View>
+
         {/* Heading */}
         <View style={styles.headingRow}>
           <Text style={[styles.headingDark, { fontFamily: theme.typography.fonts.inter800ExtraBold }]}>Create{' '}</Text>
@@ -88,6 +95,7 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
         <Text style={[styles.subtitle, { fontFamily: theme.typography.fonts.inter500Medium }]}>
           Enter your mobile number and full name to get started.
         </Text>
+
         {/* Form card */}
         <View style={styles.card}>
           {/* Mobile Number */}
@@ -115,6 +123,7 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
           {!!phoneError && (
             <Text style={[styles.errorText, { fontFamily: theme.typography.fonts.inter500Medium }]}>{phoneError}</Text>
           )}
+
           {/* Full Name */}
           <Text style={[styles.fieldLabel, { fontFamily: theme.typography.fonts.inter700Bold, marginTop: 20 }]}>Full Name</Text>
           <View style={[styles.nameInputRow, nameFocused && styles.inputFocused, !!nameError && styles.inputError]}>
@@ -139,6 +148,7 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
           {!!nameError && (
             <Text style={[styles.errorText, { fontFamily: theme.typography.fonts.inter500Medium }]}>{nameError}</Text>
           )}
+
           {/* CTA */}
           <Pressable
             onPress={handleSubmit}
@@ -150,13 +160,11 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
               : <Text style={[styles.ctaText, { fontFamily: theme.typography.fonts.inter700Bold }]}>Continue</Text>
             }
             <View style={styles.ctaArrow}>
-              {loading
-                ? <ActivityIndicator color="#16A34A" size="small" />
-                : <Ionicons name="arrow-forward" size={20} color="#16A34A" />
-              }
+              <Ionicons name="arrow-forward" size={20} color="#16A34A" />
             </View>
           </Pressable>
         </View>
+
         {/* Terms */}
         <Text style={[styles.terms, { fontFamily: theme.typography.fonts.inter500Medium }]}>
           By creating an account you agree to our{'\n'}
@@ -166,13 +174,14 @@ export const CreateAccountScreen: React.FC<CreateAccountScreenProps> = observer(
           <Text style={styles.terms}>.</Text>
         </Text>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 });
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { paddingTop: 16, paddingBottom: 48, paddingHorizontal: 24 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3 },
   iconWrap: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   headingRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
@@ -198,4 +207,5 @@ const styles = StyleSheet.create({
   terms: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
   termsLink: { color: '#16A34A', fontSize: 13 },
 });
+
 export default CreateAccountScreen;
