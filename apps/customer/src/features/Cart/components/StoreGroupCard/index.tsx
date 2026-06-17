@@ -87,89 +87,39 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
     };
 
     return (
-      <View
-        style={[
-          storeGroupCardStyle,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: theme.borderRadius.lg,
-            overflow: "hidden",
-          },
-        ]}
-      >
-        <View
-          style={[
-            storeGroupHeaderStyle,
-            { borderBottomColor: theme.colors.border, borderBottomWidth: 0.5 },
-          ]}
-        >
-          <View style={rowStyle}>
+      <View style={[storeGroupCardStyle, { backgroundColor: theme.colors.surface }]}>
+        <View style={storeGroupHeaderStyle}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons
               name="checkbox-sharp"
               size={20}
-              color={theme.colors.primary}
+              color="#16A34A"
             />
             <Text
-              style={[
-                theme.textPresets.bodyLarge,
-                storeTitleTextStyle,
-                {
-                  color: theme.colors.textPrimary,
-                  fontFamily: theme.typography.fonts.bold,
-                  marginLeft: 8,
-                },
-              ]}
+              style={{
+                color: theme.colors.textPrimary,
+                fontFamily: 'Inter-Bold',
+                fontSize: 18,
+                fontWeight: '700',
+                marginLeft: 8,
+              }}
             >
               {storeGroup.storeName}
             </Text>
           </View>
-          <View style={headerBadgeRowStyle}>
-            <View
-              style={[
-                itemCountBadgeStyle,
-                {
-                  backgroundColor: theme.colors.surfaceSecondary,
-                  borderRadius: theme.borderRadius.round,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  theme.textPresets.caption,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontFamily: theme.typography.fonts.semiBold,
-                    fontSize: 11,
-                  },
-                ]}
-              >
-                {itemCount} {itemCount === 1 ? "item" : "items"}
-              </Text>
-            </View>
-            <View
-              style={[
-                deliveryBadgeStyle,
-                {
-                  backgroundColor: isFreeDelivery ? "rgba(0, 109, 119, 0.08)" : "rgba(107, 114, 128, 0.08)",
-                  borderRadius: theme.borderRadius.round,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  theme.textPresets.caption,
-                  {
-                    color: isFreeDelivery ? theme.colors.primary : theme.colors.textSecondary,
-                    fontFamily: theme.typography.fonts.bold,
-                    fontSize: 11,
-                  },
-                ]}
-              >
-                {isFreeDelivery ? "Free Delivery" : `Delivery: ₹${deliveryChargeVal.toFixed(0)}`}
-              </Text>
-            </View>
-          </View>
+          <Text
+            style={{
+              color: theme.colors.textSecondary,
+              fontFamily: 'Inter-Medium',
+              fontSize: 12,
+              fontWeight: '500',
+              marginLeft: 28,
+            }}
+          >
+            {itemCount} {itemCount === 1 ? "Item" : "Items"}
+          </Text>
         </View>
+
         {storeGroup.items.map((item, index) => (
           <CartItemRow
             key={item.product.id}
@@ -180,122 +130,85 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
           />
         ))}
 
-        {true && (
-          <View
-            style={{
-              padding: 12,
-              borderTopWidth: 0.5,
-              borderTopColor: theme.colors.border,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              backgroundColor: isDark
-                ? theme.colors.surfaceSecondary
-                : "#FAFDFD",
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                flex: 1,
-                marginRight: 12,
-              }}
-            >
-              <Ionicons
-                name={activeBargainSessionId ? "chatbubble-ellipses-outline" : "pricetags-outline"}
-                size={16}
-                color={theme.colors.accent}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                numberOfLines={1}
-                style={[
-                  theme.textPresets.caption,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontFamily: theme.typography.fonts.medium,
-                    flex: 1,
-                  },
-                ]}
-              >
-                {activeBargainSessionId
-                  ? "You have an active bargain session for this shop"
-                  : "Bargain available for items in this shop"}
-              </Text>
-            </View>
-            <Pressable
-              onPress={handleBargainShop}
-              style={{
-                backgroundColor: theme.colors.accent,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons
-                name={activeBargainSessionId ? "open-outline" : "chatbubbles-outline"}
-                size={14}
-                color="#FFFFFF"
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontFamily: theme.typography.fonts.bold,
-                  fontSize: 12,
-                }}
-              >
-                {activeBargainSessionId ? "View Session" : "Bargain Shop"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
         <View
           style={{
-            padding: 12,
-            borderTopWidth: 0.5,
-            borderTopColor: theme.colors.border,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
+            backgroundColor: isDark ? 'rgba(22, 163, 74, 0.08)' : '#F8FFFA',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(22, 163, 74, 0.25)' : '#D6F5DF',
+            borderRadius: 16,
+            padding: 16,
+            alignItems: 'center',
+            gap: 12,
           }}
         >
           <Text
-            style={[
-              theme.textPresets.bodyMedium,
-              {
-                color: theme.colors.textPrimary,
-                fontFamily: theme.typography.fonts.bold,
-              },
-            ]}
+            style={{
+              fontSize: 12,
+              fontFamily: 'Inter-Medium',
+              fontWeight: '500',
+              color: theme.colors.textPrimary,
+              textAlign: 'center',
+            }}
+          >
+            🏷️ Bargaining available for items in this store
+          </Text>
+          <Pressable
+            onPress={handleBargainShop}
+            style={{
+              backgroundColor: '#16A34A',
+              borderRadius: 14,
+              height: 44,
+              paddingHorizontal: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              alignSelf: 'stretch',
+            }}
+          >
+            <Ionicons name="chatbubble-ellipses" size={16} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700', fontFamily: 'Inter-Bold' }}>₹</Text>
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontFamily: 'Inter-SemiBold',
+                fontWeight: '600',
+                fontSize: 14,
+              }}
+            >
+              Bargaining Store
+            </Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 4,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '500',
+              fontFamily: 'Inter-Medium',
+              color: theme.colors.textSecondary,
+            }}
+          >
+            Store Total
+          </Text>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: '700',
+              fontFamily: 'Inter-Bold',
+              color: theme.colors.textPrimary,
+            }}
           >
             ₹{displayedTotal.toFixed(0)}
           </Text>
-          <Pressable
-            onPress={() => router.push(`/customer/checkout?shopId=${storeGroup.storeId}`)}
-            style={{
-              backgroundColor: theme.colors.primary,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: theme.borderRadius.round,
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontFamily: theme.typography.fonts.bold,
-                fontSize: 13,
-              }}
-            >
-              Checkout this store
-            </Text>
-            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
-          </Pressable>
         </View>
       </View>
     );

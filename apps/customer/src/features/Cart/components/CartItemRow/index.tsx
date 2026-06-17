@@ -27,7 +27,7 @@ interface CartItemRowProps {
   isLast?: boolean;
 }
 export const CartItemRow: React.FC<CartItemRowProps> = observer(({ item, onQtyChange, onRemove, isLast }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const router = useRouter();
   const cartStore = useCartStore();
   const syncing = cartStore.isSyncing(item.product.variantId);
@@ -64,55 +64,96 @@ export const CartItemRow: React.FC<CartItemRowProps> = observer(({ item, onQtyCh
     <View
       style={[
         cartItemRowStyle,
-        !isLast && { borderBottomColor: theme.colors.border, borderBottomWidth: 0.5 },
+        !isLast && { borderBottomColor: theme.colors.border, borderBottomWidth: 1 },
       ]}
     >
       <Image
         source={{ uri: item.product.imageUrl }}
-        style={[itemImageStyle, { borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surfaceSecondary }]}
+        style={[itemImageStyle, { borderRadius: 12, backgroundColor: theme.colors.surfaceSecondary }]}
       />
       <View style={itemDetailsStyle}>
-        <Text numberOfLines={1} style={[theme.textPresets.bodyMedium, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.semiBold }]}>
-          {item.product.name}
-        </Text>
-        <Text numberOfLines={1} style={[theme.textPresets.caption, { color: theme.colors.textSecondary, marginTop: 2 }]}>
-          {item.product.category}
-        </Text>
+        <View style={{ gap: 2 }}>
+          <Text
+            numberOfLines={2}
+            style={{
+              fontSize: 14,
+              fontWeight: '600',
+              fontFamily: 'Inter-SemiBold',
+              color: theme.colors.textPrimary,
+              lineHeight: 18,
+            }}
+          >
+            {item.product.name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 12,
+              fontWeight: '500',
+              fontFamily: 'Inter-Medium',
+              color: theme.colors.textSecondary,
+            }}
+          >
+            {item.product.variantName || item.product.category}
+          </Text>
+        </View>
+
         <View style={priceRowStyle}>
           {hasDiscount && (
-            <Text style={[strikethroughPriceStyle, { color: theme.colors.textMuted }]}>
+            <Text style={[strikethroughPriceStyle, { color: theme.colors.textMuted, fontSize: 11 }]}>
               ₹{originalPrice.toFixed(0)}
             </Text>
           )}
-          <Text style={[theme.textPresets.bodyMedium, { color: hasDiscount ? theme.colors.success : theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }]}>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: '700',
+              fontFamily: 'Inter-Bold',
+              color: theme.colors.textPrimary,
+            }}
+          >
             ₹{discountedPrice.toFixed(0)}
           </Text>
         </View>
-        {item.product.isBargainable && (
-          <Pressable onPress={handleBargainPrice} style={[bargainChipStyle, { backgroundColor: '#FBEBE4' }]}>
-            <Ionicons name="chatbubbles-outline" size={12} color={theme.colors.accent} style={{ marginRight: 4 }} />
-            <Text style={{ fontSize: 10, color: theme.colors.accent, fontFamily: theme.typography.fonts.bold }}>
-              Bargain Price
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={actionBlockStyle}>
-        <View style={[quantityBoxStyle, { borderColor: theme.colors.border, backgroundColor: theme.colors.background, opacity: syncing ? 0.6 : 1 }]}>
-          <Pressable onPress={() => onQtyChange(item, -1)} style={qtyBtnStyle} disabled={syncing}>
-            <Ionicons name={item.quantity <= 1 ? 'trash-outline' : 'remove'} size={14} color={theme.colors.primary} />
-          </Pressable>
-          <RollingNumber
-            value={item.quantity}
-            style={[qtyTextStyle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold }] as any}
-          />
-          <Pressable onPress={() => onQtyChange(item, 1)} style={qtyBtnStyle} disabled={syncing}>
-            <Ionicons name="add" size={14} color={theme.colors.primary} />
+
+        <View style={actionBlockStyle}>
+          <View
+            style={[
+              quantityBoxStyle,
+              {
+                borderColor: isDark ? 'rgba(22, 163, 74, 0.3)' : '#D6F5DF',
+                backgroundColor: isDark ? 'rgba(22, 163, 74, 0.12)' : '#F0FDF4',
+                opacity: syncing ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Pressable onPress={() => onQtyChange(item, -1)} style={qtyBtnStyle} disabled={syncing}>
+              <Ionicons
+                name={item.quantity <= 1 ? 'trash-outline' : 'remove'}
+                size={16}
+                color="#16A34A"
+              />
+            </Pressable>
+            <RollingNumber
+              value={item.quantity}
+              style={[
+                qtyTextStyle,
+                {
+                  color: theme.colors.textPrimary,
+                  fontFamily: 'Inter-Bold',
+                  fontWeight: '700',
+                  fontSize: 14,
+                },
+              ] as any}
+            />
+            <Pressable onPress={() => onQtyChange(item, 1)} style={qtyBtnStyle} disabled={syncing}>
+              <Ionicons name="add" size={16} color="#16A34A" />
+            </Pressable>
+          </View>
+          <Pressable onPress={() => onRemove(item)} style={deleteBtnStyle} disabled={syncing}>
+            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
           </Pressable>
         </View>
-        <Pressable onPress={() => onRemove(item)} style={deleteBtnStyle} disabled={syncing}>
-          <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-        </Pressable>
       </View>
     </View>
   );
