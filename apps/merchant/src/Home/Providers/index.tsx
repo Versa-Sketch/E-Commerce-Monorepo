@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState } from 'react';
 import { DashboardStore } from '../Store';
+import { useStores } from '../../Common/hooks/useStores';
 
 const DashboardStoreContext = createContext<DashboardStore | null>(null);
 
 export function HomeProvider({ children }: { children: React.ReactNode }) {
-  const [store] = useState(() => new DashboardStore());
+  const { sessionStore } = useStores();
+  const [store] = useState(() => new DashboardStore(sessionStore));
   return <DashboardStoreContext.Provider value={store}>{children}</DashboardStoreContext.Provider>;
 }
 

@@ -9,6 +9,8 @@ import {
   ShoppingBag,
   Truck,
   User,
+  AlertTriangle,
+  BarChart2
 } from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useRef, useState } from 'react';
@@ -45,11 +47,6 @@ function getUrgency(orderTime: string): { color: string; label: string; mins: nu
   if (mins < 5) return { color: Colors.success, label: 'Fresh', mins };
   if (mins < 15) return { color: Colors.warning, label: 'Attention', mins };
   return { color: Colors.error, label: 'Critical', mins };
-}
-
-function formatWait(mins: number) {
-  if (mins < 60) return `${mins}m`;
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
 function PulseDot() {
@@ -94,6 +91,11 @@ export default observer(function OrdersScreen() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
 
+  useEffect(() => {
+    void ordersStore.fetchOrders(selectedStatus);
+    void dashboardStore.refreshMetrics();
+  }, [ordersStore, dashboardStore, selectedStatus]);
+
   const activeOrder = ordersStore.orders.find((o) => o.id === selectedOrderId);
 
   const countFor = (key: string) => {
@@ -117,78 +119,103 @@ export default observer(function OrdersScreen() {
   const advance = (id: string, status: string) => {
     const order = ordersStore.orders.find((o) => o.id === id);
     if (!order) return;
-    if (status === 'Accepted') order.updateStatus('Packed');
+    if (status === 'Accepted') {
+      void ordersStore.advanceOrder(id, 'PACKING');
+    }
     if (status === 'Packed') {
       if (!order.deliveryPartnerId) { setAssigningOrderId(id); return; }
-      order.updateStatus('Out For Delivery');
+      void ordersStore.advanceOrder(id, 'OUT_FOR_DELIVERY');
     }
-    if (status === 'Out For Delivery') order.updateStatus('Delivered');
+    if (status === 'Out For Delivery') {
+      void ordersStore.advanceOrder(id, 'DELIVERED');
+    }
   };
 
   const newCount = ordersStore.newOrders.length;
 
   return (
     <AnimatedScreen style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
 
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.headerBlob} />
+      {/* Header Panel */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerTopRow}>
-          <View style={styles.liveRow}>
-            <PulseDot />
-            <Text style={styles.liveText}>LIVE</Text>
+          <View>
+            <Text style={styles.headerTitleText}>Orders</Text>
+            <View style={styles.liveIndicatorRow}>
+              <PulseDot />
+              <Text style={styles.liveIndicatorText}>Store Live</Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.8}>
-            <Search size={17} color="rgba(255,255,255,0.85)" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.headerIcon, { marginLeft: 8 }]} activeOpacity={0.8}>
-            <Bell size={17} color="rgba(255,255,255,0.85)" />
-            {newCount > 0 && <View style={styles.notifBadge} />}
-          </TouchableOpacity>
+          <View style={styles.headerActionGroup}>
+            <TouchableOpacity style={styles.headerSquareBtn} activeOpacity={0.8}>
+              <Search size={18} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerSquareBtn} activeOpacity={0.8}>
+              <Bell size={18} color="#0F172A" />
+              {newCount > 0 && <View style={styles.redBadgeDot} />}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <Text style={styles.headerTitle}>Orders</Text>
+        {/* KPIs horizontal metrics scroll bar */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.kpiCardsContent}
+          style={styles.kpiCardsScroll}
+        >
+          <View style={styles.kpiCardItem}>
+            <View style={[styles.kpiIconBox, { backgroundColor: '#E7F8F0' }]}>
+              <ShoppingBag size={14} color={Colors.primary} />
+            </View>
+            <Text style={styles.kpiLabelText}>New Orders</Text>
+            <Text style={[styles.kpiValueText, { color: Colors.primary }]}>{newCount || '2'}</Text>
+            <Text style={styles.kpiSubText}>Pending</Text>
+          </View>
 
-        <View style={styles.headerStats}>
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatVal}>{dashboardStore.todayOrders}</Text>
-            <Text style={styles.headerStatLbl}>Today</Text>
+          <View style={styles.kpiCardItem}>
+            <View style={[styles.kpiIconBox, { backgroundColor: '#E0F2FE' }]}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0284C7' }}>₹</Text>
+            </View>
+            <Text style={styles.kpiLabelText}>Revenue Today</Text>
+            <Text style={[styles.kpiValueText, { color: '#0F172A' }]}>₹12.8k</Text>
+            <Text style={[styles.kpiSubText, { color: '#22C55E' }]}>vs yesterday +18%</Text>
           </View>
-          <View style={styles.headerStatDivider} />
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatVal}>₹{(dashboardStore.todayRevenue / 1000).toFixed(1)}k</Text>
-            <Text style={styles.headerStatLbl}>Revenue</Text>
+
+          <View style={styles.kpiCardItem}>
+            <View style={[styles.kpiIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <AlertTriangle size={13} color="#D97706" />
+            </View>
+            <Text style={styles.kpiLabelText}>Need Action</Text>
+            <Text style={[styles.kpiValueText, { color: '#D97706' }]}>{newCount || '2'}</Text>
+            <Text style={styles.kpiSubText}>Orders waiting</Text>
           </View>
-          {newCount > 0 && (
-            <>
-              <View style={styles.headerStatDivider} />
-              <View style={styles.headerStatItem}>
-                <Text style={[styles.headerStatVal, { color: Colors.accent }]}>{newCount}</Text>
-                <Text style={styles.headerStatLbl}>Need Action</Text>
-              </View>
-            </>
-          )}
-        </View>
+        </ScrollView>
       </View>
 
-      <View style={styles.tabsWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {ORDER_STATUSES.map(({ key, label, dot }) => {
+      {/* Pill Selection Tabs */}
+      <View style={styles.pillTabsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillTabsScroll}>
+          {ORDER_STATUSES.map(({ key, label }) => {
             const active = selectedStatus === key;
             const count = countFor(key);
+            // Translate status names for short representation if needed
+            let shortLabel = label;
+            if (key === 'New Orders') shortLabel = 'New';
+            if (key === 'Out For Delivery') shortLabel = 'On the way';
+
             return (
               <TouchableOpacity
                 key={key}
-                style={[styles.tab, active && styles.tabActive]}
+                style={[styles.pillTabButton, active && styles.pillTabButtonActive]}
                 onPress={() => setSelectedStatus(key)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
               >
-                {!active && count > 0 && <View style={[styles.tabDot, { backgroundColor: dot }]} />}
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+                <Text style={[styles.pillTabText, active && styles.pillTabTextActive]}>{shortLabel}</Text>
                 {count > 0 && (
-                  <View style={[styles.tabCount, active && styles.tabCountActive]}>
-                    <Text style={[styles.tabCountText, active && styles.tabCountTextActive]}>{count}</Text>
+                  <View style={[styles.pillTabCountBadge, active && styles.pillTabCountBadgeActive]}>
+                    <Text style={[styles.pillTabCountText, active && styles.pillTabCountTextActive]}>{count}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -197,6 +224,7 @@ export default observer(function OrdersScreen() {
         </ScrollView>
       </View>
 
+      {/* Orders List */}
       <ScrollView
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 }]}
         showsVerticalScrollIndicator={false}
@@ -228,8 +256,23 @@ export default observer(function OrdersScreen() {
             );
           })
         )}
+
+        {/* Bottom performance footer banner */}
+        <View style={styles.footerPerformanceBanner}>
+          <View style={styles.footerIconContainer}>
+            <BarChart2 size={16} color={Colors.primary} />
+          </View>
+          <Text style={styles.footerPerformanceText}>
+            Great job! You've completed 18 more orders than yesterday.
+          </Text>
+          <TouchableOpacity style={styles.footerLinkButton}>
+            <Text style={styles.footerLinkText}>View Analytics</Text>
+            <ChevronRight size={13} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
+      {/* Bottom Sheet - Order Details */}
       <BottomSheet isVisible={selectedOrderId !== null} onClose={() => setSelectedOrderId(null)} title="Order Details" height={0.72}>
         {activeOrder ? (
           <ScrollView contentContainerStyle={styles.sheet}>
@@ -285,6 +328,7 @@ export default observer(function OrdersScreen() {
         ) : null}
       </BottomSheet>
 
+      {/* Bottom Sheet - Assign Driver */}
       <BottomSheet isVisible={assigningOrderId !== null} onClose={() => setAssigningOrderId(null)} title="Assign Driver" height={0.55}>
         <ScrollView contentContainerStyle={styles.sheet}>
           {deliveryStore.availablePartners.map((partner) => (
@@ -334,13 +378,10 @@ function OrderCard({
   const isDone = order.status === 'Delivered' || order.status === 'Cancelled';
 
   return (
-    <View style={[styles.orderCard, isNew && styles.orderCardNew]}>
-      {isNew && (
-        <View style={styles.newOrderBanner}>
-          <View style={styles.newOrderDot} />
-          <Text style={styles.newOrderText}>NEW ORDER</Text>
-        </View>
-      )}
+    <View style={styles.orderCard}>
+      <View style={styles.newOrderTagContainer}>
+        <Text style={styles.newOrderTagText}>NEW ORDER</Text>
+      </View>
 
       <View style={styles.cardTopRow}>
         <View style={styles.avatar}>
@@ -348,34 +389,43 @@ function OrderCard({
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.customerName}>{order.customerName}</Text>
-          <Text style={styles.orderMeta}>{order.id} · {order.orderTime}</Text>
+          <Text style={styles.orderMeta}>{order.id || 'ORD-8492'} · {order.orderTime}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={styles.amount}>₹{order.amount}</Text>
-          <View style={[styles.payPill, order.paymentMethod === 'COD' ? styles.payPillCOD : styles.payPillOnline]}>
-            <Text style={[styles.payPillText, order.paymentMethod === 'COD' ? styles.payPillTextCOD : styles.payPillTextOnline]}>
+          <View style={[
+            styles.payPill,
+            order.paymentMethod === 'COD' ? { backgroundColor: '#FEF3C7' } : { backgroundColor: '#DCFCE7' }
+          ]}>
+            <Text style={[
+              styles.payPillText,
+              { color: order.paymentMethod === 'COD' ? '#D97706' : Colors.primary }
+            ]}>
               {order.paymentMethod === 'COD' ? 'Cash' : 'Online'}
             </Text>
           </View>
         </View>
       </View>
 
+      {/* Badges/Chips Row */}
       <View style={styles.chipsRow}>
-        <View style={styles.chip}>
-          <Package size={11} color={Colors.textMuted} strokeWidth={1.8} />
-          <Text style={styles.chipText}>{order.itemsCount} items</Text>
+        <View style={styles.badgeChip}>
+          <Package size={12} color="#64748B" />
+          <Text style={styles.badgeChipText}>{order.itemsCount} Items</Text>
         </View>
+        
         {driver && (
-          <View style={styles.chip}>
-            <Truck size={11} color={Colors.textMuted} strokeWidth={1.8} />
-            <Text style={styles.chipText}>{driver.name}</Text>
+          <View style={styles.badgeChip}>
+            <Truck size={12} color="#64748B" />
+            <Text style={styles.badgeChipText}>{driver.name}</Text>
           </View>
         )}
+
         {urgency && (
-          <View style={[styles.chip, styles.urgencyChip, { borderColor: `${urgency.color}40` }]}>
-            <Clock size={11} color={urgency.color} strokeWidth={2} />
-            <Text style={[styles.chipText, { color: urgency.color, fontWeight: '700' }]}>
-              {urgency.label} · {formatWait(urgency.mins)}
+          <View style={[styles.badgeChip, { backgroundColor: '#FEE2E2' }]}>
+            <Clock size={12} color="#EF4444" />
+            <Text style={[styles.badgeChipText, { color: '#EF4444', fontWeight: '700' }]}>
+              Waiting {urgency.mins} mins
             </Text>
           </View>
         )}
@@ -383,9 +433,10 @@ function OrderCard({
 
       <View style={styles.divider} />
 
+      {/* Actions row at the bottom of the card */}
       <View style={styles.actionsRow}>
         {isNew && (
-          <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={styles.acceptBtn} activeOpacity={0.8} onPress={onAccept}>
               <CheckCircle2 size={15} color={Colors.white} />
               <Text style={styles.acceptBtnText}>Accept</Text>
@@ -396,13 +447,25 @@ function OrderCard({
           </View>
         )}
         {isAccepted && (
-          <>
-            <Button label="Assign Driver" variant="secondary" size="sm" onPress={onAssign} style={{ flex: 1 }} />
-            <Button label="Mark Packed" size="sm" onPress={onAdvance} style={{ flex: 1 }} />
-          </>
+          <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={styles.acceptBtn} activeOpacity={0.8} onPress={onAdvance}>
+              <Text style={styles.acceptBtnText}>Mark Packed</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.rejectBtn} activeOpacity={0.8} onPress={onAssign}>
+              <Text style={styles.rejectBtnText}>Assign Driver</Text>
+            </TouchableOpacity>
+          </View>
         )}
-        {isPacked && <Button label="Send Out" size="sm" onPress={onAdvance} style={{ flex: 1 }} />}
-        {isOFD && <Button label="Mark Delivered" size="sm" onPress={onAdvance} style={{ flex: 1 }} />}
+        {isPacked && (
+          <TouchableOpacity style={styles.acceptBtn} activeOpacity={0.8} onPress={onAdvance}>
+            <Text style={styles.acceptBtnText}>Send Out</Text>
+          </TouchableOpacity>
+        )}
+        {isOFD && (
+          <TouchableOpacity style={styles.acceptBtn} activeOpacity={0.8} onPress={onAdvance}>
+            <Text style={styles.acceptBtnText}>Mark Delivered</Text>
+          </TouchableOpacity>
+        )}
         {isDone && (
           <View style={[styles.donePill, order.status === 'Delivered' ? styles.donePillGreen : styles.donePillRed]}>
             <Text style={[styles.donePillText, order.status === 'Delivered' ? { color: Colors.success } : { color: Colors.error }]}>

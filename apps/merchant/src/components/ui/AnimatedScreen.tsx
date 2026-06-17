@@ -1,11 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, ViewStyle } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useNavigation } from 'expo-router';
 
-/**
- * Wraps a tab screen's content in a lightweight slide-from-right + fade
- * entrance animation. Runs every time the tab gains focus.
- */
 export function AnimatedScreen({
   children,
   style,
@@ -13,41 +9,50 @@ export function AnimatedScreen({
   children: React.ReactNode;
   style?: ViewStyle;
 }) {
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const translateX = useRef(new Animated.Value(18)).current;
+  const navigation = useNavigation();
+  const isInitial = useRef(true);
+  const translateX = useRef(new Animated.Value(0)).current;
 
-  const enter = () => {
-    opacity.setValue(0);
-    translateX.setValue(18);
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }),
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      if (isInitial.current) {
+        isInitial.current = false;
+        return;
+      }
+      
+      translateX.setValue(100);
+
       Animated.spring(translateX, {
         toValue: 0,
-        damping: 22,
-        stiffness: 280,
-        mass: 0.7,
+        damping: 26,
+        stiffness: 220,
+        mass: 0.8,
         useNativeDriver: true,
-      }),
-    ]).start();
-  };
+      }).start();
+    });
 
-  // Run on every focus (tab press / back-nav)
-  useFocusEffect(
-    React.useCallback(() => {
-      enter();
-    }, [])
-  );
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      Animated.timing(translateX, {
+        toValue: -100,
+        duration: 150,
+        useNativeDriver: true,
+      }).start(() => {
+        translateX.setValue(100);
+      });
+    });
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
 
   return (
     <Animated.View
       style={[
         styles.root,
         style,
-        { opacity, transform: [{ translateX }] },
+        { transform: [{ translateX }] },
       ]}
     >
       {children}
@@ -56,5 +61,5 @@ export function AnimatedScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
 });

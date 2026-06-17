@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState } from 'react';
 import { OrdersStore } from '../Store';
+import { useStores } from '../../Common/hooks/useStores';
 
 const OrdersStoreContext = createContext<OrdersStore | null>(null);
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
-  const [store] = useState(() => new OrdersStore());
+  const { sessionStore } = useStores();
+  const [store] = useState(() => new OrdersStore(sessionStore));
   return <OrdersStoreContext.Provider value={store}>{children}</OrdersStoreContext.Provider>;
 }
 

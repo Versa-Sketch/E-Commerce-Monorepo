@@ -1,19 +1,21 @@
-import React, { useRef } from 'react';
 import { Tabs } from 'expo-router';
+import { Boxes, Clipboard, Home, MessagesSquare, Plus } from 'lucide-react-native';
+import React, { useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  Animated, Platform,
+  Animated,
+  StyleSheet,
+  Text, TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, ListChecks, Package, MessagesSquare, Boxes } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 
 const TABS = [
-  { name: 'home/index',       label: 'Home',     Icon: Home },
-  { name: 'orders/index',     label: 'Orders',   Icon: ListChecks },
-  { name: 'products/index',   label: 'Products', Icon: Package },
+  { name: 'home/index', label: 'Home', Icon: Home },
+  { name: 'orders/index', label: 'Orders', Icon: Clipboard },
+  { name: 'products/index', label: '', Icon: Plus, isCenter: true },
+  { name: 'inventory/index', label: 'Inventory', Icon: Boxes },
   { name: 'bargaining/index', label: 'Bargains', Icon: MessagesSquare },
-  { name: 'inventory/index',  label: 'Inventory', Icon: Boxes },
 ];
 
 // ── Individual tab item with press-scale micro-interaction ─────────────────
@@ -22,12 +24,14 @@ function TabItem({
   label,
   Icon,
   focused,
+  isCenter,
   onPress,
 }: {
   name: string;
   label: string;
   Icon: React.ComponentType<any>;
   focused: boolean;
+  isCenter?: boolean;
   onPress: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -50,7 +54,29 @@ function TabItem({
     }).start();
   };
 
-  const color       = focused ? Colors.primary : '#94A3B8';
+  if (isCenter) {
+    return (
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={0.9}
+        style={styles.centerItemWrap}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <Animated.View
+          style={[
+            styles.centerButton,
+            { transform: [{ scale }] },
+          ]}
+        >
+          <Icon color={Colors.white} size={24} strokeWidth={2.8} />
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
+
+  const color = focused ? Colors.primary : '#64748B';
   const strokeWidth = focused ? 2.2 : 1.8;
 
   return (
@@ -66,11 +92,10 @@ function TabItem({
       <Animated.View
         style={[
           styles.iconWrap,
-          focused && styles.iconWrapActive,
           { transform: [{ scale }] },
         ]}
       >
-        <Icon color={color} size={21} strokeWidth={strokeWidth} />
+        <Icon color={color} size={22} strokeWidth={strokeWidth} />
       </Animated.View>
       <Text style={[styles.label, focused && styles.labelActive]}>
         {label}
@@ -79,19 +104,16 @@ function TabItem({
   );
 }
 
-// ── Custom floating tab bar ────────────────────────────────────────────────
+// ── Custom tab bar matching mockup ──────────────────────────────────────────
 function CustomTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
-  // Floating bar sits above the home indicator / gesture zone
-  const bottomOffset = Math.max(insets.bottom, 8) + 8;
 
   return (
     <View
       style={[
         styles.bar,
-        { bottom: bottomOffset },
+        { paddingBottom: Math.max(insets.bottom, 12), paddingTop: 10 },
       ]}
-      pointerEvents="box-none"
     >
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
@@ -105,6 +127,7 @@ function CustomTabBar({ state, navigation }: any) {
             label={tab.label}
             Icon={tab.Icon}
             focused={focused}
+            isCenter={tab.isCenter}
             onPress={() => {
               const event = navigation.emit({
                 type: 'tabPress',
@@ -138,48 +161,59 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   bar: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: 22,
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 6,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 12,
-    // Subtle top border for definition on light backgrounds
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    backgroundColor: Colors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
-    gap: 2,
+    height: 48,
+    gap: 4,
   },
   iconWrap: {
-    width: 48,
-    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-  },
-  iconWrapActive: {
-    backgroundColor: Colors.primaryLight,
   },
   label: {
     fontSize: 10,
-    fontWeight: '500',
-    color: '#94A3B8',
+    fontWeight: '600',
+    color: '#64748B',
   },
   labelActive: {
     color: Colors.primary,
     fontWeight: '700',
   },
+  centerItemWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+  },
+  centerButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    top: -12, // slightly floating up
+  },
 });
+

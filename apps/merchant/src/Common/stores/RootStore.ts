@@ -20,8 +20,8 @@ export class RootStore {
   onboardingStore: OnboardingStore;
   shopSetupStore: ShopSetupStore;
   authStore = new AuthStore();
-  dashboardStore = new DashboardStore();
-  ordersStore = new OrdersStore();
+  dashboardStore: DashboardStore;
+  ordersStore: OrdersStore;
   productsStore: ProductsStore;
   inventoryStore: InventoryStore;
   bargainingStore: BargainingStore;
@@ -38,6 +38,8 @@ export class RootStore {
     this.productsStore = new ProductsStore(this.sessionStore);
     this.inventoryStore = new InventoryStore(this.sessionStore);
     this.bargainingStore = new BargainingStore(this.sessionStore);
+    this.ordersStore = new OrdersStore(this.sessionStore);
+    this.dashboardStore = new DashboardStore(this.sessionStore);
     makeAutoObservable(this);
   }
 }

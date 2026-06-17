@@ -1,3 +1,8 @@
+import { ApiResult, PaginatedResult } from '../../Common/services/http';
+import { ApiOrder, ApiDashboardSummary } from '../types/domain';
+import { IOrdersService } from './index';
+import { fixtureDelay } from '../../Common/services/config';
+
 export const orderFixtures = [
   {
     id: 'ORD-8492',
@@ -116,3 +121,100 @@ export const orderFixtures = [
     ],
   },
 ];
+
+export class OrdersFixtureService implements IOrdersService {
+  async fetchOrders(shopId: string, status?: string, page = 1): Promise<ApiResult<PaginatedResult<ApiOrder>>> {
+    const apiOrders: ApiOrder[] = orderFixtures.map(f => ({
+      order_id: f.id,
+      shop_id: shopId,
+      shop_name: 'Fixture Shop',
+      status: f.status === 'New Orders' ? 'PLACED' :
+              f.status === 'Accepted' ? 'ACCEPTED' :
+              f.status === 'Packed' ? 'PACKING' :
+              f.status === 'Out For Delivery' ? 'OUT_FOR_DELIVERY' :
+              f.status === 'Delivered' ? 'DELIVERED' : 'CANCELLED',
+      subtotal: f.amount.toString(),
+      delivery_charge: '10.00',
+      discount_amount: '0.00',
+      total_amount: f.amount.toString(),
+      created_at: new Date().toISOString(),
+      items: f.items.map(i => ({
+        variant_id: i.id,
+        variant_name: 'Standard',
+        product_id: i.id,
+        product_name: i.name,
+        product_image: '',
+        quantity: i.quantity,
+        unit_price: i.price.toString(),
+        total_price: (i.price * i.quantity).toString(),
+      })),
+      payment: {
+        payment_id: 'pay-001',
+        payment_method: f.paymentMethod === 'Online' ? 'RAZORPAY' : 'COD',
+        amount: f.amount.toString(),
+        status: 'PAID',
+        razorpay_order_id: 'order_123',
+        razorpay_payment_id: 'pay_123',
+      },
+      customer_name: f.customerName,
+      customer_phone: f.customerPhone,
+      address: {
+        id: 'addr-001',
+        address_line1: f.deliveryAddress,
+        address_line2: '',
+        state: 'Karnataka',
+        pincode: '560001',
+        address_type: 'HOME',
+        latitude: 12.9715,
+        longitude: 77.5945,
+      },
+    }));
+
+    const filtered = status ? apiOrders.filter(o => o.status === status) : apiOrders;
+
+    return fixtureDelay({
+      ok: true,
+      status: 200,
+      message: null,
+      data: {
+        count: filtered.length,
+        next: null,
+        previous: null,
+        results: filtered,
+      },
+    });
+  }
+
+  async fetchOrderDetail(shopId: string, orderId: string): Promise<ApiResult<ApiOrder>> {
+    const ordersRes = await this.fetchOrders(shopId);
+    if (!ordersRes.ok) {
+      return ordersRes;
+    }
+    const found = ordersRes.data.results.find(o => o.order_id === orderId);
+    if (!found) {
+      return fixtureDelay({ ok: false, status: 404, message: 'Order not found' });
+    }
+    return fixtureDelay({ ok: true, status: 200, message: null, data: found });
+  }
+
+  async updateOrderStatus(shopId: string, orderId: string, status: string): Promise<ApiResult<ApiOrder>> {
+    const details = await this.fetchOrderDetail(shopId, orderId);
+    if (!details.ok) return details;
+    const updated = { ...details.data, status: status as any };
+    return fixtureDelay({ ok: true, status: 200, message: 'Updated', data: updated });
+  }
+
+  async fetchDashboardSummary(shopId: string): Promise<ApiResult<ApiDashboardSummary>> {
+    return fixtureDelay({
+      ok: true,
+      status: 200,
+      message: null,
+      data: {
+        orders_today_count: 5,
+        pending_orders_count: 2,
+        revenue_today: '12840.00',
+        revenue_total: '124500.00',
+      },
+    });
+  }
+}
