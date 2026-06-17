@@ -1,701 +1,811 @@
 import { Dimensions, StyleSheet } from 'react-native';
 import { Colors } from '../../theme/colors';
-import { Shadows } from '../../theme/shadows';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_WIDTH = SCREEN_WIDTH - 32;
 
 export default StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background,
   },
   scroll: {
     paddingBottom: 100,
   },
 
-  // Hero Container (Gradients and blobs)
-  heroContainer: {
-    backgroundColor: '#0F8F5F',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+  // ── Header ────────────────────────────────────────────────────────────────
+  header: {
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
-    paddingBottom: 28,
+    paddingBottom: 20,
     position: 'relative',
     overflow: 'hidden',
   },
-  radialBlobLeft: {
+  headerBlobLeft: {
     position: 'absolute',
-    top: -60,
-    left: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  radialBlobRight: {
-    position: 'absolute',
-    bottom: -80,
-    right: -40,
+    top: -50,
+    left: -30,
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
-
-  // Top Nav Row
-  topNavRow: {
+  headerBlobRight: {
+    position: 'absolute',
+    bottom: -60,
+    right: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  headerTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 14,
     marginTop: 8,
   },
-  navCircButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    position: 'relative',
-  },
-  headerTitleWrap: {
+  headerStoreInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginRight: 12,
   },
-  greetingText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.75)',
-    fontWeight: '600',
+  headerGreeting: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+    marginBottom: 2,
   },
-  storeNameText: {
+  headerStoreName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: Colors.white,
-    marginTop: 1,
-  },
-  roleBadgeContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 4,
-  },
-  roleBadgeText: {
-    fontSize: 9,
     fontWeight: '700',
     color: Colors.white,
-    letterSpacing: 0.3,
+    marginBottom: 6,
   },
-  navActionGroup: {
+  openBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  openDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ADE80',
+  },
+  openBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  notifAlertDot: {
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notifBadge: {
     position: 'absolute',
     top: -2,
     right: -2,
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#EF4444',
+    backgroundColor: Colors.error,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#0F8F5F',
+    borderColor: Colors.primary,
   },
-  notifAlertText: {
+  notifBadgeText: {
     fontSize: 8,
-    fontWeight: '900',
+    fontWeight: '700',
     color: Colors.white,
   },
-  profileAvatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerAvatarBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
-  profileAvatarImage: {
+  headerAvatar: {
     width: '100%',
     height: '100%',
   },
 
-  // Revenue Hero Card (Inside Green Section)
-  revenueHeroCard: {
-    backgroundColor: '#0B6B49',
-    borderRadius: 24,
-    padding: 18,
-    marginTop: 4,
-    ...Shadows.card,
-  },
-  revenueCardTop: {
+  // ── Alert Strip ───────────────────────────────────────────────────────────
+  alertStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 14,
   },
-  revenueLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.7)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  alertDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Colors.white,
+    flexShrink: 0,
   },
-  periodSelectorPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  periodSelectorText: {
+  alertText: {
     fontSize: 11,
     fontWeight: '600',
     color: Colors.white,
   },
-  revenueMiddleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  revenueValueText: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: Colors.white,
-  },
-  growthIndicatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  growthIndicatorText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#22C55E',
-  },
-  revenueChartWrap: {
-    alignItems: 'flex-end',
-  },
-  chartTimeLabel: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 3,
-  },
-  analyticsActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 14,
-  },
-  analyticsActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  innerStatsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  innerStatItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  innerStatVal: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  innerStatLbl: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  innerStatDivider: {
+  alertDivider: {
     width: 1,
-    height: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    height: 14,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginHorizontal: 2,
   },
-  ratingInlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+  alertDotAmber: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FCD34D',
+    flexShrink: 0,
+  },
+  alertTextAmber: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FCD34D',
   },
 
-  // Performance Banner Card (White Box)
-  performanceBannerWrapper: {
-    backgroundColor: Colors.white,
-    marginHorizontal: 16,
-    borderRadius: 20,
-    padding: 16,
-    marginTop: 16,
+  // ── KPI Row (inside header) ───────────────────────────────────────────────
+  kpiRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
-  },
-  perfBannerIconCol: {
-    marginRight: 12,
-  },
-  perfBagIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  perfBannerMiddleCol: {
-    flex: 1,
-    marginRight: 8,
-  },
-  perfBannerHeading: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  perfBannerSubheading: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  perfBannerRightCol: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: Colors.borderLight,
-    paddingLeft: 12,
-    minWidth: 72,
-  },
-  trendStatBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(0,0,0,0.15)',
     borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
   },
-  trendStatText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: Colors.primary,
+  kpiItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 4,
   },
-  trendSubLabel: {
-    fontSize: 8,
-    color: Colors.textMuted,
+  kpiLabel: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  kpiValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  kpiSub: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.65)',
     marginTop: 2,
     textAlign: 'center',
   },
-  carouselDotsContainer: {
+  kpiSubGreen: {
+    fontSize: 9,
+    color: '#4ADE80',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  kpiDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  kpiRatingRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  carouselDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.border,
-  },
-  carouselDotActive: {
-    backgroundColor: Colors.primary,
-    width: 16,
+    alignItems: 'center',
+    gap: 3,
   },
 
-  // Quick Actions Grid Wrap
-  quickActionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    paddingHorizontal: 16,
+  // ── Quick Actions ─────────────────────────────────────────────────────────
+  quickActionsCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
     marginTop: 16,
-    justifyContent: 'space-evenly',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   quickActionItem: {
+    flex: 1,
     alignItems: 'center',
-    // width: (SCREEN_WIDTH - 32 - 24) / 3,
-    marginBottom: 16,
+    gap: 8,
   },
   quickActionIconBg: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: Colors.primary, // Correct green theme
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 15,
-  },
-
-  // Section Heading Row
-  sectionHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  sectionHeadingTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  viewAllActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  viewAllActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-
-  // Horizontal Card List Scroll
-  horizontalCardListScroll: {
-    paddingHorizontal: 16,
-    gap: 12,
-    paddingBottom: 4,
-  },
-
-  // New Orders Card
-  horizontalOrderCard: {
-    width: SCREEN_WIDTH - 48,
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.card,
-  },
-  orderCardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  orderInitialsAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orderInitialsText: {
-    fontSize: 16,
-    fontWeight: '800',
+  quickActionLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+
+  // ── Section Header ────────────────────────────────────────────────────────
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  sectionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  sectionBadge: {
+    fontSize: 9,
+    fontWeight: '700',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 20,
+  },
+  sectionBadgeRed: {
+    backgroundColor: Colors.errorBg,
+    color: '#991B1B',
+  },
+  sectionBadgeAmber: {
+    backgroundColor: Colors.warningBg,
+    color: '#92400E',
+  },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.primary,
   },
-  orderCardHeaderMid: {
-    flex: 1,
-    marginLeft: 10,
+
+  // ── Order Card ────────────────────────────────────────────────────────────
+  orderCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
   },
-  orderCardCustomerName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  orderPaymentBadgeRow: {
+  orderCardTop: {
     flexDirection: 'row',
-    marginTop: 2,
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  orderPayBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+  orderAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  orderPayBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  orderCardHeaderRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  orderAmountValue: {
+  orderAvatarText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  orderMid: {
+    flex: 1,
+  },
+  orderName: {
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.textPrimary,
+    marginBottom: 3,
   },
-  newBadgePill: {
-    backgroundColor: '#0F8F5F',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-  },
-  newBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  orderCardMetaRow: {
+  orderMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+  },
+  orderPayBadge: {
+    fontSize: 9,
+    fontWeight: '600',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  orderPayOnline: {
+    backgroundColor: Colors.successBg,
+    color: '#166534',
+  },
+  orderPayCod: {
+    backgroundColor: Colors.warningBg,
+    color: '#92400E',
+  },
+  orderTime: {
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  orderRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  orderAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  orderNewBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  orderNewBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  orderDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginBottom: 10,
+  },
+  orderMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     marginBottom: 12,
   },
-  orderMetaTextItem: {
+  orderMetaText: {
     fontSize: 11,
     color: Colors.textMuted,
-    fontWeight: '500',
   },
   orderMetaDot: {
     fontSize: 11,
     color: Colors.textMuted,
   },
-  orderCardActionRow: {
+  orderBtnRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  orderCardAcceptBtn: {
+  orderAcceptBtn: {
     flex: 1,
     height: 36,
     backgroundColor: Colors.primary,
-    borderRadius: 10,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orderCardAcceptText: {
+  orderAcceptText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.white,
   },
-  orderCardRejectBtn: {
+  orderRejectBtn: {
     flex: 1,
     height: 36,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  orderCardRejectText: {
+  orderRejectText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.textSecondary,
   },
 
-  // Inventory Alert Card
-  inventoryAlertCard: {
-    width: 200,
-    backgroundColor: Colors.white,
-    borderRadius: 20,
+  // ── Bargain Card ──────────────────────────────────────────────────────────
+  bargainCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
+    borderColor: Colors.border,
   },
-  inventoryCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  inventoryItemImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    marginRight: 10,
-    resizeMode: 'contain',
-  },
-  inventoryImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    marginRight: 10,
-  },
-  inventoryDetailsCol: {
-    flex: 1,
-  },
-  stockStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  stockStatusText: {
-    fontSize: 8,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  inventoryItemName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  inventoryItemQty: {
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 1,
-  },
-  inventoryItemSubtext: {
-    fontSize: 8,
-    color: Colors.textMuted,
-    marginTop: 1,
-  },
-  inventoryRestockBtn: {
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inventoryRestockText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  // AI Insights & Store Health Container
-  sideBySideContainer: {
-    flexDirection: 'column',
-    paddingHorizontal: 16,
-    gap: 16,
-    marginTop: 12,
-  },
-  aiInsightsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
-  },
-  cardHeaderWithIcon: {
+  bargainCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  cardHeaderTitleText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  aiInsightRowItem: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingVertical: 2,
-  },
-  aiInsightGreenIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#DCFCE7',
+  bargainAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 8,
   },
-  aiInsightPurpleIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#F3E8FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiInsightParagraphText: {
-    fontSize: 12,
+  bargainAvatarText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: Colors.primary,
+  },
+  bargainName: {
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.textPrimary,
   },
-  boldText: {
-    fontWeight: '800',
+  bargainSub: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 1,
   },
-  aiInsightRecommendationText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  confidencePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    marginTop: 6,
-  },
-  confidencePillText: {
+  bargainStatusWaiting: {
     fontSize: 9,
     fontWeight: '700',
-    color: Colors.primary,
-  },
-  dividerLine: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 12,
-  },
-  inlineCreateOfferBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  inlineCreateOfferText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#8B5CF6',
-  },
-
-  // Store Health Card
-  storeHealthCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.warningBg,
+    color: '#92400E',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
   },
-  storeHealthDetailsLink: {
-    fontSize: 11,
+  bargainStatusUrgent: {
+    fontSize: 9,
     fontWeight: '700',
-    color: Colors.primary,
+    backgroundColor: Colors.errorBg,
+    color: '#991B1B',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
-  healthGaugeContainer: {
+  bargainStatusCountered: {
+    fontSize: 9,
+    fontWeight: '700',
+    backgroundColor: Colors.infoBg,
+    color: '#1E40AF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  bargainPricePanel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginVertical: 10,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 10,
   },
+  bargainPriceSide: {
+    flex: 1,
+  },
+  bargainPriceLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    marginBottom: 2,
+  },
+  bargainPriceCustomer: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.error,
+  },
+  bargainPriceMerchant: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.success,
+  },
+  bargainPriceCounter: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.info,
+  },
+  bargainPriceVsSep: {
+    width: 1,
+    height: 28,
+    backgroundColor: Colors.border,
+    marginHorizontal: 12,
+  },
+  bargainVsText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    position: 'absolute',
+    left: '47%',
+  },
+  bargainExpiry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 12,
+  },
+  bargainExpiryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  bargainExpiryText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  bargainGapText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginLeft: 'auto',
+  },
+  bargainBtnRow: {
+    flexDirection: 'row',
+    gap: 7,
+  },
+  bargainAcceptBtn: {
+    flex: 1,
+    height: 34,
+    backgroundColor: Colors.success,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bargainAcceptText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  bargainCounterBtn: {
+    flex: 1,
+    height: 34,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bargainCounterText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  bargainDeclineBtn: {
+    flex: 1,
+    height: 34,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bargainDeclineText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+
+  // ── Inventory Alert Row ───────────────────────────────────────────────────
+  inventoryCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 10,
+  },
+  inventoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  inventoryRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  inventoryImgBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  inventoryEmoji: {
+    fontSize: 22,
+  },
+  inventoryInfo: {
+    flex: 1,
+  },
+  inventoryName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  inventoryQtyRed: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.error,
+  },
+  inventoryQtyAmber: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.warning,
+  },
+  inventoryProgBg: {
+    height: 4,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 2,
+    marginTop: 5,
+    overflow: 'hidden',
+  },
+  inventoryProg: {
+    height: 4,
+    borderRadius: 2,
+  },
+  inventoryActionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    flexShrink: 0,
+  },
+  inventoryActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // ── Revenue Snapshot ──────────────────────────────────────────────────────
+  revenueGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  revenueSnapCard: {
+    width: (SCREEN_WIDTH - 42) / 2,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  revenueSnapLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  revenueSnapValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 3,
+  },
+  revenueSnapTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginBottom: 8,
+  },
+  revenueSnapTrendText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: Colors.success,
+  },
+  revenueSparkWrap: {
+    marginTop: 2,
+  },
+
+  // ── Activity Timeline ─────────────────────────────────────────────────────
+  timelineWrap: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  timelineLeft: {
+    alignItems: 'center',
+    width: 28,
+  },
+  timelineIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  timelineConnector: {
+    width: 1.5,
+    flex: 1,
+    marginVertical: 3,
+  },
+  timelineRight: {
+    flex: 1,
+    paddingBottom: 16,
+  },
+  timelineLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  timelineTime: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+
+  // ── Skeleton ──────────────────────────────────────────────────────────────
+  skeletonHeader: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  skeletonBlock: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+  },
+  skeletonCard: {
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
+  },
+  skeletonLine: {
+    backgroundColor: Colors.borderLight,
+    borderRadius: 6,
+  },
+  skeletonCircle: {
+    backgroundColor: Colors.borderLight,
+    borderRadius: 999,
+  },
+
+  // ── Gauge (kept for compatibility) ────────────────────────────────────────
   gaugeWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -708,7 +818,7 @@ export default StyleSheet.create({
   },
   gaugeScore: {
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
     color: Colors.textPrimary,
   },
   gaugePercent: {
@@ -716,155 +826,5 @@ export default StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: '600',
     marginTop: -2,
-  },
-  healthScoreTextCol: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  healthNumberText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: Colors.textPrimary,
-  },
-  healthOutOfText: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  healthLevelBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 4,
-  },
-  healthLevelBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  healthBreakdownRows: {
-    gap: 8,
-    marginTop: 10,
-  },
-  healthBreakdownRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  healthBreakdownLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  healthBreakdownValueText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  healthCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    paddingTop: 10,
-  },
-  healthFooterText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-
-  // Revenue Snapshot Card
-  snapshotCard: {
-    width: 140,
-    backgroundColor: Colors.white,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
-  },
-  snapshotLabelText: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  snapshotValueText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    marginTop: 4,
-  },
-  snapshotTrendRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginTop: 2,
-  },
-  snapshotTrendPercentText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  snapshotPeriodText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-  },
-  snapshotSparklineWrap: {
-    marginTop: 8,
-  },
-
-  // Your Activity Timeline
-  timelineWrapper: {
-    backgroundColor: Colors.white,
-    marginHorizontal: 16,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.soft,
-  },
-  timelineNodeItem: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  timelineLeftColumn: {
-    alignItems: 'center',
-    width: 24,
-  },
-  timelineCircleBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  timelineConnectorLine: {
-    width: 1.5,
-    flex: 1,
-    backgroundColor: '#DCFCE7',
-    marginVertical: 4,
-  },
-  timelineRightColumn: {
-    flex: 1,
-    paddingBottom: 16,
-  },
-  timelineLabelTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  timelineTimeText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 2,
   },
 });

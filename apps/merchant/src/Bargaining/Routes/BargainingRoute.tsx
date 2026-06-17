@@ -1,271 +1,421 @@
-import { useRouter } from 'expo-router';
-import { CheckCircle2, Clock3, MessageSquare, XCircle } from 'lucide-react-native';
+import {
+  CheckCircle2,
+  ChevronLeft,
+  Clock3,
+  MessageSquare,
+  TrendingUp,
+  XCircle,
+  Zap,
+} from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Animated,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { BottomSheet } from '../../Common/components/BottomSheet';
-import { useStores } from '../../Common/hooks/useStores';
-import { Button } from '../../components/ui/Button';
-import { Badge, Card, ScreenHeader } from '../../components/ui/MerchantPrimitives';
 import { Colors } from '../../theme/colors';
-import { ConnectionStatusPill, CountdownBadge, DealHealthTag, GradientCard, ProbabilityBar } from '../Components/DealVisuals';
-import type { Bargain } from '../Models/Bargain';
+import { CountdownBadge, DealHealthTag, ProbabilityBar } from '../Components/DealVisuals';
 import styles from './styles';
 
+// ─── Fixture Data ─────────────────────────────────────────────────────────────
+
+type BargainStatus = 'Pending' | 'Accepted' | 'Rejected' | 'Countered' | 'Expired';
+type DealHealth    = 'good' | 'fair' | 'risky';
+
+interface FixtureBargain {
+  id: string;
+  status: BargainStatus;
+  productName: string;
+  productEmoji: string;
+  customerName: string;
+  currentPrice: number;
+  customerOffer: number;
+  merchantCost: number;
+  expirationTime: number;   // seconds remaining
+  dealProbability: number;  // 0-100
+  dealHealth: DealHealth;
+  isExpiringSoon: boolean;
+}
+
+const INITIAL_BARGAINS: FixtureBargain[] = [
+  // Live / pending
+  {
+    id: 'b1',
+    status: 'Pending',
+    productName: 'Alphonso Mangoes (1 Dozen)',
+    productEmoji: '🥭',
+    customerName: 'Priya Sharma',
+    currentPrice: 480,
+    customerOffer: 380,
+    merchantCost: 320,
+    expirationTime: 720,
+    dealProbability: 74,
+    dealHealth: 'good',
+    isExpiringSoon: false,
+  },
+  {
+    id: 'b2',
+    status: 'Pending',
+    productName: 'Dragon Fruit Pack (2 pcs)',
+    productEmoji: '🍈',
+    customerName: 'Rahul Verma',
+    currentPrice: 200,
+    customerOffer: 140,
+    merchantCost: 120,
+    expirationTime: 95,
+    dealProbability: 52,
+    dealHealth: 'fair',
+    isExpiringSoon: true,
+  },
+  {
+    id: 'b3',
+    status: 'Pending',
+    productName: 'Seasonal Fruit Box (2kg)',
+    productEmoji: '🍎',
+    customerName: 'Meera Iyer',
+    currentPrice: 450,
+    customerOffer: 290,
+    merchantCost: 280,
+    expirationTime: 340,
+    dealProbability: 28,
+    dealHealth: 'risky',
+    isExpiringSoon: false,
+  },
+  // Resolved
+  {
+    id: 'b4',
+    status: 'Accepted',
+    productName: 'Avocado (2 pcs)',
+    productEmoji: '🥑',
+    customerName: 'Deepa Nair',
+    currentPrice: 280,
+    customerOffer: 240,
+    merchantCost: 180,
+    expirationTime: 0,
+    dealProbability: 100,
+    dealHealth: 'good',
+    isExpiringSoon: false,
+  },
+  {
+    id: 'b5',
+    status: 'Rejected',
+    productName: 'Organic Tomatoes (500g)',
+    productEmoji: '🍅',
+    customerName: 'Karan Mehta',
+    currentPrice: 60,
+    customerOffer: 30,
+    merchantCost: 40,
+    expirationTime: 0,
+    dealProbability: 0,
+    dealHealth: 'risky',
+    isExpiringSoon: false,
+  },
+  {
+    id: 'b6',
+    status: 'Expired',
+    productName: 'Baby Carrots (500g)',
+    productEmoji: '🥕',
+    customerName: 'Arjun Reddy',
+    currentPrice: 75,
+    customerOffer: 55,
+    merchantCost: 45,
+    expirationTime: 0,
+    dealProbability: 0,
+    dealHealth: 'fair',
+    isExpiringSoon: false,
+  },
+];
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: number | string; height: number; borderRadius?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(opacity, { toValue: 1,   duration: 700, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+    ]));
+    loop.start(); return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={[{ width: width ?? '100%', height, borderRadius, backgroundColor: '#E2E8F0', opacity }, style]} />;
+}
+
+function BargainSkeleton({ insetTop }: { insetTop: number }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.primary }}>
+      <View style={{ backgroundColor: Colors.primary, paddingTop: insetTop + 12, paddingHorizontal: 16, paddingBottom: 18 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
+          <SkeletonBox width={100} height={22} borderRadius={6}  style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
+          <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
+        </View>
+        {/* Hero stats */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {[0,1,2,3].map((i) => <SkeletonBox key={i} width={'48%' as any} height={60} borderRadius={12} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
+        </View>
+      </View>
+      <View style={{ flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 12 }}>
+        <SkeletonBox height={18} width={120} borderRadius={6} />
+        {[0,1,2].map((i) => <SkeletonBox key={i} height={160} borderRadius={18} />)}
+      </View>
+    </View>
+  );
+}
+
+// ─── Deal Card ────────────────────────────────────────────────────────────────
+
+function DealCard({
+  bargain,
+  onAccept,
+  onCounter,
+  onReject,
+}: {
+  bargain: FixtureBargain;
+  onAccept: () => void;
+  onCounter: () => void;
+  onReject: () => void;
+}) {
+  const discountPct = Math.round(((bargain.currentPrice - bargain.customerOffer) / bargain.currentPrice) * 100);
+  return (
+    <View style={bStyles.dealCard}>
+      {/* Top row */}
+      <View style={bStyles.dealTopRow}>
+        <View style={bStyles.dealEmoji}>
+          <Text style={{ fontSize: 28 }}>{bargain.productEmoji}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={bStyles.dealProduct} numberOfLines={1}>{bargain.productName}</Text>
+          <Text style={bStyles.dealCustomer}>{bargain.customerName}</Text>
+        </View>
+        <CountdownBadge seconds={bargain.expirationTime} size="sm" />
+      </View>
+
+      {/* Price row */}
+      <View style={bStyles.priceRow}>
+        <Text style={bStyles.originalPrice}>₹{bargain.currentPrice}</Text>
+        <Text style={bStyles.offerPrice}>₹{bargain.customerOffer}</Text>
+        <View style={bStyles.discountPill}>
+          <Text style={bStyles.discountText}>-{discountPct}%</Text>
+        </View>
+      </View>
+
+      {/* Probability bar */}
+      <ProbabilityBar value={bargain.dealProbability} />
+
+      {/* Health + expiry */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <DealHealthTag health={bargain.dealHealth} />
+        {bargain.isExpiringSoon && (
+          <View style={bStyles.expiringBadge}>
+            <Text style={bStyles.expiringText}>⚡ Expiring soon</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Actions */}
+      <View style={bStyles.actionsRow}>
+        <TouchableOpacity style={[bStyles.actionBtn, bStyles.actionAccept]} activeOpacity={0.8} onPress={onAccept}>
+          <Text style={[bStyles.actionBtnText, { color: Colors.success }]}>Accept</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[bStyles.actionBtn, bStyles.actionCounter]} activeOpacity={0.8} onPress={onCounter}>
+          <Text style={[bStyles.actionBtnText, { color: '#FFFFFF' }]}>Counter</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[bStyles.actionBtn, bStyles.actionReject]} activeOpacity={0.8} onPress={onReject}>
+          <Text style={[bStyles.actionBtnText, { color: Colors.error }]}>Reject</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
 export default observer(function BargainingScreen() {
-  const { bargainingStore } = useStores();
-  const router = useRouter();
-  const [counterId, setCounterId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [bargains,     setBargains]     = useState<FixtureBargain[]>(INITIAL_BARGAINS);
+  const [counterId,    setCounterId]    = useState<string | null>(null);
   const [counterPrice, setCounterPrice] = useState(0);
-  const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const counterBargain = bargainingStore.bargains.find((item) => item.id === counterId);
-
-  const pending = bargainingStore.pendingBargains;
-  const resolved = [
-    ...bargainingStore.acceptedBargains,
-    ...bargainingStore.rejectedBargains,
-    ...bargainingStore.expiredBargains,
-  ];
-
-  const showToast = (message: string, error = false) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ message, error });
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
-  };
 
   useEffect(() => {
-    if (bargainingStore.sessionsError) {
-      showToast(bargainingStore.sessionsError, true);
-    }
-  }, [bargainingStore.sessionsError]);
-
-  useEffect(() => {
-    if (bargainingStore.actionError) {
-      showToast(bargainingStore.actionError, true);
-      bargainingStore.clearActionError();
-    }
-  }, [bargainingStore.actionError]);
-
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
+    const t = setTimeout(() => setIsLoading(false), 1800);
+    return () => clearTimeout(t);
   }, []);
 
-  const openCounter = (bargain: Bargain) => {
+  const pending  = bargains.filter((b) => b.status === 'Pending');
+  const resolved = bargains.filter((b) => b.status !== 'Pending');
+
+  const activeDeals      = pending.length;
+  const potentialRevenue = pending.reduce((s, b) => s + b.customerOffer, 0);
+  const closingRate      = bargains.length > 0 ? Math.round((bargains.filter((b) => b.status === 'Accepted').length / bargains.length) * 100) : 0;
+  const expiringSoon     = pending.filter((b) => b.isExpiringSoon).length;
+  const avgDiscount      = pending.length > 0 ? Math.round(pending.reduce((s, b) => s + ((b.currentPrice - b.customerOffer) / b.currentPrice) * 100, 0) / pending.length) : 0;
+  const revenueAtRisk    = pending.reduce((s, b) => s + (b.currentPrice - b.customerOffer), 0);
+
+  const counterBargain   = bargains.find((b) => b.id === counterId) ?? null;
+  const suggestions      = counterBargain
+    ? [0.3, 0.5, 0.75].map((t) => Math.round(counterBargain.customerOffer + (counterBargain.currentPrice - counterBargain.customerOffer) * t))
+    : [];
+  const suggestionLabels = ['Quick win', 'Balanced', 'Hold firm'];
+  const expectedMargin   = counterBargain ? counterPrice - counterBargain.merchantCost : 0;
+  const acceptancePct    = counterBargain
+    ? Math.max(5, Math.min(95, Math.round(100 - ((counterPrice - counterBargain.customerOffer) / Math.max(1, counterBargain.currentPrice - counterBargain.customerOffer)) * 60)))
+    : 0;
+
+  const handleAccept = (id: string) => {
+    setBargains((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Accepted' as BargainStatus } : b));
+  };
+
+  const handleReject = (id: string) => {
+    Alert.alert('Reject offer', 'Reject this bargain request?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reject', style: 'destructive', onPress: () =>
+        setBargains((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Rejected' as BargainStatus } : b)) },
+    ]);
+  };
+
+  const openCounter = (bargain: FixtureBargain) => {
     setCounterId(bargain.id);
     setCounterPrice(Math.round(bargain.customerOffer + (bargain.currentPrice - bargain.customerOffer) * 0.5));
   };
 
-  const confirmReject = (id: string) => {
-    Alert.alert('Reject offer', 'Reject this bargain request?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () => bargainingStore.rejectBargain(id) },
-    ]);
+  const sendCounter = () => {
+    if (!counterBargain) return;
+    setBargains((prev) => prev.map((b) => b.id === counterBargain.id ? { ...b, status: 'Countered' as BargainStatus } : b));
+    setCounterId(null);
   };
 
-  const suggestions = counterBargain
-    ? [0.3, 0.5, 0.75].map((t) =>
-      Math.round(counterBargain.customerOffer + (counterBargain.currentPrice - counterBargain.customerOffer) * t),
-    )
-    : [];
-  const suggestionLabels = ['Quick win', 'Balanced', 'Hold firm'];
-
-  const expectedMargin = counterBargain ? counterPrice - counterBargain.merchantCost : 0;
-  const acceptanceProbability = counterBargain
-    ? Math.max(
-      5,
-      Math.min(
-        95,
-        Math.round(
-          100 -
-          ((counterPrice - counterBargain.customerOffer) /
-            Math.max(1, counterBargain.currentPrice - counterBargain.customerOffer)) *
-          60,
-        ),
-      ),
-    )
-    : 0;
+  if (isLoading) return <BargainSkeleton insetTop={insets.top} />;
 
   return (
-    <AnimatedScreen style={styles.container}>
-      <ScreenHeader title="Bargains" subtitle="Your live deal room" />
-      <GradientCard style={styles.heroCard}>
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroTitleBlock}>
-            <Text style={styles.heroEyebrow}>Live deal room</Text>
-            <Text style={styles.heroTitle} numberOfLines={1}>Negotiation desk</Text>
+    <AnimatedScreen style={{ flex: 1, backgroundColor: Colors.background }}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent />
+
+      {/* ── Orange Header ── */}
+      <View style={[bStyles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={bStyles.headerTopRow}>
+          <TouchableOpacity style={bStyles.headerBtn} activeOpacity={0.8}>
+            <ChevronLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={bStyles.headerTitle}>Bargains</Text>
+            <Text style={bStyles.headerSubtitle}>Live deal room</Text>
           </View>
-          <ConnectionStatusPill status={bargainingStore.connectionStatus} />
+          <View style={[bStyles.headerBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+            <Zap size={18} color="#FEF08A" />
+          </View>
         </View>
 
-        <View style={styles.heroStatsGrid}>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>{bargainingStore.activeDeals}</Text>
-            <Text style={styles.heroStatLabel}>Active deals</Text>
-          </View>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>₹{bargainingStore.potentialRevenue}</Text>
-            <Text style={styles.heroStatLabel}>Potential revenue</Text>
-          </View>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>{bargainingStore.closingRate}%</Text>
-            <Text style={styles.heroStatLabel}>Closing rate</Text>
-          </View>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>{bargainingStore.expiringSoonCount}</Text>
-            <Text style={styles.heroStatLabel}>Expiring soon</Text>
-          </View>
+        {/* Hero stats grid */}
+        <View style={bStyles.heroGrid}>
+          {[
+            { label: 'Active deals',      value: String(activeDeals),         color: '#FFFFFF' },
+            { label: 'Potential revenue', value: `₹${potentialRevenue}`,      color: '#BBF7D0' },
+            { label: 'Closing rate',      value: `${closingRate}%`,           color: '#FFFFFF' },
+            { label: 'Expiring soon',     value: String(expiringSoon),        color: expiringSoon > 0 ? '#FCA5A5' : '#FFFFFF' },
+          ].map((stat) => (
+            <View key={stat.label} style={bStyles.heroStat}>
+              <Text style={[bStyles.heroStatValue, { color: stat.color }]}>{stat.value}</Text>
+              <Text style={bStyles.heroStatLabel}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
-      </GradientCard>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      </View>
 
-        <View style={styles.secondaryRow}>
-          <Card style={styles.secondaryCard}>
-            <Text style={styles.secondaryValue}>{bargainingStore.averageDiscount}%</Text>
-            <Text style={styles.secondaryLabel}>Avg. discount asked</Text>
-          </Card>
-          <Card style={styles.secondaryCard}>
-            <Text style={styles.secondaryValue}>₹{bargainingStore.revenueAtRisk}</Text>
-            <Text style={styles.secondaryLabel}>Revenue at risk</Text>
-          </Card>
-        </View>
+      {/* ── White body ── */}
+      <View style={{ flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -1 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Live negotiations</Text>
-          <Text style={styles.sectionCount}>{pending.length} open</Text>
-        </View>
+          {/* Secondary stats row */}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={bStyles.secondaryCard}>
+              <View style={bStyles.secondaryIconWrap}>
+                <TrendingUp size={16} color={Colors.primary} />
+              </View>
+              <Text style={bStyles.secondaryValue}>{avgDiscount}%</Text>
+              <Text style={bStyles.secondaryLabel}>Avg. discount asked</Text>
+            </View>
+            <View style={bStyles.secondaryCard}>
+              <View style={[bStyles.secondaryIconWrap, { backgroundColor: Colors.errorBg }]}>
+                <TrendingUp size={16} color={Colors.error} />
+              </View>
+              <Text style={[bStyles.secondaryValue, { color: Colors.error }]}>₹{revenueAtRisk}</Text>
+              <Text style={bStyles.secondaryLabel}>Revenue at risk</Text>
+            </View>
+          </View>
 
-        {bargainingStore.sessionsLoading && bargainingStore.sessions.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <ActivityIndicator color={Colors.primary} />
-            <Text style={styles.emptyTitle}>Loading live deals…</Text>
-          </Card>
-        ) : pending.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <MessageSquare size={22} color={Colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No live deals right now</Text>
-            <Text style={styles.emptyText}>New bargain requests will land here the moment a customer makes an offer.</Text>
-          </Card>
-        ) : (
-          <View style={styles.sectionList}>
-            {pending.map((bargain) => {
-              const isPending = bargainingStore.isOfferActionPending(bargain.id);
-              return (
-              <TouchableOpacity
+          {/* Live negotiations */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={bStyles.sectionTitle}>Live negotiations</Text>
+            <View style={bStyles.sectionBadge}>
+              <Text style={bStyles.sectionBadgeText}>{pending.length} open</Text>
+            </View>
+          </View>
+
+          {pending.length === 0 ? (
+            <View style={bStyles.emptyCard}>
+              <MessageSquare size={28} color={Colors.textSecondary} />
+              <Text style={bStyles.emptyTitle}>No live deals right now</Text>
+              <Text style={bStyles.emptyText}>New bargain requests will appear here the moment a customer makes an offer.</Text>
+            </View>
+          ) : (
+            pending.map((bargain) => (
+              <DealCard
                 key={bargain.id}
-                activeOpacity={0.85}
-                onPress={() => router.push(`/bargaining/${bargain.id}` as never)}
-              >
-                <Card style={styles.dealCard}>
-                  <View style={styles.dealCardTopRow}>
-                    <Image source={{ uri: bargain.productImage }} style={styles.dealImage} />
-                    <View style={styles.dealInfo}>
-                      <Text style={styles.dealProduct} numberOfLines={1}>{bargain.productName}</Text>
-                      <View style={styles.dealCustomerRow}>
-                        <Text style={styles.dealCustomer}>{bargain.customerName}</Text>
-                      </View>
-                    </View>
-                    <CountdownBadge seconds={bargain.expirationTime} size="sm" />
-                  </View>
+                bargain={bargain}
+                onAccept={() => handleAccept(bargain.id)}
+                onCounter={() => openCounter(bargain)}
+                onReject={() => handleReject(bargain.id)}
+              />
+            ))
+          )}
 
-                  <View style={styles.dealPricesRow}>
-                    <Text style={styles.dealOriginal}>₹{bargain.currentPrice}</Text>
-                    <Text style={styles.dealOffer}>₹{bargain.customerOffer}</Text>
-                    <View style={styles.discountPill}>
-                      <Text style={styles.discountPillText}>-{bargain.discountPercent}%</Text>
-                    </View>
-                  </View>
+          {/* Recent activity */}
+          <Text style={bStyles.sectionTitle}>Recent activity</Text>
 
-                  <ProbabilityBar value={bargain.dealProbability} />
-
-                  <View style={styles.dealMetaRow}>
-                    <DealHealthTag health={bargain.dealHealth} />
-                    {bargain.isExpiringSoon ? <Badge label="Expiring soon" tone="error" /> : null}
-                  </View>
-
-                  <View style={styles.dealActionsRow}>
-                    <TouchableOpacity
-                      style={[styles.miniBtn, styles.miniBtnAccept, styles.dealActionBtn, isPending && styles.miniBtnDisabled]}
-                      onPress={() => bargainingStore.acceptBargain(bargain.id)}
-                      disabled={isPending}
-                    >
-                      {isPending ? <ActivityIndicator size="small" color={Colors.success} /> : (
-                        <Text style={[styles.miniBtnText, styles.miniBtnTextAccept]}>Accept</Text>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.miniBtn, styles.dealActionBtn, isPending && styles.miniBtnDisabled]}
-                      onPress={() => openCounter(bargain)}
-                      disabled={isPending}
-                    >
-                      <Text style={styles.miniBtnText}>Counter</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.miniBtn, styles.miniBtnReject, styles.dealActionBtn, isPending && styles.miniBtnDisabled]}
-                      onPress={() => confirmReject(bargain.id)}
-                      disabled={isPending}
-                    >
-                      {isPending ? <ActivityIndicator size="small" color={Colors.error} /> : (
-                        <Text style={[styles.miniBtnText, styles.miniBtnTextReject]}>Reject</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Recent activity</Text>
-        </View>
-
-        {resolved.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Clock3 size={22} color={Colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Nothing closed yet</Text>
-            <Text style={styles.emptyText}>Accepted, rejected, and expired deals will show up here.</Text>
-          </Card>
-        ) : (
-          <View style={styles.sectionList}>
-            {resolved.map((bargain) => {
+          {resolved.length === 0 ? (
+            <View style={bStyles.emptyCard}>
+              <Clock3 size={28} color={Colors.textSecondary} />
+              <Text style={bStyles.emptyTitle}>Nothing closed yet</Text>
+              <Text style={bStyles.emptyText}>Accepted, rejected, and expired deals show up here.</Text>
+            </View>
+          ) : (
+            resolved.map((bargain) => {
               const tone =
-                bargain.status === 'Accepted'
-                  ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed' }
-                  : bargain.status === 'Rejected'
-                    ? { bg: Colors.errorBg, fg: Colors.error, Icon: XCircle, label: 'Rejected' }
-                    : { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: 'Expired' };
-
+                bargain.status === 'Accepted'  ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed'  } :
+                bargain.status === 'Rejected'  ? { bg: Colors.errorBg,   fg: Colors.error,   Icon: XCircle,      label: 'Rejected'     } :
+                bargain.status === 'Countered' ? { bg: Colors.infoBg,    fg: Colors.info,    Icon: MessageSquare, label: 'Counter sent' } :
+                                                 { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: 'Expired' };
               return (
-                <TouchableOpacity
-                  key={bargain.id}
-                  activeOpacity={0.85}
-                  onPress={() => router.push(`/bargaining/${bargain.id}` as never)}
-                >
-                  <Card style={styles.resolvedCard}>
-                    <View style={[styles.resolvedIconWrap, { backgroundColor: tone.bg }]}>
-                      <tone.Icon size={18} color={tone.fg} />
-                    </View>
-                    <View style={styles.resolvedInfo}>
-                      <Text style={styles.resolvedTitle} numberOfLines={1}>{bargain.productName}</Text>
-                      <Text style={styles.resolvedSub} numberOfLines={1}>{bargain.customerName} · {tone.label}</Text>
-                    </View>
-                    <Text style={styles.resolvedPrice}>₹{bargain.customerOffer}</Text>
-                  </Card>
-                </TouchableOpacity>
+                <View key={bargain.id} style={bStyles.resolvedCard}>
+                  <View style={[bStyles.resolvedIcon, { backgroundColor: tone.bg }]}>
+                    <tone.Icon size={18} color={tone.fg} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={bStyles.resolvedProduct} numberOfLines={1}>{bargain.productEmoji} {bargain.productName}</Text>
+                    <Text style={bStyles.resolvedMeta}>{bargain.customerName} · {tone.label}</Text>
+                  </View>
+                  <Text style={bStyles.resolvedPrice}>₹{bargain.customerOffer}</Text>
+                </View>
               );
-            })}
-          </View>
-        )}
-      </ScrollView>
+            })
+          )}
+        </ScrollView>
+      </View>
 
-      <BottomSheet isVisible={counterId !== null} onClose={() => setCounterId(null)} title="Counter offer" height={0.62}>
+      {/* ── Counter offer sheet ── */}
+      <BottomSheet isVisible={counterId !== null} onClose={() => setCounterId(null)} title="Counter offer" height={0.65}>
         {counterBargain ? (
           <View style={styles.sheet}>
-            <Text style={styles.sheetProduct}>{counterBargain.productName}</Text>
+            <Text style={styles.sheetProduct}>{counterBargain.productEmoji} {counterBargain.productName}</Text>
             <Text style={styles.sheetSubtitle}>
               {counterBargain.customerName} offered ₹{counterBargain.customerOffer} · List price ₹{counterBargain.currentPrice}
             </Text>
@@ -274,16 +424,10 @@ export default observer(function BargainingScreen() {
               <Text style={styles.counterLabel}>Your counter price</Text>
               <Text style={styles.counterPrice}>₹{counterPrice}</Text>
               <View style={styles.counterActions}>
-                <TouchableOpacity
-                  style={styles.stepButton}
-                  onPress={() => setCounterPrice((v) => Math.max(counterBargain.customerOffer, v - 5))}
-                >
+                <TouchableOpacity style={styles.stepButton} onPress={() => setCounterPrice((v) => Math.max(counterBargain.customerOffer, v - 5))}>
                   <Text style={styles.stepText}>− ₹5</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.stepButton, styles.stepButtonActive]}
-                  onPress={() => setCounterPrice((v) => Math.min(counterBargain.currentPrice, v + 5))}
-                >
+                <TouchableOpacity style={[styles.stepButton, styles.stepButtonActive]} onPress={() => setCounterPrice((v) => Math.min(counterBargain.currentPrice, v + 5))}>
                   <Text style={[styles.stepText, styles.stepTextActive]}>+ ₹5</Text>
                 </TouchableOpacity>
               </View>
@@ -294,51 +438,161 @@ export default observer(function BargainingScreen() {
               {suggestions.map((amount, i) => {
                 const active = amount === counterPrice;
                 return (
-                  <TouchableOpacity
-                    key={amount}
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => setCounterPrice(amount)}
-                  >
+                  <TouchableOpacity key={amount} style={[styles.chip, active && styles.chipActive]} onPress={() => setCounterPrice(amount)}>
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>₹{amount}</Text>
-                    <Text style={[styles.chipSub, active && styles.chipSubActive]}>{suggestionLabels[i]}</Text>
+                    <Text style={[styles.chipSub,   active && styles.chipSubActive]}>{suggestionLabels[i]}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
             <View style={styles.previewRow}>
-              <Card style={styles.previewCard}>
+              <View style={[styles.previewCard, { backgroundColor: Colors.primaryLight, borderRadius: 12 }]}>
                 <Text style={styles.previewValue}>₹{counterPrice}</Text>
                 <Text style={styles.previewLabel}>Your price</Text>
-              </Card>
-              <Card style={styles.previewCard}>
-                <Text style={[styles.previewValue, { color: expectedMargin >= 0 ? Colors.success : Colors.error }]}>
-                  ₹{expectedMargin}
-                </Text>
+              </View>
+              <View style={[styles.previewCard, { backgroundColor: expectedMargin >= 0 ? Colors.successBg : Colors.errorBg, borderRadius: 12 }]}>
+                <Text style={[styles.previewValue, { color: expectedMargin >= 0 ? Colors.success : Colors.error }]}>₹{expectedMargin}</Text>
                 <Text style={styles.previewLabel}>Expected margin</Text>
-              </Card>
-              <Card style={styles.previewCard}>
-                <Text style={styles.previewValue}>{acceptanceProbability}%</Text>
+              </View>
+              <View style={[styles.previewCard, { backgroundColor: Colors.infoBg, borderRadius: 12 }]}>
+                <Text style={styles.previewValue}>{acceptancePct}%</Text>
                 <Text style={styles.previewLabel}>Acceptance odds</Text>
-              </Card>
+              </View>
             </View>
 
-            <Button
-              label="Send counter"
-              onPress={() => {
-                bargainingStore.counterBargain(counterBargain.id, counterPrice);
-                setCounterId(null);
-              }}
-            />
+            <TouchableOpacity style={bStyles.sendCounterBtn} activeOpacity={0.85} onPress={sendCounter}>
+              <Text style={bStyles.sendCounterText}>Send Counter Offer</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
       </BottomSheet>
-
-      {toast ? (
-        <View style={[styles.toastBanner, toast.error && styles.toastError]}>
-          <Text style={styles.toastText}>{toast.message}</Text>
-        </View>
-      ) : null}
     </AnimatedScreen>
   );
+});
+
+// ─── Local Styles ─────────────────────────────────────────────────────────────
+
+import { StyleSheet } from 'react-native';
+import { Shadows } from '../../theme/shadows';
+
+const bStyles = StyleSheet.create({
+  header: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  headerBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle:    { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  headerSubtitle: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+
+  heroGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    gap: 10,
+  },
+  heroStat: {
+    width: '47%',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    gap: 2, alignItems: 'center',
+  },
+  heroStatValue: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
+  heroStatLabel: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
+
+  secondaryCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 18, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    gap: 6,
+    ...Shadows.soft,
+  },
+  secondaryIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  secondaryValue: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  secondaryLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  sectionBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  sectionBadgeText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+
+  dealCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 18, padding: 16,
+    borderWidth: 1, borderColor: Colors.border,
+    gap: 12,
+    ...Shadows.card,
+  },
+  dealTopRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dealEmoji: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dealProduct:  { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  dealCustomer: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary, marginTop: 2 },
+
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  originalPrice: { fontSize: 13, color: Colors.textMuted, textDecorationLine: 'line-through' },
+  offerPrice:    { fontSize: 22, fontWeight: '800', color: Colors.primaryDark },
+  discountPill:  { backgroundColor: Colors.errorBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
+  discountText:  { fontSize: 11, fontWeight: '800', color: Colors.error },
+
+  expiringBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
+  expiringText:  { fontSize: 11, fontWeight: '700', color: '#B45309' },
+
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  actionAccept:  { backgroundColor: Colors.successBg, borderColor: Colors.success },
+  actionCounter: { backgroundColor: '#0F172A',         borderColor: '#0F172A'      },
+  actionReject:  { backgroundColor: Colors.errorBg,   borderColor: Colors.error   },
+  actionBtnText: { fontSize: 12, fontWeight: '800' },
+
+  emptyCard: {
+    backgroundColor: Colors.surface, borderRadius: 18,
+    padding: 28, alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  emptyText:  { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', lineHeight: 18 },
+
+  resolvedCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    ...Shadows.soft,
+  },
+  resolvedIcon:    { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  resolvedProduct: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  resolvedMeta:    { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  resolvedPrice:   { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+
+  sendCounterBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+    ...Shadows.soft,
+  },
+  sendCounterText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 });

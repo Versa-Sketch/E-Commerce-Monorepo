@@ -12,8 +12,8 @@ export interface MapsConfig {
 }
 
 let config: MapsConfig = {
-  googleMapsApiKey: "AIzaSyC-yMZE2nPRZYmMwAzfZyxvcJjgP7lqz4I",
-  googleMapsWebApiKey: "AIzaSyC-yMZE2nPRZYmMwAzfZyxvcJjgP7lqz4I",
+  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+  googleMapsWebApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "",
   mapId: "17374856d82720bd69aace30",
 };
 

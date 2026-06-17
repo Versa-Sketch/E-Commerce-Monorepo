@@ -10,112 +10,68 @@ export default StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
 
-  // Header Panel
+  // ─── Orange Header ────────────────────────────────────────────────────────
   headerContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  headerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
-  liveIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  liveIndicatorText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#22C55E',
-  },
-  headerActionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerSquareBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  headerFilterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    ...Shadows.soft,
-  },
-  redBadgeDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
   },
 
-  // KPIs Horizontal Metric Cards
-  kpiCardsScroll: {
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  kpiCardsContent: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  kpiCardItem: {
-    width: 110,
-    backgroundColor: '#FFFFFF',
+  // Search bar inside header (on orange bg)
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 14,
-    padding: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    ...Shadows.soft,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
-  kpiIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  kpiLabelText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  kpiValueText: {
-    fontSize: 15,
-    fontWeight: '900',
-    marginTop: 1,
-  },
-  kpiSubText: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: '#94A3B8',
-    marginTop: 1,
+  searchText: {
+    flex: 1,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500',
   },
 
-  // Pill tabs style
-  pillTabsWrap: {
+  // ─── Pills + Stats (white strip below header) ─────────────────────────────
+  pillsStatsContainer: {
     backgroundColor: '#FFFFFF',
+    paddingTop: 14,
+    paddingBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    paddingVertical: 12,
+    ...Shadows.soft,
   },
   pillTabsScroll: {
     paddingHorizontal: 16,
@@ -131,10 +87,10 @@ export default StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   pillTabButtonActive: {
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.primary,
   },
   pillTabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#475569',
   },
@@ -148,45 +104,78 @@ export default StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   pillTabCountBadgeActive: {
-    backgroundColor: '#334155',
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   pillTabCountText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
-    color: '#475569',
+    color: '#64748B',
   },
   pillTabCountTextActive: {
     color: '#FFFFFF',
   },
 
-  // List layout
+  // Stats row (₹12,840 / 24 / 3 / ₹536)
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 14,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+
+  // ─── List Layout ──────────────────────────────────────────────────────────
   list: {
     padding: 16,
     gap: 14,
   },
 
-  // Order Card layout
+  // ─── Order Card ───────────────────────────────────────────────────────────
   orderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
     ...Shadows.card,
   },
-  newOrderTagContainer: {
-    backgroundColor: '#DCFCE7',
+
+  statusTag: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     marginBottom: 12,
   },
-  newOrderTagText: {
+  statusTagText: {
     fontSize: 9,
     fontWeight: '800',
-    color: Colors.primary,
+    letterSpacing: 0.4,
   },
+
   cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -195,7 +184,7 @@ export default StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#E7F8F0',
+    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -229,7 +218,7 @@ export default StyleSheet.create({
     fontWeight: '800',
   },
 
-  // Badges / Chips
+  // ─── Chips ────────────────────────────────────────────────────────────────
   chipsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -251,13 +240,44 @@ export default StyleSheet.create({
     color: '#475569',
   },
 
+  // ─── Progress Bar ─────────────────────────────────────────────────────────
+  progressWrap: {
+    marginTop: 14,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  progressPct: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  progressBg: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
+
   divider: {
     height: 1,
     backgroundColor: '#F1F5F9',
     marginVertical: 14,
   },
 
-  // Actions
+  // ─── Action Buttons ───────────────────────────────────────────────────────
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -281,12 +301,14 @@ export default StyleSheet.create({
   rejectBtn: {
     flex: 1,
     height: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rejectBtnText: {
     fontSize: 13,
@@ -300,7 +322,7 @@ export default StyleSheet.create({
     gap: 2,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: '#E7F8F0',
+    backgroundColor: Colors.primaryLight,
   },
   viewBtnText: {
     fontSize: 12,
@@ -314,27 +336,20 @@ export default StyleSheet.create({
     height: 38,
     borderRadius: 12,
   },
-  donePillGreen: {
-    backgroundColor: '#DCFCE7',
-  },
-  donePillRed: {
-    backgroundColor: '#FEE2E2',
-  },
-  donePillText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
+  donePillGreen: { backgroundColor: '#DCFCE7' },
+  donePillRed: { backgroundColor: '#FEE2E2' },
+  donePillText: { fontSize: 13, fontWeight: '800' },
 
-  // Bottom Banner
+  // ─── Footer Banner ────────────────────────────────────────────────────────
   footerPerformanceBanner: {
-    backgroundColor: '#E7F8F0',
+    backgroundColor: Colors.primaryLight,
     borderRadius: 16,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: 'rgba(15, 143, 95, 0.12)',
+    borderColor: 'rgba(234,88,12,0.12)',
   },
   footerIconContainer: {
     width: 28,
@@ -364,7 +379,7 @@ export default StyleSheet.create({
     color: Colors.primary,
   },
 
-  // Empty state
+  // ─── Empty State ──────────────────────────────────────────────────────────
   emptyWrap: {
     alignItems: 'center',
     paddingVertical: 56,
@@ -374,7 +389,7 @@ export default StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 24,
-    backgroundColor: '#E7F8F0',
+    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -392,10 +407,8 @@ export default StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Bottom sheets
-  sheet: {
-    padding: 16,
-  },
+  // ─── Bottom Sheets ────────────────────────────────────────────────────────
+  sheet: { padding: 16 },
   sheetSection: {
     paddingBottom: 14,
     marginBottom: 14,
@@ -442,39 +455,17 @@ export default StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  itemName: {
-    flex: 1,
-    fontSize: 12,
-    color: '#0F172A',
-  },
-  itemPrice: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
+  itemName: { flex: 1, fontSize: 12, color: '#0F172A' },
+  itemPrice: { fontSize: 12, fontWeight: '600', color: '#0F172A' },
   itemTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  itemTotalLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  itemTotalValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  timelineRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  timelineDotWrap: {
-    alignItems: 'center',
-    width: 16,
-  },
+  itemTotalLabel: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
+  itemTotalValue: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  timelineRow: { flexDirection: 'row', marginBottom: 10 },
+  timelineDotWrap: { alignItems: 'center', width: 16 },
   timelineDot: {
     width: 8,
     height: 8,
@@ -482,7 +473,7 @@ export default StyleSheet.create({
     marginTop: 3,
     backgroundColor: Colors.primary,
     borderWidth: 1.5,
-    borderColor: '#E7F8F0',
+    borderColor: Colors.primaryLight,
   },
   timelineLine: {
     flex: 1,
@@ -490,16 +481,8 @@ export default StyleSheet.create({
     backgroundColor: '#E2E8F0',
     marginTop: 4,
   },
-  timelineStatus: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  timelineTime: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
+  timelineStatus: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
+  timelineTime: { fontSize: 10, color: '#94A3B8', marginTop: 1 },
   driverRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,7 +494,7 @@ export default StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#E7F8F0',
+    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -520,14 +503,6 @@ export default StyleSheet.create({
     fontWeight: '800',
     color: Colors.primary,
   },
-  driverName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  driverMeta: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
+  driverName: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  driverMeta: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
 });

@@ -1,13 +1,13 @@
 export const Colors = {
-  // Brand Core
-  primary: '#0F8F5F',
-  primaryDark: '#0B6B49',
-  primaryLight: '#E7F8F0',
-  primaryMid: '#1EA672',
+  // Brand Core — burnt orange
+  primary: '#EA580C',
+  primaryDark: '#C2410C',
+  primaryLight: '#FFF7ED',
+  primaryMid: '#F97316',
   secondary: '#475569',
   secondaryLight: '#F1F5F9',
   accent: '#F59E0B',
-  accentLight: '#FEF3C7',
+  accentLight: '#FEF9C3',
 
   // Semantic
   success: '#22C55E',
@@ -52,26 +52,26 @@ export const Colors = {
   kpiRedBg: '#FEE2E2',
 
   // Gradient arrays (for reference / SVG)
-  gradientPrimary: ['#0F8F5F', '#1EA672'] as string[],
+  gradientPrimary: ['#EA580C', '#F97316'] as string[],
   gradientSuccess: ['#22C55E', '#DCFCE7'] as string[],
   gradientWarning: ['#F59E0B', '#FEF9C3'] as string[],
   gradientError: ['#EF4444', '#FEE2E2'] as string[],
   gradientInfo: ['#3B82F6', '#DBEAFE'] as string[],
-  gradientCard: ['#0F8F5F', '#1EA672'] as string[],
+  gradientCard: ['#EA580C', '#F97316'] as string[],
 
   // Glow
-  glowPrimary: 'rgba(15,143,95,0.15)',
+  glowPrimary: 'rgba(234,88,12,0.15)',
   glowSuccess: 'rgba(34,197,94,0.15)',
   glowWarning: 'rgba(245,158,11,0.15)',
   glowError: 'rgba(239,68,68,0.12)',
   glowInfo: 'rgba(59,130,246,0.12)',
 
   // Legacy aliases
-  copper: '#0F8F5F',
-  softCopper: '#E7F8F0',
+  copper: '#EA580C',
+  softCopper: '#FFF7ED',
   deepTeal: '#0F172A',
   cardShadow: '#0F172A',
-  primaryGradient: ['#0F8F5F', '#1EA672'] as string[],
+  primaryGradient: ['#EA580C', '#F97316'] as string[],
   emeraldGradient: ['#22C55E', '#DCFCE7'] as string[],
   skyGradient: ['#3B82F6', '#DBEAFE'] as string[],
   amberGradient: ['#F59E0B', '#FEF9C3'] as string[],
