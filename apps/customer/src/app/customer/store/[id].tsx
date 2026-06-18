@@ -66,6 +66,13 @@ export default observer(function StoreDetailsScreen() {
 
   const shopId = id as string;
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('All');
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [selectedSortSlug, setSelectedSortSlug] = useState<string | null>(null);
+  const sortSheetRef = useRef<BottomSheetModal>(null);
+  const isSortMounted = useRef(false);
+
   React.useEffect(() => {
     if (shopId) {
       storesStore.fetchShopCategories(shopId);
@@ -88,13 +95,6 @@ export default observer(function StoreDetailsScreen() {
   }, [selectedSortSlug]);
 
   const shop = storesStore.shops.find((s) => s.id === shopId) || storesStore.shops[0];
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('All');
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
-  const [selectedSortSlug, setSelectedSortSlug] = useState<string | null>(null);
-  const sortSheetRef = useRef<BottomSheetModal>(null);
-  const isSortMounted = useRef(false);
 
   React.useEffect(() => {
     if (!shopId) return;
