@@ -619,19 +619,19 @@ export default observer(function StoreDetailsScreen() {
           style={[styles.floatingCartBar, { backgroundColor: '#16A34A' }]}
         >
           <View style={styles.cartBarLeft}>
-            <Ionicons name="cart-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={[styles.cartBarText, { fontSize: 15, fontWeight: '700' }]}>
+            <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
+            <Text style={[styles.cartBarText, { fontSize: 12, fontWeight: '600' }]}>
               {cartStore.getShopItemCount(shopId)} Items
             </Text>
           </View>
           <View style={styles.cartBarCenter}>
-            <Text style={[styles.cartBarText, { fontSize: 16, fontWeight: '700' }]}>
+            <Text style={[styles.cartBarText, { fontSize: 13, fontWeight: '700' }]}>
               ₹{cartStore.getShopTotals(shopId).grandTotal.toFixed(0)}
             </Text>
           </View>
           <View style={styles.cartBarRight}>
-            <Text style={[styles.cartBarText, { fontSize: 14, fontWeight: '600' }]}>View Cart</Text>
-            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            <Text style={[styles.cartBarText, { fontSize: 12, fontWeight: '600' }]}>View Cart</Text>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
           </View>
         </Pressable>
       )}
@@ -814,9 +814,9 @@ const styles = StyleSheet.create({
   sortRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   sortRadioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#16A34A' },
 
-  floatingCartBar: { position: 'absolute', bottom: 16, left: 16, right: 16, height: 72, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, borderRadius: 20, elevation: 8, shadowColor: '#16A34A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 30, zIndex: 99 },
-  cartBarLeft: { flexDirection: 'row', alignItems: 'center' },
+  floatingCartBar: { position: 'absolute', bottom: 16, left: 16, right: 16, height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, borderRadius: 12, elevation: 5, shadowColor: '#16A34A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, zIndex: 99 },
+  cartBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cartBarCenter: { flexDirection: 'row', alignItems: 'center' },
-  cartBarText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
-  cartBarRight: { flexDirection: 'row', alignItems: 'center' },
+  cartBarText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
+  cartBarRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });
