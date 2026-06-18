@@ -28,7 +28,7 @@ import styles from './styles';
 // ─── Fixture Data ─────────────────────────────────────────────────────────────
 
 type BargainStatus = 'Pending' | 'Accepted' | 'Rejected' | 'Countered' | 'Expired';
-type DealHealth    = 'good' | 'fair' | 'risky';
+type DealHealth    = 'Hot' | 'Warm' | 'Cool';
 
 interface FixtureBargain {
   id: string;
@@ -58,7 +58,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 320,
     expirationTime: 720,
     dealProbability: 74,
-    dealHealth: 'good',
+    dealHealth: 'Hot',
     isExpiringSoon: false,
   },
   {
@@ -72,7 +72,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 120,
     expirationTime: 95,
     dealProbability: 52,
-    dealHealth: 'fair',
+    dealHealth: 'Warm',
     isExpiringSoon: true,
   },
   {
@@ -86,7 +86,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 280,
     expirationTime: 340,
     dealProbability: 28,
-    dealHealth: 'risky',
+    dealHealth: 'Cool',
     isExpiringSoon: false,
   },
   // Resolved
@@ -101,7 +101,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 180,
     expirationTime: 0,
     dealProbability: 100,
-    dealHealth: 'good',
+    dealHealth: 'Hot',
     isExpiringSoon: false,
   },
   {
@@ -115,7 +115,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 40,
     expirationTime: 0,
     dealProbability: 0,
-    dealHealth: 'risky',
+    dealHealth: 'Cool',
     isExpiringSoon: false,
   },
   {
@@ -129,7 +129,7 @@ const INITIAL_BARGAINS: FixtureBargain[] = [
     merchantCost: 45,
     expirationTime: 0,
     dealProbability: 0,
-    dealHealth: 'fair',
+    dealHealth: 'Warm',
     isExpiringSoon: false,
   },
 ];
