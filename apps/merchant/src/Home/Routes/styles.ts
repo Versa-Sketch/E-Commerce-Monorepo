@@ -701,32 +701,42 @@ export default StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 6,
+  
+  },
+  revenueCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  revenueIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revenuePeriodPill: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  revenuePeriodText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textMuted,
   },
   revenueSnapLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.textMuted,
     fontWeight: '500',
-    marginBottom: 4,
   },
   revenueSnapValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 3,
-  },
-  revenueSnapTrend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginBottom: 8,
-  },
-  revenueSnapTrendText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: Colors.success,
-  },
-  revenueSparkWrap: {
-    marginTop: 2,
   },
 
   // ── Activity Timeline ─────────────────────────────────────────────────────

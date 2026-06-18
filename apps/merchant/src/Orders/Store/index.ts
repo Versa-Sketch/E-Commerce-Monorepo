@@ -96,11 +96,12 @@ export class OrdersStore {
 
     const timeStr = new Date(api.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const items = api.items ?? [];
     return new Order({
       id: api.order_id,
       customerName: api.customer_name,
-      itemsCount: api.items.reduce((acc, i) => acc + i.quantity, 0),
-      items: api.items.map(i => ({
+      itemsCount: items.reduce((acc, i) => acc + i.quantity, 0),
+      items: items.map(i => ({
         id: i.variant_id,
         name: i.product_name,
         quantity: i.quantity,

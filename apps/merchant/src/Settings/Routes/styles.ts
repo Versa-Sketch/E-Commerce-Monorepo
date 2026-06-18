@@ -25,4 +25,23 @@ export default StyleSheet.create({
   settingSub: { marginTop: 2, fontSize: 11, color: Colors.textSecondary },
   logoutButton: { minHeight: 50, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(230,57,70,0.20)', backgroundColor: Colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   logoutText: { fontSize: 14, fontWeight: '600', color: Colors.error },
+
+  // ── Shop Addresses ────────────────────────────────────────────────────────
+  addressSection: { backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', ...Shadows.soft },
+  addressSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  addressSectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  addressLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16 },
+  addressLoadingText: { fontSize: 13, color: Colors.textMuted },
+  addressEmptyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16 },
+  addressEmptyText: { fontSize: 13, color: Colors.textMuted },
+  addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  addressRowLast: { borderBottomWidth: 0 },
+  addressIconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  addressMeta: { flex: 1, gap: 2 },
+  addressTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  addressType: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  defaultPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.primaryLight, borderRadius: 20, paddingHorizontal: 7, paddingVertical: 2 },
+  defaultPillText: { fontSize: 10, fontWeight: '600', color: Colors.primary },
+  addressLine1: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  addressLine2: { fontSize: 12, color: Colors.textSecondary },
 });

@@ -424,9 +424,9 @@ export default observer(function OrdersScreen() {
       <View style={[styles.headerContainer, { paddingTop: insets.top + 12 }]}>
         {/* Back · Title · Filter row */}
         <View style={styles.headerTopRow}>
-          <TouchableOpacity style={styles.headerBackBtn} activeOpacity={0.8}>
+          {/* <TouchableOpacity style={styles.headerBackBtn} activeOpacity={0.8}>
             <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <Text style={styles.headerTitleText}>Orders</Text>
           <TouchableOpacity style={styles.headerFilterBtn} activeOpacity={0.8}>
             <SlidersHorizontal size={18} color="#FFFFFF" />

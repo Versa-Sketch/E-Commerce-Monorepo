@@ -320,7 +320,7 @@ function ActivityRow({ item }: { item: FixtureActivity }) {
       <View style={{ flex: 1 }}>
         <Text style={invStyles.activityTitle}>{meta.label}</Text>
         <Text style={invStyles.activityMeta} numberOfLines={1}>{item.productName}</Text>
-        {item.note && <Text style={invStyles.activityNote}>"{item.note}"</Text>}
+        {item.note && <Text style={invStyles.activityNote}>{item.note}</Text>}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={[invStyles.activityQty, { color: item.quantity > 0 ? Colors.success : Colors.error }]}>
@@ -394,9 +394,9 @@ export default observer(function InventoryScreen() {
       {/* ── Orange Header ── */}
       <View style={[invStyles.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8}>
+          {/* <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8}>
             <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <Text style={invStyles.headerTitle}>Inventory</Text>
           <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8}>
             <Plus size={20} color="#FFFFFF" />

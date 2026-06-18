@@ -16,8 +16,8 @@ export interface ApiAddress {
   state: string;
   pincode: string;
   address_type: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ApiPayment {
@@ -50,8 +50,8 @@ export interface ApiOrder {
   discount_amount: string;
   total_amount: string;
   created_at: string;
-  items: ApiOrderItem[];
-  payment: ApiPayment | null;
+  items?: ApiOrderItem[];
+  payment?: ApiPayment | null;
   customer_name: string;
   customer_phone: string;
   address: ApiAddress | null;

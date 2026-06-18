@@ -21,118 +21,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { BottomSheet } from '../../Common/components/BottomSheet';
+import { useStores } from '../../Common/hooks/useStores';
+import type { Bargain } from '../Models/Bargain';
 import { Colors } from '../../theme/colors';
 import { CountdownBadge, DealHealthTag, ProbabilityBar } from '../Components/DealVisuals';
 import styles from './styles';
-
-// ─── Fixture Data ─────────────────────────────────────────────────────────────
-
-type BargainStatus = 'Pending' | 'Accepted' | 'Rejected' | 'Countered' | 'Expired';
-type DealHealth    = 'Hot' | 'Warm' | 'Cool';
-
-interface FixtureBargain {
-  id: string;
-  status: BargainStatus;
-  productName: string;
-  productEmoji: string;
-  customerName: string;
-  currentPrice: number;
-  customerOffer: number;
-  merchantCost: number;
-  expirationTime: number;   // seconds remaining
-  dealProbability: number;  // 0-100
-  dealHealth: DealHealth;
-  isExpiringSoon: boolean;
-}
-
-const INITIAL_BARGAINS: FixtureBargain[] = [
-  // Live / pending
-  {
-    id: 'b1',
-    status: 'Pending',
-    productName: 'Alphonso Mangoes (1 Dozen)',
-    productEmoji: '🥭',
-    customerName: 'Priya Sharma',
-    currentPrice: 480,
-    customerOffer: 380,
-    merchantCost: 320,
-    expirationTime: 720,
-    dealProbability: 74,
-    dealHealth: 'Hot',
-    isExpiringSoon: false,
-  },
-  {
-    id: 'b2',
-    status: 'Pending',
-    productName: 'Dragon Fruit Pack (2 pcs)',
-    productEmoji: '🍈',
-    customerName: 'Rahul Verma',
-    currentPrice: 200,
-    customerOffer: 140,
-    merchantCost: 120,
-    expirationTime: 95,
-    dealProbability: 52,
-    dealHealth: 'Warm',
-    isExpiringSoon: true,
-  },
-  {
-    id: 'b3',
-    status: 'Pending',
-    productName: 'Seasonal Fruit Box (2kg)',
-    productEmoji: '🍎',
-    customerName: 'Meera Iyer',
-    currentPrice: 450,
-    customerOffer: 290,
-    merchantCost: 280,
-    expirationTime: 340,
-    dealProbability: 28,
-    dealHealth: 'Cool',
-    isExpiringSoon: false,
-  },
-  // Resolved
-  {
-    id: 'b4',
-    status: 'Accepted',
-    productName: 'Avocado (2 pcs)',
-    productEmoji: '🥑',
-    customerName: 'Deepa Nair',
-    currentPrice: 280,
-    customerOffer: 240,
-    merchantCost: 180,
-    expirationTime: 0,
-    dealProbability: 100,
-    dealHealth: 'Hot',
-    isExpiringSoon: false,
-  },
-  {
-    id: 'b5',
-    status: 'Rejected',
-    productName: 'Organic Tomatoes (500g)',
-    productEmoji: '🍅',
-    customerName: 'Karan Mehta',
-    currentPrice: 60,
-    customerOffer: 30,
-    merchantCost: 40,
-    expirationTime: 0,
-    dealProbability: 0,
-    dealHealth: 'Cool',
-    isExpiringSoon: false,
-  },
-  {
-    id: 'b6',
-    status: 'Expired',
-    productName: 'Baby Carrots (500g)',
-    productEmoji: '🥕',
-    customerName: 'Arjun Reddy',
-    currentPrice: 75,
-    customerOffer: 55,
-    merchantCost: 45,
-    expirationTime: 0,
-    dealProbability: 0,
-    dealHealth: 'Warm',
-    isExpiringSoon: false,
-  },
-];
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -157,7 +50,6 @@ function BargainSkeleton({ insetTop }: { insetTop: number }) {
           <SkeletonBox width={100} height={22} borderRadius={6}  style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
           <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
         </View>
-        {/* Hero stats */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {[0,1,2,3].map((i) => <SkeletonBox key={i} width={'48%' as any} height={60} borderRadius={12} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
         </View>
@@ -178,18 +70,19 @@ function DealCard({
   onCounter,
   onReject,
 }: {
-  bargain: FixtureBargain;
+  bargain: Bargain;
   onAccept: () => void;
   onCounter: () => void;
   onReject: () => void;
 }) {
-  const discountPct = Math.round(((bargain.currentPrice - bargain.customerOffer) / bargain.currentPrice) * 100);
   return (
     <View style={bStyles.dealCard}>
       {/* Top row */}
       <View style={bStyles.dealTopRow}>
         <View style={bStyles.dealEmoji}>
-          <Text style={{ fontSize: 28 }}>{bargain.productEmoji}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: Colors.primary }}>
+            {bargain.productName.charAt(0).toUpperCase()}
+          </Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={bStyles.dealProduct} numberOfLines={1}>{bargain.productName}</Text>
@@ -200,10 +93,10 @@ function DealCard({
 
       {/* Price row */}
       <View style={bStyles.priceRow}>
-        <Text style={bStyles.originalPrice}>₹{bargain.currentPrice}</Text>
+        <Text style={bStyles.originalPrice}>₹{bargain.originalPrice}</Text>
         <Text style={bStyles.offerPrice}>₹{bargain.customerOffer}</Text>
         <View style={bStyles.discountPill}>
-          <Text style={bStyles.discountText}>-{discountPct}%</Text>
+          <Text style={bStyles.discountText}>-{bargain.discountPercent}%</Text>
         </View>
       </View>
 
@@ -240,60 +133,51 @@ function DealCard({
 
 export default observer(function BargainingScreen() {
   const insets = useSafeAreaInsets();
-  const [isLoading,    setIsLoading]    = useState(true);
-  const [bargains,     setBargains]     = useState<FixtureBargain[]>(INITIAL_BARGAINS);
+  const { bargainingStore } = useStores();
+
   const [counterId,    setCounterId]    = useState<string | null>(null);
   const [counterPrice, setCounterPrice] = useState(0);
 
-  useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 1800);
-    return () => clearTimeout(t);
-  }, []);
+  const pending  = bargainingStore.pendingBargains;
+  const resolved = [
+    ...bargainingStore.acceptedBargains,
+    ...bargainingStore.rejectedBargains,
+    ...bargainingStore.expiredBargains,
+  ];
 
-  const pending  = bargains.filter((b) => b.status === 'Pending');
-  const resolved = bargains.filter((b) => b.status !== 'Pending');
+  const counterBargain = pending.find((b) => b.id === counterId) ?? null;
 
-  const activeDeals      = pending.length;
-  const potentialRevenue = pending.reduce((s, b) => s + b.customerOffer, 0);
-  const closingRate      = bargains.length > 0 ? Math.round((bargains.filter((b) => b.status === 'Accepted').length / bargains.length) * 100) : 0;
-  const expiringSoon     = pending.filter((b) => b.isExpiringSoon).length;
-  const avgDiscount      = pending.length > 0 ? Math.round(pending.reduce((s, b) => s + ((b.currentPrice - b.customerOffer) / b.currentPrice) * 100, 0) / pending.length) : 0;
-  const revenueAtRisk    = pending.reduce((s, b) => s + (b.currentPrice - b.customerOffer), 0);
-
-  const counterBargain   = bargains.find((b) => b.id === counterId) ?? null;
   const suggestions      = counterBargain
-    ? [0.3, 0.5, 0.75].map((t) => Math.round(counterBargain.customerOffer + (counterBargain.currentPrice - counterBargain.customerOffer) * t))
+    ? [0.3, 0.5, 0.75].map((t) => Math.round(counterBargain.customerOffer + (counterBargain.originalPrice - counterBargain.customerOffer) * t))
     : [];
   const suggestionLabels = ['Quick win', 'Balanced', 'Hold firm'];
-  const expectedMargin   = counterBargain ? counterPrice - counterBargain.merchantCost : 0;
   const acceptancePct    = counterBargain
-    ? Math.max(5, Math.min(95, Math.round(100 - ((counterPrice - counterBargain.customerOffer) / Math.max(1, counterBargain.currentPrice - counterBargain.customerOffer)) * 60)))
+    ? Math.max(5, Math.min(95, Math.round(100 - ((counterPrice - counterBargain.customerOffer) / Math.max(1, counterBargain.originalPrice - counterBargain.customerOffer)) * 60)))
     : 0;
 
-  const handleAccept = (id: string) => {
-    setBargains((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Accepted' as BargainStatus } : b));
+  const handleAccept = (offerId: string) => {
+    bargainingStore.acceptBargain(offerId);
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = (offerId: string) => {
     Alert.alert('Reject offer', 'Reject this bargain request?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () =>
-        setBargains((prev) => prev.map((b) => b.id === id ? { ...b, status: 'Rejected' as BargainStatus } : b)) },
+      { text: 'Reject', style: 'destructive', onPress: () => bargainingStore.rejectBargain(offerId) },
     ]);
   };
 
-  const openCounter = (bargain: FixtureBargain) => {
+  const openCounter = (bargain: Bargain) => {
     setCounterId(bargain.id);
-    setCounterPrice(Math.round(bargain.customerOffer + (bargain.currentPrice - bargain.customerOffer) * 0.5));
+    setCounterPrice(Math.round(bargain.customerOffer + (bargain.originalPrice - bargain.customerOffer) * 0.5));
   };
 
   const sendCounter = () => {
     if (!counterBargain) return;
-    setBargains((prev) => prev.map((b) => b.id === counterBargain.id ? { ...b, status: 'Countered' as BargainStatus } : b));
+    bargainingStore.counterBargain(counterBargain.id, counterPrice);
     setCounterId(null);
   };
 
-  if (isLoading) return <BargainSkeleton insetTop={insets.top} />;
+  if (bargainingStore.sessionsLoading) return <BargainSkeleton insetTop={insets.top} />;
 
   return (
     <AnimatedScreen style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -317,10 +201,10 @@ export default observer(function BargainingScreen() {
         {/* Hero stats grid */}
         <View style={bStyles.heroGrid}>
           {[
-            { label: 'Active deals',      value: String(activeDeals),         color: '#FFFFFF' },
-            { label: 'Potential revenue', value: `₹${potentialRevenue}`,      color: '#BBF7D0' },
-            { label: 'Closing rate',      value: `${closingRate}%`,           color: '#FFFFFF' },
-            { label: 'Expiring soon',     value: String(expiringSoon),        color: expiringSoon > 0 ? '#FCA5A5' : '#FFFFFF' },
+            { label: 'Active deals',      value: String(bargainingStore.activeDeals),                                        color: '#FFFFFF' },
+            { label: 'Potential revenue', value: `₹${bargainingStore.potentialRevenue}`,                                     color: '#BBF7D0' },
+            { label: 'Closing rate',      value: `${bargainingStore.closingRate}%`,                                          color: '#FFFFFF' },
+            { label: 'Expiring soon',     value: String(bargainingStore.expiringSoonCount), color: bargainingStore.expiringSoonCount > 0 ? '#FCA5A5' : '#FFFFFF' },
           ].map((stat) => (
             <View key={stat.label} style={bStyles.heroStat}>
               <Text style={[bStyles.heroStatValue, { color: stat.color }]}>{stat.value}</Text>
@@ -340,14 +224,14 @@ export default observer(function BargainingScreen() {
               <View style={bStyles.secondaryIconWrap}>
                 <TrendingUp size={16} color={Colors.primary} />
               </View>
-              <Text style={bStyles.secondaryValue}>{avgDiscount}%</Text>
+              <Text style={bStyles.secondaryValue}>{bargainingStore.averageDiscount}%</Text>
               <Text style={bStyles.secondaryLabel}>Avg. discount asked</Text>
             </View>
             <View style={bStyles.secondaryCard}>
               <View style={[bStyles.secondaryIconWrap, { backgroundColor: Colors.errorBg }]}>
                 <TrendingUp size={16} color={Colors.error} />
               </View>
-              <Text style={[bStyles.secondaryValue, { color: Colors.error }]}>₹{revenueAtRisk}</Text>
+              <Text style={[bStyles.secondaryValue, { color: Colors.error }]}>₹{bargainingStore.revenueAtRisk}</Text>
               <Text style={bStyles.secondaryLabel}>Revenue at risk</Text>
             </View>
           </View>
@@ -390,17 +274,16 @@ export default observer(function BargainingScreen() {
           ) : (
             resolved.map((bargain) => {
               const tone =
-                bargain.status === 'Accepted'  ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed'  } :
-                bargain.status === 'Rejected'  ? { bg: Colors.errorBg,   fg: Colors.error,   Icon: XCircle,      label: 'Rejected'     } :
-                bargain.status === 'Countered' ? { bg: Colors.infoBg,    fg: Colors.info,    Icon: MessageSquare, label: 'Counter sent' } :
-                                                 { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: 'Expired' };
+                bargain.status === 'Accepted' ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed'  } :
+                bargain.status === 'Rejected' ? { bg: Colors.errorBg,   fg: Colors.error,   Icon: XCircle,      label: 'Rejected'     } :
+                                                { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: 'Expired' };
               return (
                 <View key={bargain.id} style={bStyles.resolvedCard}>
                   <View style={[bStyles.resolvedIcon, { backgroundColor: tone.bg }]}>
                     <tone.Icon size={18} color={tone.fg} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={bStyles.resolvedProduct} numberOfLines={1}>{bargain.productEmoji} {bargain.productName}</Text>
+                    <Text style={bStyles.resolvedProduct} numberOfLines={1}>{bargain.productName}</Text>
                     <Text style={bStyles.resolvedMeta}>{bargain.customerName} · {tone.label}</Text>
                   </View>
                   <Text style={bStyles.resolvedPrice}>₹{bargain.customerOffer}</Text>
@@ -412,12 +295,12 @@ export default observer(function BargainingScreen() {
       </View>
 
       {/* ── Counter offer sheet ── */}
-      <BottomSheet isVisible={counterId !== null} onClose={() => setCounterId(null)} title="Counter offer" height={0.65}>
+      <BottomSheet isVisible={counterId !== null} onClose={() => setCounterId(null)} title="Counter offer" height={0.6}>
         {counterBargain ? (
           <View style={styles.sheet}>
-            <Text style={styles.sheetProduct}>{counterBargain.productEmoji} {counterBargain.productName}</Text>
+            <Text style={styles.sheetProduct}>{counterBargain.productName}</Text>
             <Text style={styles.sheetSubtitle}>
-              {counterBargain.customerName} offered ₹{counterBargain.customerOffer} · List price ₹{counterBargain.currentPrice}
+              {counterBargain.customerName} offered ₹{counterBargain.customerOffer} · List price ₹{counterBargain.originalPrice}
             </Text>
 
             <View style={styles.counterBox}>
@@ -427,7 +310,7 @@ export default observer(function BargainingScreen() {
                 <TouchableOpacity style={styles.stepButton} onPress={() => setCounterPrice((v) => Math.max(counterBargain.customerOffer, v - 5))}>
                   <Text style={styles.stepText}>− ₹5</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.stepButton, styles.stepButtonActive]} onPress={() => setCounterPrice((v) => Math.min(counterBargain.currentPrice, v + 5))}>
+                <TouchableOpacity style={[styles.stepButton, styles.stepButtonActive]} onPress={() => setCounterPrice((v) => Math.min(counterBargain.originalPrice, v + 5))}>
                   <Text style={[styles.stepText, styles.stepTextActive]}>+ ₹5</Text>
                 </TouchableOpacity>
               </View>
@@ -450,10 +333,6 @@ export default observer(function BargainingScreen() {
               <View style={[styles.previewCard, { backgroundColor: Colors.primaryLight, borderRadius: 12 }]}>
                 <Text style={styles.previewValue}>₹{counterPrice}</Text>
                 <Text style={styles.previewLabel}>Your price</Text>
-              </View>
-              <View style={[styles.previewCard, { backgroundColor: expectedMargin >= 0 ? Colors.successBg : Colors.errorBg, borderRadius: 12 }]}>
-                <Text style={[styles.previewValue, { color: expectedMargin >= 0 ? Colors.success : Colors.error }]}>₹{expectedMargin}</Text>
-                <Text style={styles.previewLabel}>Expected margin</Text>
               </View>
               <View style={[styles.previewCard, { backgroundColor: Colors.infoBg, borderRadius: 12 }]}>
                 <Text style={styles.previewValue}>{acceptancePct}%</Text>
