@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   UIManager,
   View
 } from 'react-native';
@@ -30,7 +31,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type StoreDetailTab = 'products' | 'about';
+type StoreDetailTab = 'products';
 type ProductFilter = 'All' | 'In Stock' | 'Offers' | 'Bargainable';
 
 // Food Classification Helper
@@ -88,7 +89,6 @@ export default observer(function StoreDetailsScreen() {
 
   const shop = storesStore.shops.find((s) => s.id === shopId) || storesStore.shops[0];
 
-  const [activeTab, setActiveTab] = useState<StoreDetailTab>('products');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<ProductFilter>('All');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -361,14 +361,6 @@ export default observer(function StoreDetailsScreen() {
             <Pressable onPress={() => router.back()} style={styles.backBtnHeader}>
               <Ionicons name="chevron-back" size={22} color="#111827" />
             </Pressable>
-            <View style={styles.heroRightActions}>
-              <Pressable style={styles.heroActionBtn}>
-                <Ionicons name="search" size={20} color="#111827" />
-              </Pressable>
-              <Pressable style={styles.heroActionBtn}>
-                <Ionicons name="heart-outline" size={20} color="#111827" />
-              </Pressable>
-            </View>
           </View>
         </View>
 
@@ -415,73 +407,71 @@ export default observer(function StoreDetailsScreen() {
           </View>
         </View>
 
-        {/* Tab Selection Section & Dynamic Filters */}
+        {/* Search Bar + Filter Icon */}
         <View style={[styles.stickySection, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-          <View style={styles.tabsWrapper}>
-            {(['products', 'about'] as StoreDetailTab[]).map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <Pressable
-                  key={tab}
-                  onPress={() => setActiveTab(tab)}
-                  style={styles.tabItem}
-                >
-                  <Text
+          <View style={styles.searchRow}>
+            <View style={styles.stickySearch}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 8, paddingHorizontal: 12, height: 44 }}>
+                <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
+                <TextInput
+                  placeholder={`Search in ${store.name}...`}
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={{ flex: 1, marginLeft: 8, fontSize: 14, color: theme.colors.textPrimary }}
+                />
+              </View>
+            </View>
+            <Pressable
+              onPress={() => sortSheetRef.current?.present()}
+              style={[styles.filterButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+            >
+              <Ionicons name="funnel" size={20} color="#16A34A" />
+              {selectedSortSlug && (
+                <View style={styles.sortBadge}>
+                  <Text style={styles.sortBadgeText}>1</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={styles.filtersSection}>
+            {/* Filter Chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterChipsScroll}
+            >
+              {(['All', 'In Stock', 'Offers', 'Bargainable'] as ProductFilter[]).map((filter) => {
+                const isActive = selectedFilter === filter;
+                return (
+                  <Pressable
+                    key={filter}
+                    onPress={() => setSelectedFilter(filter)}
                     style={[
-                      styles.tabItemText,
+                      styles.filterChip,
                       {
-                        color: isActive ? '#16A34A' : theme.colors.textSecondary,
-                        fontFamily: isActive ? theme.typography.fonts.bold : theme.typography.fonts.medium,
+                        borderColor: isActive ? '#16A34A' : theme.colors.border,
+                        backgroundColor: isActive ? '#16A34A' : theme.colors.surface,
                       },
                     ]}
                   >
-                    {tab}
-                  </Text>
-                  {isActive && <View style={styles.activeIndicator} />}
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {activeTab === 'products' && (
-            <View style={styles.filtersSection}>
-              {/* Filter Chips Only - No Search Bar */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterChipsScroll}
-              >
-                {(['All', 'In Stock', 'Offers', 'Bargainable'] as ProductFilter[]).map((filter) => {
-                  const isActive = selectedFilter === filter;
-                  return (
-                    <Pressable
-                      key={filter}
-                      onPress={() => setSelectedFilter(filter)}
+                    <Text
                       style={[
-                        styles.filterChip,
+                        styles.filterChipText,
                         {
-                          borderColor: isActive ? '#16A34A' : theme.colors.border,
-                          backgroundColor: isActive ? '#16A34A' : theme.colors.surface,
+                          color: isActive ? '#FFFFFF' : theme.colors.textSecondary,
+                          fontFamily: isActive ? theme.typography.fonts.bold : theme.typography.fonts.medium,
                         },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          {
-                            color: isActive ? '#FFFFFF' : theme.colors.textSecondary,
-                            fontFamily: isActive ? theme.typography.fonts.bold : theme.typography.fonts.medium,
-                          },
-                        ]}
-                      >
-                        {filter}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
+                      {filter}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Tab content body */}
@@ -505,83 +495,68 @@ export default observer(function StoreDetailsScreen() {
               </View>
             )}
             renderSuccessUI={() => (
-              <>
-                {activeTab === 'products' && (
-                  <View style={styles.productsList}>
-                    {filteredProducts.length === 0 ? (
-                      <View style={styles.emptyCatalog}>
-                        <Ionicons name="restaurant-outline" size={48} color={theme.colors.textSecondary} />
-                        <Text style={[styles.emptyCatalogText, { color: theme.colors.textSecondary }]}>
-                          {isSearching
-                            ? `No products found for "${searchQuery.trim()}".`
-                            : 'No items match the selected filters.'}
-                        </Text>
-                      </View>
-                    ) : isSearching ? (
-                      <View style={styles.listContainer}>
-                        {filteredProducts.map((prod) => renderStoreProductRow(prod))}
-                      </View>
-                    ) : (
-                      Object.keys(productsByCategory).map((catName) => {
-                        const isCollapsed = !!collapsedCategories[catName];
-                        const items = productsByCategory[catName];
-                        return (
-                          <View key={catName} style={{ marginBottom: 16 }}>
-                            <Pressable
-                              onPress={() => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                setCollapsedCategories((prev) => ({
-                                  ...prev,
-                                  [catName]: !prev[catName],
-                                }));
-                              }}
-                              style={styles.catalogSectionHeader}
+              <View style={styles.productsList}>
+                {filteredProducts.length === 0 ? (
+                  <View style={styles.emptyCatalog}>
+                    <Ionicons name="restaurant-outline" size={48} color={theme.colors.textSecondary} />
+                    <Text style={[styles.emptyCatalogText, { color: theme.colors.textSecondary }]}>
+                      {isSearching
+                        ? `No products found for "${searchQuery.trim()}".`
+                        : 'No items match the selected filters.'}
+                    </Text>
+                  </View>
+                ) : isSearching ? (
+                  <View style={styles.listContainer}>
+                    {filteredProducts.map((prod) => renderStoreProductRow(prod))}
+                  </View>
+                ) : (
+                  Object.keys(productsByCategory).map((catName) => {
+                    const isCollapsed = !!collapsedCategories[catName];
+                    const items = productsByCategory[catName];
+                    return (
+                      <View key={catName} style={{ marginBottom: 16 }}>
+                        <Pressable
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setCollapsedCategories((prev) => ({
+                              ...prev,
+                              [catName]: !prev[catName],
+                            }));
+                          }}
+                          style={styles.catalogSectionHeader}
+                        >
+                          <View style={styles.accordionTitleLeft}>
+                            <Text style={styles.categoryIconEmoji}>
+                              {getCategoryEmoji(catName)}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.subCatHeaderTitle,
+                                {
+                                  color: theme.colors.textPrimary,
+                                  fontFamily: theme.typography.fonts.bold,
+                                },
+                              ]}
                             >
-                              <View style={styles.accordionTitleLeft}>
-                                <Text style={styles.categoryIconEmoji}>
-                                  {getCategoryEmoji(catName)}
-                                </Text>
-                                <Text
-                                  style={[
-                                    styles.subCatHeaderTitle,
-                                    {
-                                      color: theme.colors.textPrimary,
-                                      fontFamily: theme.typography.fonts.bold,
-                                    },
-                                  ]}
-                                >
-                                  {catName} ({items.length})
-                                </Text>
-                              </View>
-                              <Ionicons
-                                name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                                size={18}
-                                color={theme.colors.textPrimary}
-                              />
-                            </Pressable>
-                            {!isCollapsed && (
-                              <View style={styles.listContainer}>
-                                {items.map((prod) => renderStoreProductRow(prod))}
-                              </View>
-                            )}
+                              {catName} ({items.length})
+                            </Text>
                           </View>
-                        );
-                      })
-                    )}
-                  </View>
+                          <Ionicons
+                            name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                            size={18}
+                            color={theme.colors.textPrimary}
+                          />
+                        </Pressable>
+                        {!isCollapsed && (
+                          <View style={styles.listContainer}>
+                            {items.map((prod) => renderStoreProductRow(prod))}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
                 )}
-
-                {activeTab === 'about' && (
-                  <View style={styles.aboutContainer}>
-                    <Text style={[styles.subCatHeaderTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fonts.bold, marginBottom: 8 }]}>
-                      About {store.name}
-                    </Text>
-                    <Text style={[styles.aboutDescText, { color: theme.colors.textSecondary }]}>
-                      {store.about || 'This store connects community members with premium daily essentials, food items, and specialized catalog products.'}
-                    </Text>
-                  </View>
-                )}
-              </>
+              </View>
             )}
           />
         </View>
@@ -671,12 +646,12 @@ const styles = StyleSheet.create({
   coverImage: { width: '100%', height: '100%' },
   overlay: { ...StyleSheet.absoluteFill },
 
-  heroActions: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
+  heroActions: { position: 'absolute', top: 50, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   heroRightActions: { flexDirection: 'row', gap: 8 },
   heroActionBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
   backBtnHeader: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
 
-  storeInfoCard: { paddingHorizontal: 16, paddingVertical: 16, marginHorizontal: 16, marginTop: -20, borderRadius: 20, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  storeInfoCard: { paddingHorizontal: 16, paddingVertical: 16, marginHorizontal: 0, marginTop: -20, borderRadius: undefined, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
   logoRow: { flexDirection: 'row', alignItems: 'flex-start' },
   storeLogo: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#E5E7EB', zIndex: 10 },
   storeMainDetails: { flex: 1, marginLeft: 12 },
@@ -777,14 +752,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  catalogSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12, marginTop: 16, backgroundColor: '#FFFFFF', borderRadius: 16, marginHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
+  catalogSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12, marginTop: 16, backgroundColor: 'transparent', borderRadius: 0, marginHorizontal: 0, shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   subCatHeaderTitle: { fontSize: 15 },
   listContainer: { paddingHorizontal: 0 },
   accordionTitleLeft: { flexDirection: 'row', alignItems: 'center' },
   categoryIconEmoji: { fontSize: 18, marginRight: 8 },
 
   // Product Card Styles (Redesigned)
-  productCard: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 12, marginHorizontal: 16, marginBottom: 12, borderRadius: 20, backgroundColor: '#FFFFFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3 },
+  productCard: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 12, marginHorizontal: 16, marginBottom: 8, marginTop: 0, borderRadius: 16, backgroundColor: '#FFFFFF', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
   productCardImage: { width: 100, height: 100, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F3F4F6', marginRight: 12 },
   productImage: { width: 100, height: 100, borderRadius: 16 },
   productCardContent: { flex: 1, justifyContent: 'space-between' },
