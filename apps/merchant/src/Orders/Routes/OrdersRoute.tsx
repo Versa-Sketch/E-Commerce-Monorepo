@@ -28,162 +28,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '../../Common/components/BottomSheet';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { Colors } from '../../theme/colors';
+import { useStores } from '../../stores/RootStore';
+import type { Order } from '../Models/Order';
 import styles from './styles';
 
-// ─── Fixture Data ─────────────────────────────────────────────────────────────
+type FilterKey  = 'All' | 'New' | 'Active' | 'Completed' | 'Cancelled';
 
-const STATIC_DRIVERS = [
+// Mock drivers for assignment (TODO: replace with API data)
+const MOCK_DRIVERS = [
   { id: 'd1', name: 'Rajan Pillai',  phone: '+91 98400 11234', rating: 4.8 },
   { id: 'd2', name: 'Suresh Babu',   phone: '+91 98765 55678', rating: 4.6 },
   { id: 'd3', name: 'Anil Kumar',    phone: '+91 97890 33456', rating: 4.9 },
-];
-
-type OrderStatus = 'New Orders' | 'Accepted' | 'Packed' | 'Out For Delivery' | 'Delivered' | 'Cancelled';
-type FilterKey  = 'All' | 'New' | 'Active' | 'Completed' | 'Cancelled';
-
-interface StaticOrder {
-  id: string;
-  status: OrderStatus;
-  customerName: string;
-  customerPhone: string;
-  deliveryAddress: string;
-  amount: number;
-  itemsCount: number;
-  orderTime: string;
-  paymentMethod: 'COD' | 'Online';
-  deliveryPartnerId: string | null;
-  items: { id: string; name: string; quantity: number; price: number }[];
-  timeline: { status: string; time: string }[];
-}
-
-const STATIC_ORDERS: StaticOrder[] = [
-  {
-    id: 'ORD-8492', status: 'New Orders',
-    customerName: 'Rahul Verma', customerPhone: '+91 98201 44321',
-    deliveryAddress: '12A, MG Road, Koramangala, Bengaluru 560034',
-    amount: 694, itemsCount: 4, orderTime: '10:32 AM', paymentMethod: 'Online', deliveryPartnerId: null,
-    items: [
-      { id: 'i1', name: 'Organic Tomatoes (500g)', quantity: 2, price: 60 },
-      { id: 'i2', name: 'Fresh Spinach (250g)',    quantity: 1, price: 45 },
-      { id: 'i3', name: 'Basmati Rice (1kg)',       quantity: 1, price: 120 },
-    ],
-    timeline: [{ status: 'Order Placed', time: '10:32 AM' }],
-  },
-  {
-    id: 'ORD-8491', status: 'New Orders',
-    customerName: 'Ananya Sen', customerPhone: '+91 77201 88765',
-    deliveryAddress: '5, 1st Cross, HSR Layout Sector 3, Bengaluru 560102',
-    amount: 1290, itemsCount: 5, orderTime: '10:18 AM', paymentMethod: 'COD', deliveryPartnerId: null,
-    items: [
-      { id: 'i1', name: 'Alphonso Mangoes (1 dozen)', quantity: 1, price: 480 },
-      { id: 'i2', name: 'Fresh Pomegranate (500g)',   quantity: 2, price: 180 },
-      { id: 'i3', name: 'Kiwi (4 pcs)',               quantity: 1, price: 160 },
-    ],
-    timeline: [{ status: 'Order Placed', time: '10:18 AM' }],
-  },
-  {
-    id: 'ORD-8490', status: 'New Orders',
-    customerName: 'Karan Mehta', customerPhone: '+91 90123 45678',
-    deliveryAddress: '7, Brigade Road, Bengaluru 560001',
-    amount: 340, itemsCount: 2, orderTime: '10:05 AM', paymentMethod: 'Online', deliveryPartnerId: null,
-    items: [
-      { id: 'i1', name: 'Mixed Greens Box',  quantity: 1, price: 200 },
-      { id: 'i2', name: 'Coriander (100g)',  quantity: 2, price: 20 },
-    ],
-    timeline: [{ status: 'Order Placed', time: '10:05 AM' }],
-  },
-  {
-    id: 'ORD-8487', status: 'Accepted',
-    customerName: 'Deepa Nair', customerPhone: '+91 90201 77654',
-    deliveryAddress: '88, Indiranagar 100ft Road, Bengaluru 560038',
-    amount: 870, itemsCount: 3, orderTime: '9:55 AM', paymentMethod: 'Online', deliveryPartnerId: null,
-    items: [
-      { id: 'i1', name: 'Mixed Vegetables Box', quantity: 1, price: 350 },
-      { id: 'i2', name: 'Coconut (1 pc)',        quantity: 2, price: 55 },
-      { id: 'i3', name: 'Green Chillies (100g)', quantity: 1, price: 30 },
-    ],
-    timeline: [
-      { status: 'Order Placed', time: '9:55 AM' },
-      { status: 'Accepted by Store', time: '9:58 AM' },
-    ],
-  },
-  {
-    id: 'ORD-8480', status: 'Packed',
-    customerName: 'Vikram Shetty', customerPhone: '+91 88201 22543',
-    deliveryAddress: '34, JP Nagar 7th Phase, Bengaluru 560078',
-    amount: 540, itemsCount: 2, orderTime: '9:20 AM', paymentMethod: 'Online', deliveryPartnerId: 'd1',
-    items: [
-      { id: 'i1', name: 'Dragon Fruit (2 pcs)',  quantity: 2, price: 200 },
-      { id: 'i2', name: 'Fresh Herbs Bundle',    quantity: 1, price: 140 },
-    ],
-    timeline: [
-      { status: 'Order Placed', time: '9:20 AM' },
-      { status: 'Accepted by Store', time: '9:23 AM' },
-      { status: 'Packed & Ready', time: '9:38 AM' },
-    ],
-  },
-  {
-    id: 'ORD-8473', status: 'Out For Delivery',
-    customerName: 'Priya Sharma', customerPhone: '+91 96501 33210',
-    deliveryAddress: '7, Whitefield Main Road, Bengaluru 560066',
-    amount: 1150, itemsCount: 6, orderTime: '8:45 AM', paymentMethod: 'Online', deliveryPartnerId: 'd2',
-    items: [
-      { id: 'i1', name: 'Avocado (2 pcs)',      quantity: 2, price: 280 },
-      { id: 'i2', name: 'Cherry Tomatoes (250g)', quantity: 1, price: 90 },
-      { id: 'i3', name: 'Baby Carrots (500g)',  quantity: 1, price: 75 },
-    ],
-    timeline: [
-      { status: 'Order Placed', time: '8:45 AM' },
-      { status: 'Accepted by Store', time: '8:48 AM' },
-      { status: 'Packed & Ready', time: '9:05 AM' },
-      { status: 'Picked up by Suresh', time: '9:18 AM' },
-    ],
-  },
-  {
-    id: 'ORD-8462', status: 'Delivered',
-    customerName: 'Suresh Kumar', customerPhone: '+91 91201 66543',
-    deliveryAddress: '22, Marathahalli Bridge, Bengaluru 560037',
-    amount: 380, itemsCount: 2, orderTime: '7:30 AM', paymentMethod: 'COD', deliveryPartnerId: 'd3',
-    items: [
-      { id: 'i1', name: 'Watermelon (1 pc)', quantity: 1, price: 280 },
-      { id: 'i2', name: 'Lime (6 pcs)',       quantity: 1, price: 40 },
-    ],
-    timeline: [
-      { status: 'Order Placed', time: '7:30 AM' },
-      { status: 'Accepted by Store', time: '7:33 AM' },
-      { status: 'Packed & Ready', time: '7:48 AM' },
-      { status: 'Out for Delivery', time: '8:02 AM' },
-      { status: 'Delivered ✓', time: '8:29 AM' },
-    ],
-  },
-  {
-    id: 'ORD-8455', status: 'Delivered',
-    customerName: 'Meera Iyer', customerPhone: '+91 87601 99321',
-    deliveryAddress: '10, Jayanagar 4th Block, Bengaluru 560011',
-    amount: 730, itemsCount: 4, orderTime: '7:05 AM', paymentMethod: 'Online', deliveryPartnerId: 'd1',
-    items: [
-      { id: 'i1', name: 'Organic Banana (1 dozen)', quantity: 1, price: 80 },
-      { id: 'i2', name: 'Papaya (1 kg)',            quantity: 1, price: 90 },
-    ],
-    timeline: [
-      { status: 'Order Placed', time: '7:05 AM' },
-      { status: 'Accepted by Store', time: '7:08 AM' },
-      { status: 'Packed & Ready', time: '7:22 AM' },
-      { status: 'Out for Delivery', time: '7:35 AM' },
-      { status: 'Delivered ✓', time: '8:01 AM' },
-    ],
-  },
-  {
-    id: 'ORD-8449', status: 'Cancelled',
-    customerName: 'Arjun Reddy', customerPhone: '+91 99801 55432',
-    deliveryAddress: '3, Bannerghatta Road, Bengaluru 560076',
-    amount: 450, itemsCount: 3, orderTime: '6:50 AM', paymentMethod: 'Online', deliveryPartnerId: null,
-    items: [{ id: 'i1', name: 'Seasonal Fruit Box', quantity: 1, price: 450 }],
-    timeline: [
-      { status: 'Order Placed', time: '6:50 AM' },
-      { status: 'Cancelled by Customer', time: '6:54 AM' },
-    ],
-  },
 ];
 
 // ─── Filter config ────────────────────────────────────────────────────────────
@@ -196,19 +51,19 @@ const FILTER_TABS: { key: FilterKey; label: string }[] = [
   { key: 'Cancelled', label: 'Cancelled' },
 ];
 
-function filterOrders(orders: StaticOrder[], filter: FilterKey): StaticOrder[] {
+function filterOrders(orders: Order[], filter: FilterKey): Order[] {
   switch (filter) {
     case 'New':       return orders.filter((o) => o.status === 'New Orders');
     case 'Active':    return orders.filter((o) => ['Accepted', 'Packed', 'Out For Delivery'].includes(o.status));
     case 'Completed': return orders.filter((o) => o.status === 'Delivered');
-    case 'Cancelled': return orders.filter((o) => o.status === 'Cancelled');
+    case 'Cancelled': return orders.filter((o) => o.status === 'Cancelled' || o.status === 'Rejected');
     default:          return orders;
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getStatusTag(status: OrderStatus): { label: string; bgColor: string; textColor: string } {
+function getStatusTag(status: Order['status']): { label: string; bgColor: string; textColor: string } {
   switch (status) {
     case 'New Orders':       return { label: 'NEW ORDER',  bgColor: Colors.primaryLight, textColor: Colors.primary };
     case 'Accepted':         return { label: 'ACCEPTED',   bgColor: '#DBEAFE',           textColor: '#1D4ED8' };
@@ -219,7 +74,7 @@ function getStatusTag(status: OrderStatus): { label: string; bgColor: string; te
   }
 }
 
-function getProgressConfig(status: OrderStatus): { pct: number; label: string; color: string } | null {
+function getProgressConfig(status: Order['status']): { pct: number; label: string; color: string } | null {
   switch (status) {
     case 'Accepted':         return { pct: 33, label: 'Accepted · Packing now',      color: '#3B82F6' };
     case 'Packed':           return { pct: 66, label: 'Packed · Awaiting pickup',    color: '#8B5CF6' };
@@ -228,7 +83,7 @@ function getProgressConfig(status: OrderStatus): { pct: number; label: string; c
   }
 }
 
-function getCardBorderColor(status: OrderStatus): string {
+function getCardBorderColor(status: Order['status']): string {
   switch (status) {
     case 'New Orders':       return Colors.primary;
     case 'Accepted':         return '#3B82F6';
@@ -324,38 +179,28 @@ function OrdersSkeleton({ insetTop }: { insetTop: number }) {
 
 export default observer(function OrdersScreen() {
   const insets = useSafeAreaInsets();
-  const [isLoading,        setIsLoading]        = useState(true);
+  const { ordersStore } = useStores();
   const [activeFilter,     setActiveFilter]     = useState<FilterKey>('All');
   const [selectedOrderId,  setSelectedOrderId]  = useState<string | null>(null);
   const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
-  const [orders,           setOrders]           = useState<StaticOrder[]>(STATIC_ORDERS);
 
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 1800);
-    return () => clearTimeout(t);
-  }, []);
+    ordersStore.fetchOrders();
+  }, [ordersStore]);
 
-  const displayed    = filterOrders(orders, activeFilter);
-  const totalCount   = orders.length;
-  const newCount     = orders.filter((o) => o.status === 'New Orders').length;
+  const displayed    = filterOrders(ordersStore.orders, activeFilter);
+  const totalCount   = ordersStore.orders.length;
+  const newCount     = ordersStore.newOrders.length;
   const pendingCount = newCount;
-  const totalRevenue = orders.filter((o) => o.status === 'Delivered').reduce((s, o) => s + o.amount, 0);
-  const deliveredCount = orders.filter((o) => o.status === 'Delivered').length;
+  const totalRevenue = ordersStore.deliveredOrders.reduce((s, o) => s + o.amount, 0);
+  const deliveredCount = ordersStore.deliveredOrders.length;
   const avgOrder     = deliveredCount > 0 ? Math.round(totalRevenue / deliveredCount) : 0;
 
-  const countForFilter = (key: FilterKey) => filterOrders(orders, key).length;
-  const activeOrder    = orders.find((o) => o.id === selectedOrderId) ?? null;
+  const countForFilter = (key: FilterKey) => filterOrders(ordersStore.orders, key).length;
+  const activeOrder    = ordersStore.orders.find((o) => o.id === selectedOrderId) ?? null;
 
   const handleAccept = (id: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id !== id ? o : {
-          ...o,
-          status: 'Accepted' as OrderStatus,
-          timeline: [...o.timeline, { status: 'Accepted by Store', time: nowTime() }],
-        },
-      ),
-    );
+    ordersStore.acceptOrder(id);
   };
 
   const handleReject = (id: string) => {
@@ -363,56 +208,37 @@ export default observer(function OrdersScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reject', style: 'destructive',
-        onPress: () =>
-          setOrders((prev) =>
-            prev.map((o) => o.id !== id ? o : { ...o, status: 'Cancelled' as OrderStatus }),
-          ),
+        onPress: () => ordersStore.rejectOrder(id),
       },
     ]);
   };
 
-  const handleAdvance = (id: string, status: OrderStatus) => {
-    const order = orders.find((o) => o.id === id);
+  const handleAdvance = (id: string, status: Order['status']) => {
+    const order = ordersStore.orders.find((o) => o.id === id);
     if (status === 'Packed' && !order?.deliveryPartnerId) {
       setAssigningOrderId(id);
       return;
     }
-    const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
-      'Accepted': 'Packed',
-      'Packed': 'Out For Delivery',
-      'Out For Delivery': 'Delivered',
-    };
-    const labelMap: Partial<Record<OrderStatus, string>> = {
-      'Accepted': 'Packed & Ready',
-      'Packed': 'Out for Delivery',
-      'Out For Delivery': 'Delivered ✓',
+    const nextMap: Partial<Record<Order['status'], 'PACKING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED'>> = {
+      'Accepted': 'PACKING',
+      'Packed': 'READY_FOR_PICKUP',
+      'Out For Delivery': 'DELIVERED',
     };
     const next = nextMap[status];
     if (!next) return;
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id !== id ? o : {
-          ...o,
-          status: next,
-          timeline: [...o.timeline, { status: labelMap[status]!, time: nowTime() }],
-        },
-      ),
-    );
+    ordersStore.advanceOrder(id, next);
   };
 
   const handleAssignDriver = (orderId: string, driverId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id !== orderId ? o : {
-          ...o,
-          deliveryPartnerId: driverId,
-          status: 'Out For Delivery' as OrderStatus,
-          timeline: [...o.timeline, { status: 'Out for Delivery', time: nowTime() }],
-        },
-      ),
-    );
+    const order = ordersStore.orders.find((o) => o.id === orderId);
+    if (order) {
+      order.assignDeliveryPartner(driverId);
+      ordersStore.advanceOrder(orderId, 'OUT_FOR_DELIVERY');
+    }
     setAssigningOrderId(null);
   };
+
+  const isLoading = ordersStore.state === 'loading';
 
   if (isLoading) return <OrdersSkeleton insetTop={insets.top} />;
 
@@ -497,21 +323,17 @@ export default observer(function OrdersScreen() {
         {displayed.length === 0 ? (
           <EmptyState filter={activeFilter} />
         ) : (
-          displayed.map((order) => {
-            const driver = STATIC_DRIVERS.find((d) => d.id === order.deliveryPartnerId) ?? null;
-            return (
-              <OrderCard
-                key={order.id}
-                order={order}
-                driver={driver}
-                onAccept={() => handleAccept(order.id)}
-                onReject={() => handleReject(order.id)}
-                onAdvance={() => handleAdvance(order.id, order.status)}
-                onAssign={() => setAssigningOrderId(order.id)}
-                onView={() => setSelectedOrderId(order.id)}
-              />
-            );
-          })
+          displayed.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onAccept={() => handleAccept(order.id)}
+              onReject={() => handleReject(order.id)}
+              onAdvance={() => handleAdvance(order.id, order.status)}
+              onAssign={() => setAssigningOrderId(order.id)}
+              onView={() => setSelectedOrderId(order.id)}
+            />
+          ))
         )}
 
         {/* Footer banner */}
@@ -588,7 +410,7 @@ export default observer(function OrdersScreen() {
       {/* ── Assign Driver Sheet ── */}
       <BottomSheet isVisible={assigningOrderId !== null} onClose={() => setAssigningOrderId(null)} title="Assign Driver" height={0.5}>
         <ScrollView contentContainerStyle={styles.sheet}>
-          {STATIC_DRIVERS.map((driver) => (
+          {MOCK_DRIVERS.map((driver) => (
             <View key={driver.id} style={styles.driverRow}>
               <View style={styles.driverAvatar}>
                 <Text style={styles.driverAvatarText}>{driver.name.charAt(0)}</Text>
@@ -614,9 +436,8 @@ export default observer(function OrdersScreen() {
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
-function OrderCard({ order, driver, onAccept, onReject, onAdvance, onAssign, onView }: {
-  order: StaticOrder;
-  driver: typeof STATIC_DRIVERS[number] | null;
+function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
+  order: Order;
   onAccept: () => void;
   onReject: () => void;
   onAdvance: () => void;
@@ -670,10 +491,10 @@ function OrderCard({ order, driver, onAccept, onReject, onAdvance, onAssign, onV
           <Package size={12} color="#64748B" />
           <Text style={styles.badgeChipText}>{order.itemsCount} items</Text>
         </View>
-        {driver && (
+        {order.deliveryPartnerId && (
           <View style={[styles.badgeChip, { backgroundColor: '#EDE9FE' }]}>
             <Truck size={12} color="#6D28D9" />
-            <Text style={[styles.badgeChipText, { color: '#6D28D9' }]}>{driver.name}</Text>
+            <Text style={[styles.badgeChipText, { color: '#6D28D9' }]}>Assigned</Text>
           </View>
         )}
         {isNew && (

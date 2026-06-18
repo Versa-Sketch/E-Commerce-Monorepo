@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, Animated } from 'react-native';
 import { AlertTriangle, Minus, Plus } from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
+import { useRouter } from 'expo-router';
 import { useStores } from '../../Common/hooks/useStores';
-import { SelectField, TextField } from '../../Common/components/FormFields';
+import { TextField } from '../../Common/components/FormFields';
 import { BottomSheet } from '../../Common/components/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Colors } from '../../theme/colors';
@@ -25,198 +26,83 @@ const REASONS = [
   'Other',
 ];
 
+function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: number | string; height: number; borderRadius?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(opacity, { toValue: 1,   duration: 700, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+    ]));
+    loop.start(); return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={[{ width: width ?? '100%', height, borderRadius, backgroundColor: '#E2E8F0', opacity }, style]} />;
+}
+
 export const AdjustStockModal = observer(function AdjustStockModal({
   visible,
   presetBatchId,
   onClose,
   onSuccess,
 }: Props) {
+  const router = useRouter();
   const { inventoryStore } = useStores();
-
-  const [batchId, setBatchId] = useState<string | null>(null);
-  const [direction, setDirection] = useState<Direction>('add');
-  const [amount, setAmount] = useState(1);
-  const [reason, setReason] = useState<string | null>(null);
-  const [otherNote, setOtherNote] = useState('');
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
-    setBatchId(presetBatchId ?? null);
-    setDirection('add');
-    setAmount(1);
-    setReason(null);
-    setOtherNote('');
-    setSubmitError(null);
-  }, [visible, presetBatchId]);
-
-  const batch = useMemo(() => inventoryStore.batchById(batchId ?? ''), [inventoryStore, batchId]);
-  const currentStock = batch ? Number(batch.available_quantity) : 0;
-  const delta = direction === 'add' ? amount : -amount;
-  const newStock = currentStock + delta;
-
-  const exceedsAvailable = direction === 'remove' && amount > currentStock;
-  const canConfirm = !!batchId && amount > 0 && !exceedsAvailable && !!reason && (reason !== 'Other' || otherNote.trim().length > 0);
-
-  function adjustAmount(step: number) {
-    setAmount((a) => Math.max(1, a + step));
-  }
-
-  async function handleConfirm() {
-    if (!canConfirm || !batchId) return;
-    setSubmitError(null);
-    const note = reason === 'Other' ? otherNote.trim() : reason ?? undefined;
-    const result = await inventoryStore.adjustStock({
-      batch_id: batchId,
-      delta,
-      ...(note ? { note } : {}),
-    });
-    if (result.ok) {
-      onSuccess(result.message);
+    // If presetBatchId is provided, navigate directly to adjustment page
+    if (presetBatchId) {
       onClose();
-    } else {
-      setSubmitError(result.message);
+      router.push(`/inventory/batch-adjustment/${presetBatchId}`);
     }
-  }
+  }, [visible, presetBatchId, router, onClose]);
+
+  const handleBatchSelect = (batchId: string) => {
+    onClose();
+    router.push(`/inventory/batch-adjustment/${batchId}`);
+  };
 
   return (
-    <BottomSheet isVisible={visible} onClose={onClose} title="Adjust Stock" height={0.88}>
+    <BottomSheet isVisible={visible} onClose={onClose} title="Select Batch to Adjust" height={0.6}>
       <ScrollView
         contentContainerStyle={styles.form}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        {submitError ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{submitError}</Text>
-          </View>
-        ) : null}
-
-        <SelectField
-          label="Batch *"
-          value={batchId}
-          options={inventoryStore.batchOptions}
-          onChange={(id) => setBatchId(id)}
-          disabled={!!presetBatchId}
-          placeholder="Select a batch"
-          emptyText="No batches found."
-        />
-
-        {batch ? (
-          <>
-            <Text style={styles.currentStockText}>
-              Current stock: <Text style={styles.currentStockValue}>{batch.available_quantity}</Text>
-            </Text>
-
-            {/* Direction toggle */}
-            <View style={styles.segmentRow}>
-              <TouchableOpacity
-                style={[styles.segment, direction === 'add' && styles.segmentAdd]}
-                activeOpacity={0.85}
-                onPress={() => setDirection('add')}
-              >
-                <Plus size={15} color={direction === 'add' ? Colors.white : Colors.success} />
-                <Text style={[styles.segmentText, direction === 'add' && styles.segmentTextActive]}>Add Stock</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segment, direction === 'remove' && styles.segmentRemove]}
-                activeOpacity={0.85}
-                onPress={() => setDirection('remove')}
-              >
-                <Minus size={15} color={direction === 'remove' ? Colors.white : Colors.error} />
-                <Text style={[styles.segmentText, direction === 'remove' && styles.segmentTextActive]}>Remove Stock</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Stepper */}
-            <View style={styles.stepperRow}>
-              <TouchableOpacity style={styles.stepperBtn} activeOpacity={0.7} onPress={() => adjustAmount(-1)}>
-                <Minus size={18} color={Colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={styles.stepperValue}>{amount}</Text>
-              <TouchableOpacity style={styles.stepperBtn} activeOpacity={0.7} onPress={() => adjustAmount(1)}>
-                <Plus size={18} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Live preview */}
-            <View style={styles.previewRow}>
-              <View style={styles.previewItem}>
-                <Text style={styles.previewLabel}>Current</Text>
-                <Text style={styles.previewValue}>{currentStock}</Text>
-              </View>
-              <Text style={styles.previewArrow}>→</Text>
-              <View style={styles.previewItem}>
-                <Text style={styles.previewLabel}>Adjustment</Text>
-                <Text style={[styles.previewValue, direction === 'add' ? styles.previewAdd : styles.previewRemove]}>
-                  {direction === 'add' ? '+' : '-'}
-                  {amount}
-                </Text>
-              </View>
-              <Text style={styles.previewArrow}>→</Text>
-              <View style={styles.previewItem}>
-                <Text style={styles.previewLabel}>New Stock</Text>
-                <Text style={[styles.previewValue, styles.previewNew]}>{newStock}</Text>
-              </View>
-            </View>
-
-            {exceedsAvailable ? (
-              <View style={styles.warningBox}>
-                <AlertTriangle size={16} color={Colors.error} />
-                <Text style={[styles.warningText, { color: Colors.error }]}>
-                  Cannot remove more than {currentStock} units (current stock).
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Reason */}
-            <Text style={styles.reasonLabel}>Reason for adjustment *</Text>
-            <View style={styles.reasonList}>
-              {REASONS.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={styles.reasonRow}
-                  activeOpacity={0.7}
-                  onPress={() => setReason(r)}
-                >
-                  <View style={[styles.radioOuter, reason === r && styles.radioOuterActive]}>
-                    {reason === r ? <View style={styles.radioInner} /> : null}
+        <View style={styles.batchList}>
+          {inventoryStore.batchesState === 'loading' ? (
+            <>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={styles.batchRow}>
+                  <SkeletonBox width={20} height={20} borderRadius={10} />
+                  <View style={{ flex: 1, marginLeft: 12, gap: 6 }}>
+                    <SkeletonBox height={14} />
+                    <SkeletonBox height={11} width="70%" />
                   </View>
-                  <Text style={styles.reasonText}>{r}</Text>
-                </TouchableOpacity>
+                </View>
               ))}
-            </View>
-            {reason === 'Other' ? (
-              <TextField
-                label="Specify reason *"
-                value={otherNote}
-                onChangeText={setOtherNote}
-                placeholder="Describe the reason for this adjustment"
-                multiline
-              />
-            ) : null}
+            </>
+          ) : inventoryStore.batchOptions.length === 0 ? (
+            <Text style={styles.emptyText}>No batches found.</Text>
+          ) : (
+            inventoryStore.batchOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.batchRow, styles.batchRowSelectable]}
+                onPress={() => handleBatchSelect(opt.id)}
+                activeOpacity={0.6}
+              >
+                <View style={styles.radioOuter}>
+                  <View style={styles.radioInner} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.batchName}>{opt.label}</Text>
+                  <Text style={styles.batchSub}>{opt.sublabel}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
 
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryText} numberOfLines={1}>
-                {inventoryStore.productLabelForVariant(batch.variant_id)}
-              </Text>
-              <Text style={styles.summaryEquation}>
-                {currentStock} → {direction === 'add' ? '+' : '-'}
-                {amount} → <Text style={styles.summaryNew}>{newStock}</Text>
-              </Text>
-            </View>
-
-            <Button
-              label="Confirm Adjustment"
-              variant={direction === 'remove' ? 'danger' : 'primary'}
-              loading={inventoryStore.saving}
-              disabled={!canConfirm}
-              onPress={() => void handleConfirm()}
-            />
-          </>
-        ) : null}
-
-        <View style={{ height: 40 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
     </BottomSheet>
   );
@@ -329,4 +215,11 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark, marginBottom: 4 },
   summaryEquation: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
   summaryNew: { color: Colors.primary },
+
+  batchList: { gap: 2, marginBottom: 16 },
+  batchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10 },
+  batchRowSelectable: { backgroundColor: Colors.background },
+  batchName: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  batchSub: { fontSize: 11, color: Colors.textMuted, marginTop: 3 },
+  emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingVertical: 16 },
 });

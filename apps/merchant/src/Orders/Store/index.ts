@@ -90,17 +90,21 @@ export class OrdersStore {
     else if (api.status === 'DELIVERED') uiStatus = 'Delivered';
     else if (api.status === 'CANCELLED') uiStatus = 'Cancelled';
 
-    const addressStr = api.address 
+    const addressStr = api.address
       ? `${api.address.address_line1}${api.address.address_line2 ? ', ' + api.address.address_line2 : ''}, ${api.address.state} - ${api.address.pincode}`
       : 'No address provided';
 
     const timeStr = new Date(api.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // Handle both list response (no items) and detail response (with items)
+    const items = api.items ?? [];
+    const itemsCount = items.reduce((acc, i) => acc + i.quantity, 0);
+
     return new Order({
       id: api.order_id,
       customerName: api.customer_name,
-      itemsCount: api.items.reduce((acc, i) => acc + i.quantity, 0),
-      items: api.items.map(i => ({
+      itemsCount: itemsCount,
+      items: items.map(i => ({
         id: i.variant_id,
         name: i.product_name,
         quantity: i.quantity,

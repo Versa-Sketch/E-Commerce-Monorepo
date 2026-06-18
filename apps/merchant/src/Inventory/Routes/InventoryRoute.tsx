@@ -27,83 +27,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { Colors } from '../../theme/colors';
+import { useStores } from '../../stores/RootStore';
+import type { BatchStatus, StockSummaryItem, InventoryBatch, InventoryTransaction } from '../types/domain';
+import { AddBatchModal } from '../Components/AddBatchModal';
+import { AdjustStockModal } from '../Components/AdjustStockModal';
 import styles from './styles';
 
-// ─── Fixture Data ─────────────────────────────────────────────────────────────
-
-type BatchStatus = 'ACTIVE' | 'EXPIRED' | 'EXHAUSTED' | 'RECALLED';
-type ActivityType = 'RECEIVE' | 'SALE' | 'ADJUSTMENT';
 type Segment = 'stock' | 'batches' | 'activity';
 type StockFilter = 'all' | 'low' | 'out';
-
-interface FixtureBatch {
-  id: string;
-  variantId: string;
-  productName: string;
-  variantName: string;
-  batchNumber: string;
-  receivedQty: number;
-  availableQty: number;
-  reservedQty: number;
-  purchasePrice: number;
-  sellingPrice: number;
-  receivedAt: string;
-  expiryAt: string | null;
-  manufacturedAt: string | null;
-  status: BatchStatus;
-}
-
-interface FixtureStock {
-  variantId: string;
-  productName: string;
-  variantName: string;
-  unit: string;
-  available: number;
-  reserved: number;
-}
-
-interface FixtureActivity {
-  id: string;
-  batchId: string;
-  productName: string;
-  type: ActivityType;
-  quantity: number;
-  note: string | null;
-  createdAt: string;
-}
-
-const FIXTURE_STOCK: FixtureStock[] = [
-  { variantId: 'v1', productName: 'Organic Tomatoes',    variantName: '500g Pack',     unit: 'pcs', available: 142, reserved: 18 },
-  { variantId: 'v2', productName: 'Alphonso Mangoes',    variantName: '1 Dozen',       unit: 'box', available: 4,   reserved: 2  },
-  { variantId: 'v3', productName: 'Fresh Spinach',       variantName: '250g Bundle',   unit: 'pcs', available: 0,   reserved: 0  },
-  { variantId: 'v4', productName: 'Basmati Rice',        variantName: '1kg Bag',       unit: 'kg',  available: 88,  reserved: 10 },
-  { variantId: 'v5', productName: 'Dragon Fruit',        variantName: '2 pcs Pack',    unit: 'pcs', available: 3,   reserved: 1  },
-  { variantId: 'v6', productName: 'Avocado',             variantName: '2 pcs',         unit: 'pcs', available: 22,  reserved: 4  },
-  { variantId: 'v7', productName: 'Baby Carrots',        variantName: '500g',          unit: 'kg',  available: 0,   reserved: 0  },
-  { variantId: 'v8', productName: 'Seasonal Fruit Box',  variantName: 'Assorted 2kg',  unit: 'box', available: 55,  reserved: 6  },
-];
-
-const FIXTURE_BATCHES: FixtureBatch[] = [
-  { id: 'b1', variantId: 'v1', productName: 'Organic Tomatoes',   variantName: '500g Pack',   batchNumber: 'BT-0241', receivedQty: 200, availableQty: 142, reservedQty: 18, purchasePrice: 35,  sellingPrice: 60,  receivedAt: '2026-06-14', expiryAt: '2026-06-22', manufacturedAt: '2026-06-12', status: 'ACTIVE'   },
-  { id: 'b2', variantId: 'v2', productName: 'Alphonso Mangoes',   variantName: '1 Dozen',     batchNumber: 'BT-0238', receivedQty: 30,  availableQty: 4,   reservedQty: 2,  purchasePrice: 350, sellingPrice: 480, receivedAt: '2026-06-12', expiryAt: '2026-06-19', manufacturedAt: null,         status: 'ACTIVE'   },
-  { id: 'b3', variantId: 'v3', productName: 'Fresh Spinach',      variantName: '250g Bundle', batchNumber: 'BT-0229', receivedQty: 80,  availableQty: 0,   reservedQty: 0,  purchasePrice: 20,  sellingPrice: 45,  receivedAt: '2026-06-10', expiryAt: '2026-06-17', manufacturedAt: null,         status: 'EXHAUSTED'},
-  { id: 'b4', variantId: 'v4', productName: 'Basmati Rice',       variantName: '1kg Bag',     batchNumber: 'BT-0225', receivedQty: 100, availableQty: 88,  reservedQty: 10, purchasePrice: 90,  sellingPrice: 120, receivedAt: '2026-06-08', expiryAt: null,          manufacturedAt: '2026-05-01', status: 'ACTIVE'   },
-  { id: 'b5', variantId: 'v5', productName: 'Dragon Fruit',       variantName: '2 pcs Pack',  batchNumber: 'BT-0218', receivedQty: 40,  availableQty: 3,   reservedQty: 1,  purchasePrice: 150, sellingPrice: 200, receivedAt: '2026-06-05', expiryAt: '2026-06-20', manufacturedAt: null,         status: 'ACTIVE'   },
-  { id: 'b6', variantId: 'v6', productName: 'Avocado',            variantName: '2 pcs',       batchNumber: 'BT-0210', receivedQty: 50,  availableQty: 22,  reservedQty: 4,  purchasePrice: 200, sellingPrice: 280, receivedAt: '2026-06-01', expiryAt: '2026-06-24', manufacturedAt: null,         status: 'ACTIVE'   },
-  { id: 'b7', variantId: 'v7', productName: 'Baby Carrots',       variantName: '500g',        batchNumber: 'BT-0205', receivedQty: 60,  availableQty: 0,   reservedQty: 0,  purchasePrice: 50,  sellingPrice: 75,  receivedAt: '2026-06-01', expiryAt: '2026-06-16', manufacturedAt: null,         status: 'EXPIRED'  },
-  { id: 'b8', variantId: 'v8', productName: 'Seasonal Fruit Box', variantName: 'Assorted 2kg',batchNumber: 'BT-0198', receivedQty: 80,  availableQty: 55,  reservedQty: 6,  purchasePrice: 300, sellingPrice: 450, receivedAt: '2026-05-28', expiryAt: null,          manufacturedAt: null,         status: 'ACTIVE'   },
-];
-
-const FIXTURE_ACTIVITY: FixtureActivity[] = [
-  { id: 'a1', batchId: 'b1', productName: 'Organic Tomatoes · BT-0241',   type: 'SALE',       quantity: -4,  note: null,                  createdAt: '2026-06-17T10:32:00' },
-  { id: 'a2', batchId: 'b2', productName: 'Alphonso Mangoes · BT-0238',   type: 'SALE',       quantity: -1,  note: null,                  createdAt: '2026-06-17T10:18:00' },
-  { id: 'a3', batchId: 'b4', productName: 'Basmati Rice · BT-0225',       type: 'ADJUSTMENT', quantity: +5,  note: 'Stock count recheck', createdAt: '2026-06-17T09:45:00' },
-  { id: 'a4', batchId: 'b6', productName: 'Avocado · BT-0210',            type: 'SALE',       quantity: -2,  note: null,                  createdAt: '2026-06-17T08:50:00' },
-  { id: 'a5', batchId: 'b8', productName: 'Seasonal Fruit Box · BT-0198', type: 'RECEIVE',    quantity: +80, note: 'New stock arrival',    createdAt: '2026-06-16T16:20:00' },
-  { id: 'a6', batchId: 'b1', productName: 'Organic Tomatoes · BT-0241',   type: 'RECEIVE',    quantity: +200,note: 'Fresh batch received', createdAt: '2026-06-16T14:00:00' },
-  { id: 'a7', batchId: 'b5', productName: 'Dragon Fruit · BT-0218',       type: 'ADJUSTMENT', quantity: -2,  note: 'Spoilage removed',    createdAt: '2026-06-16T11:30:00' },
-  { id: 'a8', batchId: 'b3', productName: 'Fresh Spinach · BT-0229',      type: 'SALE',       quantity: -10, note: null,                  createdAt: '2026-06-15T17:05:00' },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,11 +59,12 @@ function expiryChip(days: number): { label: string; bg: string; color: string } 
   return                 { label: `Expires in ${days}d`, bg: Colors.successBg, color: Colors.success };
 }
 
-function activityMeta(type: ActivityType) {
+function activityMeta(type: string) {
   switch (type) {
     case 'RECEIVE':    return { Icon: ArrowUpCircle,   color: Colors.success, bg: Colors.successBg, label: 'Stock Received'    };
     case 'SALE':       return { Icon: ArrowDownCircle, color: Colors.info,    bg: Colors.infoBg,    label: 'Sale'              };
     case 'ADJUSTMENT': return { Icon: SlidersHorizontal,color: Colors.warning, bg: Colors.warningBg, label: 'Manual Adjustment' };
+    default:           return { Icon: ArrowUpCircle,   color: Colors.info,    bg: Colors.infoBg,    label: type                };
   }
 }
 
@@ -188,17 +120,19 @@ function InventorySkeleton({ insetTop }: { insetTop: number }) {
 
 // ─── Stock Card ───────────────────────────────────────────────────────────────
 
-function StockCard({ item, expanded, onToggle }: { item: FixtureStock; expanded: boolean; onToggle: () => void }) {
-  const h = stockHealth(item.available);
-  const ratio = Math.min(100, item.available > 0 ? Math.round((item.available / (item.available + item.reserved + 10)) * 100) : 0);
+function StockCard({ item, expanded, onToggle }: { item: StockSummaryItem; expanded: boolean; onToggle: () => void }) {
+  const available = Number(item.available_stock) || 0;
+  const reserved = Number(item.reserved_stock) || 0;
+  const h = stockHealth(available);
+  const ratio = Math.min(100, available > 0 ? Math.round((available / (available + reserved + 10)) * 100) : 0);
 
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onToggle} style={invStyles.stockCard}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <View style={[invStyles.healthDot, { backgroundColor: h.dot, marginTop: 5 }]} />
         <View style={{ flex: 1 }}>
-          <Text style={invStyles.stockProduct}>{item.productName}</Text>
-          <Text style={invStyles.stockVariant}>{item.variantName} · {item.unit}</Text>
+          <Text style={invStyles.stockProduct}>{item.product_name}</Text>
+          <Text style={invStyles.stockVariant}>{item.variant_name} · {item.unit_symbol}</Text>
         </View>
         {expanded ? <ChevronUp size={18} color={Colors.textMuted} /> : <ChevronDown size={18} color={Colors.textMuted} />}
       </View>
@@ -206,16 +140,16 @@ function StockCard({ item, expanded, onToggle }: { item: FixtureStock; expanded:
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
         <View style={invStyles.metaChip}>
           <Text style={invStyles.metaChipLabel}>AVAILABLE</Text>
-          <Text style={[invStyles.metaChipValue, { color: h.color }]}>{item.available}</Text>
+          <Text style={[invStyles.metaChipValue, { color: h.color }]}>{available}</Text>
         </View>
         <View style={invStyles.metaChip}>
           <Text style={invStyles.metaChipLabel}>RESERVED</Text>
-          <Text style={invStyles.metaChipValue}>{item.reserved}</Text>
+          <Text style={invStyles.metaChipValue}>{reserved}</Text>
         </View>
         <View style={[invStyles.metaChip, { flex: 1, backgroundColor: Colors.primaryLight }]}>
           <Text style={invStyles.metaChipLabel}>ACTION</Text>
           <Text style={[invStyles.metaChipValue, { color: Colors.primary, fontSize: 11 }]}>
-            {item.available <= 0 ? 'Create batch now' : item.available <= 5 ? 'Plan reorder today' : 'Maintain stock'}
+            {available <= 0 ? 'Create batch now' : available <= 5 ? 'Plan reorder today' : 'Maintain stock'}
           </Text>
         </View>
       </View>
@@ -224,7 +158,7 @@ function StockCard({ item, expanded, onToggle }: { item: FixtureStock; expanded:
         <View style={[invStyles.barFill, { width: `${ratio}%` as any, backgroundColor: h.color }]} />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-        <Text style={invStyles.barLabel}>{item.available} available{item.reserved > 0 ? ` · ${item.reserved} reserved` : ''}</Text>
+        <Text style={invStyles.barLabel}>{available} available{reserved > 0 ? ` · ${reserved} reserved` : ''}</Text>
         {h.tone !== 'ok' && (
           <View style={[invStyles.healthBadge, { backgroundColor: h.bg }]}>
             <Text style={[invStyles.healthBadgeText, { color: h.color }]}>{h.label}</Text>
@@ -238,11 +172,11 @@ function StockCard({ item, expanded, onToggle }: { item: FixtureStock; expanded:
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <View style={[invStyles.metaChip, { flex: 1 }]}>
               <Text style={invStyles.metaChipLabel}>UNIT</Text>
-              <Text style={invStyles.metaChipValue}>{item.unit}</Text>
+              <Text style={invStyles.metaChipValue}>{item.unit_symbol}</Text>
             </View>
             <View style={[invStyles.metaChip, { flex: 1 }]}>
               <Text style={invStyles.metaChipLabel}>TOTAL</Text>
-              <Text style={invStyles.metaChipValue}>{item.available + item.reserved}</Text>
+              <Text style={invStyles.metaChipValue}>{available + reserved}</Text>
             </View>
           </View>
         </View>
@@ -253,10 +187,13 @@ function StockCard({ item, expanded, onToggle }: { item: FixtureStock; expanded:
 
 // ─── Batch Card ───────────────────────────────────────────────────────────────
 
-function BatchCard({ batch, expanded, onToggle }: { batch: FixtureBatch; expanded: boolean; onToggle: () => void }) {
+function BatchCard({ batch, expanded, onToggle }: { batch: InventoryBatch; expanded: boolean; onToggle: () => void }) {
   const tone  = STATUS_COLOR[batch.status];
-  const ratio = batch.receivedQty > 0 ? Math.round((batch.availableQty / batch.receivedQty) * 100) : 0;
-  const days  = daysUntil(batch.expiryAt);
+  const received = Number(batch.received_quantity) || 0;
+  const available = Number(batch.available_quantity) || 0;
+  const reserved = Number(batch.reserved_quantity) || 0;
+  const ratio = received > 0 ? Math.round((available / received) * 100) : 0;
+  const days  = daysUntil(batch.expiry_at);
   const exp   = days !== null ? expiryChip(days) : null;
 
   return (
@@ -266,8 +203,8 @@ function BatchCard({ batch, expanded, onToggle }: { batch: FixtureBatch; expande
           <Text style={[invStyles.statusBadgeText, { color: tone.color }]}>{batch.status}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={invStyles.batchProduct}>{batch.productName}</Text>
-          <Text style={invStyles.batchNumber}>Batch {batch.batchNumber} · {batch.variantName}</Text>
+          <Text style={invStyles.batchProduct} numberOfLines={1}>{batch.variant_name}</Text>
+          <Text style={invStyles.batchNumber}>Batch {batch.batch_number ?? '—'}</Text>
         </View>
         {expanded ? <ChevronUp size={18} color={Colors.textMuted} /> : <ChevronDown size={18} color={Colors.textMuted} />}
       </View>
@@ -276,7 +213,7 @@ function BatchCard({ batch, expanded, onToggle }: { batch: FixtureBatch; expande
         <View style={[invStyles.barFill, { width: `${ratio}%` as any, backgroundColor: tone.color }]} />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-        <Text style={invStyles.barLabel}>{batch.availableQty} / {batch.receivedQty} available</Text>
+        <Text style={invStyles.barLabel}>{available} / {received} available</Text>
         {exp && (
           <View style={[invStyles.healthBadge, { backgroundColor: exp.bg }]}>
             <Text style={[invStyles.healthBadgeText, { color: exp.color }]}>{exp.label}</Text>
@@ -288,12 +225,12 @@ function BatchCard({ batch, expanded, onToggle }: { batch: FixtureBatch; expande
         <View style={invStyles.expandedBlock}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
             {[
-              ['RESERVED', String(batch.reservedQty)],
-              ['PURCHASE PRICE', `₹${batch.purchasePrice}`],
-              ['SELLING PRICE', `₹${batch.sellingPrice}`],
-              ['RECEIVED', batch.receivedAt],
-              ['EXPIRY', batch.expiryAt ?? '—'],
-              ['MANUFACTURED', batch.manufacturedAt ?? '—'],
+              ['RESERVED', String(reserved)],
+              ['PURCHASE PRICE', `₹${batch.purchase_price}`],
+              ['SELLING PRICE', batch.selling_price ? `₹${batch.selling_price}` : '—'],
+              ['RECEIVED', batch.received_at],
+              ['EXPIRY', batch.expiry_at ?? '—'],
+              ['MANUFACTURED', batch.manufactured_at ?? '—'],
             ].map(([label, value]) => (
               <View key={label} style={{ width: '50%' }}>
                 <Text style={invStyles.metaChipLabel}>{label}</Text>
@@ -309,9 +246,10 @@ function BatchCard({ batch, expanded, onToggle }: { batch: FixtureBatch; expande
 
 // ─── Activity Row ─────────────────────────────────────────────────────────────
 
-function ActivityRow({ item }: { item: FixtureActivity }) {
-  const meta = activityMeta(item.type);
-  const time = new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+function ActivityRow({ item }: { item: InventoryTransaction }) {
+  const meta = activityMeta(item.transaction_type);
+  const time = new Date(item.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  const qty = Number(item.quantity) || 0;
   return (
     <View style={invStyles.activityCard}>
       <View style={[invStyles.activityIcon, { backgroundColor: meta.bg }]}>
@@ -319,12 +257,12 @@ function ActivityRow({ item }: { item: FixtureActivity }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={invStyles.activityTitle}>{meta.label}</Text>
-        <Text style={invStyles.activityMeta} numberOfLines={1}>{item.productName}</Text>
+        <Text style={invStyles.activityMeta} numberOfLines={1}>{item.reference_id ?? 'Transaction'}</Text>
         {item.note && <Text style={invStyles.activityNote}>"{item.note}"</Text>}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[invStyles.activityQty, { color: item.quantity > 0 ? Colors.success : Colors.error }]}>
-          {item.quantity > 0 ? '+' : ''}{item.quantity}
+        <Text style={[invStyles.activityQty, { color: qty > 0 ? Colors.success : Colors.error }]}>
+          {qty > 0 ? '+' : ''}{qty}
         </Text>
         <Text style={invStyles.activityTime}>{time}</Text>
       </View>
@@ -342,48 +280,55 @@ const SEGMENTS: { key: Segment; label: string }[] = [
 
 export default observer(function InventoryScreen() {
   const insets = useSafeAreaInsets();
-  const [isLoading,      setIsLoading]      = useState(true);
-  const [segment,        setSegment]        = useState<Segment>('stock');
-  const [searchQuery,    setSearchQuery]    = useState('');
-  const [stockFilter,    setStockFilter]    = useState<StockFilter>('all');
-  const [statusFilter,   setStatusFilter]   = useState<BatchStatus | 'all'>('all');
-  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all');
-  const [expandedId,     setExpandedId]     = useState<string | null>(null);
-  const [dialOpen,       setDialOpen]       = useState(false);
+  const { inventoryStore } = useStores();
+
+  const [segment,            setSegment]            = useState<Segment>('stock');
+  const [searchQuery,        setSearchQuery]        = useState('');
+  const [stockFilter,        setStockFilter]        = useState<StockFilter>('all');
+  const [statusFilter,       setStatusFilter]       = useState<BatchStatus | 'all'>('all');
+  const [activityFilter,     setActivityFilter]     = useState<string>('all');
+  const [expandedId,         setExpandedId]         = useState<string | null>(null);
+  const [dialOpen,           setDialOpen]           = useState(false);
+  const [showAddBatchModal,  setShowAddBatchModal]  = useState(false);
+  const [showAdjustModal,    setShowAdjustModal]    = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 1800);
-    return () => clearTimeout(t);
+    inventoryStore.fetchStock();
+    inventoryStore.fetchBatches();
+    inventoryStore.fetchTransactions();
   }, []);
 
   // Derived lists
-  const filteredStock = FIXTURE_STOCK.filter((s) => {
+  const filteredStock = inventoryStore.stock.filter((s: StockSummaryItem) => {
     const q = searchQuery.toLowerCase();
-    const matchesSearch = !q || s.productName.toLowerCase().includes(q) || s.variantName.toLowerCase().includes(q);
+    const matchesSearch = !q || s.product_name.toLowerCase().includes(q) || s.variant_name.toLowerCase().includes(q);
     if (!matchesSearch) return false;
-    if (stockFilter === 'low') return s.available > 0 && s.available <= 5;
-    if (stockFilter === 'out') return s.available <= 0;
+    const avail = Number(s.available_stock) || 0;
+    if (stockFilter === 'low') return avail > 0 && avail <= 5;
+    if (stockFilter === 'out') return avail <= 0;
     return true;
   });
 
-  const filteredBatches = FIXTURE_BATCHES.filter((b) =>
+  const filteredBatches = inventoryStore.batches.filter((b: InventoryBatch) =>
     statusFilter === 'all' || b.status === statusFilter,
   );
 
-  const filteredActivity = FIXTURE_ACTIVITY.filter((a) =>
-    activityFilter === 'all' || a.type === activityFilter,
+  const filteredActivity = inventoryStore.sortedTransactions.filter((a: InventoryTransaction) =>
+    activityFilter === 'all' || a.transaction_type === activityFilter,
   );
 
-  const groupedActivity = filteredActivity.reduce<{ label: string; items: FixtureActivity[] }[]>((acc, txn) => {
-    const label = dayLabel(txn.createdAt);
+  const groupedActivity = filteredActivity.reduce<{ label: string; items: InventoryTransaction[] }[]>((acc: { label: string; items: InventoryTransaction[] }[], txn: InventoryTransaction) => {
+    const label = dayLabel(txn.created_at);
     const last  = acc[acc.length - 1];
     if (last && last.label === label) { last.items.push(txn); } else { acc.push({ label, items: [txn] }); }
     return acc;
   }, []);
 
-  const lowCount      = FIXTURE_STOCK.filter((s) => s.available > 0 && s.available <= 5).length;
-  const outCount      = FIXTURE_STOCK.filter((s) => s.available <= 0).length;
-  const expiringCount = FIXTURE_BATCHES.filter((b) => { const d = daysUntil(b.expiryAt); return b.status === 'ACTIVE' && d !== null && d <= 3; }).length;
+  const lowCount      = inventoryStore.lowStockItems.length;
+  const outCount      = inventoryStore.outOfStockItems.length;
+  const expiringCount = inventoryStore.batches.filter((b: InventoryBatch) => { const d = daysUntil(b.expiry_at); return b.status === 'ACTIVE' && d !== null && d <= 3; }).length;
+
+  const isLoading = inventoryStore.stockState === 'loading' || inventoryStore.batchesState === 'loading' || inventoryStore.transactionsState === 'loading';
 
   if (isLoading) return <InventorySkeleton insetTop={insets.top} />;
 
@@ -394,11 +339,9 @@ export default observer(function InventoryScreen() {
       {/* ── Orange Header ── */}
       <View style={[invStyles.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8}>
-            <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ width: 36 }} />
           <Text style={invStyles.headerTitle}>Inventory</Text>
-          <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={invStyles.headerBtn} activeOpacity={0.8} onPress={() => setShowAddBatchModal(true)}>
             <Plus size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -406,10 +349,10 @@ export default observer(function InventoryScreen() {
         {/* KPI strip */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
           {[
-            { label: 'Total SKUs',     value: String(FIXTURE_STOCK.length), color: '#FFFFFF' },
-            { label: 'Low Stock',      value: String(lowCount),             color: '#FEF08A' },
-            { label: 'Out of Stock',   value: String(outCount),             color: '#FCA5A5' },
-            { label: 'Expiring ≤3d',   value: String(expiringCount),        color: '#FED7AA' },
+            { label: 'Total SKUs',     value: String(inventoryStore.stock.length), color: '#FFFFFF' },
+            { label: 'Low Stock',      value: String(lowCount),                    color: '#FEF08A' },
+            { label: 'Out of Stock',   value: String(outCount),                    color: '#FCA5A5' },
+            { label: 'Expiring ≤3d',   value: String(expiringCount),               color: '#FED7AA' },
           ].map((kpi) => (
             <View key={kpi.label} style={invStyles.kpiCard}>
               <Text style={[invStyles.kpiValue, { color: kpi.color }]}>{kpi.value}</Text>
@@ -462,8 +405,8 @@ export default observer(function InventoryScreen() {
                 <Text style={invStyles.emptyTitle}>No matching variants</Text>
                 <Text style={invStyles.emptySubtitle}>Try a different search or filter.</Text>
               </View>
-            ) : filteredStock.map((s) => (
-              <StockCard key={s.variantId} item={s} expanded={expandedId === s.variantId} onToggle={() => setExpandedId(expandedId === s.variantId ? null : s.variantId)} />
+            ) : filteredStock.map((s: StockSummaryItem) => (
+              <StockCard key={s.variant_id} item={s} expanded={expandedId === s.variant_id} onToggle={() => setExpandedId(expandedId === s.variant_id ? null : s.variant_id)} />
             ))}
           </ScrollView>
         )}
@@ -479,7 +422,7 @@ export default observer(function InventoryScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {filteredBatches.map((b) => (
+            {filteredBatches.map((b: InventoryBatch) => (
               <BatchCard key={b.id} batch={b} expanded={expandedId === b.id} onToggle={() => setExpandedId(expandedId === b.id ? null : b.id)} />
             ))}
           </ScrollView>
@@ -489,7 +432,7 @@ export default observer(function InventoryScreen() {
         {segment === 'activity' && (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
-              {([['all','All'], ['RECEIVE','Receipts'], ['SALE','Sales'], ['ADJUSTMENT','Adjustments']] as const).map(([k, l]) => (
+              {([['all','All'], ['RECEIVE','Receipts'], ['SALE','Sales'], ['ADJUSTMENT','Adjustments']]).map(([k, l]) => (
                 <TouchableOpacity key={k} onPress={() => setActivityFilter(k)} activeOpacity={0.8}
                   style={[invStyles.filterPill, activityFilter === k && invStyles.filterPillActive]}>
                   <Text style={[invStyles.filterPillText, activityFilter === k && invStyles.filterPillTextActive]}>{l}</Text>
@@ -502,10 +445,10 @@ export default observer(function InventoryScreen() {
                 <Text style={invStyles.emptyTitle}>No activity</Text>
                 <Text style={invStyles.emptySubtitle}>Stock movements will appear here.</Text>
               </View>
-            ) : groupedActivity.map((group) => (
+            ) : groupedActivity.map((group: { label: string; items: InventoryTransaction[] }) => (
               <View key={group.label} style={{ gap: 10 }}>
                 <Text style={invStyles.dayHeader}>{group.label}</Text>
-                {group.items.map((txn) => <ActivityRow key={txn.id} item={txn} />)}
+                {group.items.map((txn: InventoryTransaction) => <ActivityRow key={txn.id} item={txn} />)}
               </View>
             ))}
           </ScrollView>
@@ -517,10 +460,10 @@ export default observer(function InventoryScreen() {
         <TouchableOpacity style={styles.speedDialOverlay} activeOpacity={1} onPress={() => setDialOpen(false)}>
           <View style={{ position: 'absolute', right: 20, bottom: Math.max(insets.bottom, 8) + 160, gap: 10, alignItems: 'flex-end' }}>
             {[
-              { label: 'Adjust Stock', Icon: SlidersHorizontal },
-              { label: 'New Batch',    Icon: PlusCircle        },
-            ].map(({ label, Icon }) => (
-              <TouchableOpacity key={label} style={styles.speedDialItem} activeOpacity={0.85} onPress={() => setDialOpen(false)}>
+              { label: 'Adjust Stock', action: () => { setShowAdjustModal(true); setDialOpen(false); }, Icon: SlidersHorizontal },
+              { label: 'New Batch',    action: () => { setShowAddBatchModal(true); setDialOpen(false); }, Icon: PlusCircle        },
+            ].map(({ label, action, Icon }) => (
+              <TouchableOpacity key={label} style={styles.speedDialItem} activeOpacity={0.85} onPress={action}>
                 <Text style={styles.speedDialLabel}>{label}</Text>
                 <View style={styles.speedDialIcon}><Icon size={16} color={Colors.primary} /></View>
               </TouchableOpacity>
@@ -535,6 +478,24 @@ export default observer(function InventoryScreen() {
       >
         {dialOpen ? <X size={24} color={Colors.white} /> : <Plus size={24} color={Colors.white} />}
       </TouchableOpacity>
+
+      <AddBatchModal
+        visible={showAddBatchModal}
+        onClose={() => setShowAddBatchModal(false)}
+        onSuccess={(msg) => {
+          setShowAddBatchModal(false);
+          // Could add toast notification here
+        }}
+      />
+
+      <AdjustStockModal
+        visible={showAdjustModal}
+        onClose={() => setShowAdjustModal(false)}
+        onSuccess={(msg) => {
+          setShowAdjustModal(false);
+          // Could add toast notification here
+        }}
+      />
     </AnimatedScreen>
   );
 });
