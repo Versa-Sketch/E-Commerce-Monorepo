@@ -103,7 +103,7 @@ export default observer(function BatchAdjustmentRoute() {
         {/* Batch Summary Card */}
         <View style={styles.batchCard}>
           <Text style={styles.productName} numberOfLines={1}>
-            {inventoryStore.productLabelForVariant(batch.variant_id)}
+            {inventoryStore.productLabelForVariant(batch.variant_id, batch.variant_name)}
           </Text>
           <Text style={styles.batchNumber}>Batch {batch.batch_number || '—'}</Text>
           <View style={styles.stockRow}>

@@ -8,6 +8,7 @@
     "dev:delivery": "pnpm --filter delivery start"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~56.0.0-preview.8",
     "react": "19.2.3",
     "react-native": "0.85.3"

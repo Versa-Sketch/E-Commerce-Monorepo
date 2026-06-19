@@ -41,6 +41,8 @@ export class RootStore {
     this.ordersStore = new OrdersStore(this.sessionStore);
     this.dashboardStore = new DashboardStore(this.sessionStore);
     makeAutoObservable(this);
+    // Restore session from AsyncStorage on app start
+    this.sessionStore.initializeFromAsyncStorage().catch(() => {});
   }
 }
 

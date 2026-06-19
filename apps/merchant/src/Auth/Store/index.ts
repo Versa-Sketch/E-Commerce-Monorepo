@@ -24,16 +24,56 @@ function createKVStore(): KVStore {
       delete: (k) => mmkv.delete(k),
     };
   } catch {
-    const map = new Map<string, unknown>();
-    return {
-      getBoolean: (k) => map.get(k) as boolean | undefined,
-      getString: (k) => map.get(k) as string | undefined,
-      setBoolean: (k, v) => map.set(k, v),
-      setString: (k, v) => map.set(k, v),
-      delete: (k) => {
-        map.delete(k);
-      },
-    };
+    try {
+      const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+      const asyncMap = new Map<string, unknown>();
+      let initialized = false;
+
+      const syncGet = (k: string): unknown => asyncMap.get(k);
+      const syncSet = (k: string, v: unknown) => {
+        asyncMap.set(k, v);
+        AsyncStorage.setItem(k, typeof v === "string" ? v : String(v)).catch(() => {});
+      };
+      const syncDelete = (k: string) => {
+        asyncMap.delete(k);
+        AsyncStorage.removeItem(k).catch(() => {});
+      };
+
+      if (!initialized) {
+        Object.keys(localStorage || {}).forEach((k) => {
+          try {
+            const val = localStorage.getItem(k);
+            if (val) asyncMap.set(k, val);
+          } catch {}
+        });
+        initialized = true;
+      }
+
+      return {
+        getBoolean: (k) => {
+          const val = syncGet(k);
+          return val === "true" ? true : val === "false" ? false : undefined;
+        },
+        getString: (k) => {
+          const val = syncGet(k);
+          return typeof val === "string" ? val : undefined;
+        },
+        setBoolean: (k, v) => syncSet(k, v ? "true" : "false"),
+        setString: (k, v) => syncSet(k, v),
+        delete: syncDelete,
+      };
+    } catch {
+      const map = new Map<string, unknown>();
+      return {
+        getBoolean: (k) => map.get(k) as boolean | undefined,
+        getString: (k) => map.get(k) as string | undefined,
+        setBoolean: (k, v) => map.set(k, v),
+        setString: (k, v) => map.set(k, v),
+        delete: (k) => {
+          map.delete(k);
+        },
+      };
+    }
   }
 }
 
@@ -134,6 +174,33 @@ export class SessionStore {
       } catch {
         kv.delete("user");
       }
+    }
+  }
+
+  async initializeFromAsyncStorage() {
+    try {
+      const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+      const [auth, access, refresh, user] = await Promise.all([
+        AsyncStorage.getItem("isAuthenticated"),
+        AsyncStorage.getItem("accessToken"),
+        AsyncStorage.getItem("refreshToken"),
+        AsyncStorage.getItem("user"),
+      ]);
+
+      runInAction(() => {
+        if (auth === "true") this.isAuthenticated = true;
+        if (access) this.accessToken = access;
+        if (refresh) this.refreshToken = refresh;
+        if (user) {
+          try {
+            this.user = JSON.parse(user) as UserProfile;
+          } catch {
+            AsyncStorage.removeItem("user").catch(() => {});
+          }
+        }
+      });
+    } catch {
+      // AsyncStorage not available, stick with sync storage
     }
   }
 

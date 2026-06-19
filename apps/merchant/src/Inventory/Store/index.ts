@@ -116,14 +116,16 @@ export class InventoryStore {
   get batchOptions() {
     return this.batches.map((b) => ({
       id: b.id,
-      label: `${this.productLabelForVariant(b.variant_id)}${b.batch_number ? ` · ${b.batch_number}` : ""}`,
+      label: `${this.productLabelForVariant(b.variant_id, b.variant_name)}${b.batch_number ? ` · ${b.batch_number}` : ""}`,
       sublabel: `${b.status} · ${b.available_quantity} available`,
     }));
   }
 
-  productLabelForVariant(variantId: string): string {
+  productLabelForVariant(variantId: string, variantName?: string): string {
     const s = this.stockByVariantId[variantId];
-    return s ? `${s.product_name} — ${s.variant_name}` : variantId;
+    if (s) return `${s.product_name} — ${s.variant_name}`;
+    if (variantName) return variantName;
+    return variantId;
   }
 
   // ── Shop resolution ───────────────────────────────────────────────────────
