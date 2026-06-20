@@ -1,18 +1,18 @@
-import { makeAutoObservable, runInAction } from 'mobx';
-import { Order } from '../Models/Order';
-import type { SessionStore } from '../../Auth/Store';
-import { USE_FIXTURES } from '../../Common/services/config';
-import { resolveShopId } from '../../Common/services/shopId';
-import type { IOrdersService } from '../Services';
-import { OrdersApiService } from '../Services/index.api';
-import { OrdersFixtureService } from '../Services/index.fixture';
-import type { ApiOrder } from '../types/domain';
+import { makeAutoObservable, runInAction } from "mobx";
+import { Order } from "../Models/Order";
+import type { SessionStore } from "../../Auth/Store";
+import { USE_FIXTURES } from "../../Common/services/config";
+import { resolveShopId } from "../../Common/services/shopId";
+import type { IOrdersService } from "../Services";
+import { OrdersApiService } from "../Services/index.api";
+import { OrdersFixtureService } from "../Services/index.fixture";
+import type { ApiOrder } from "../types/domain";
 
-export type LoadState = 'idle' | 'loading' | 'error';
+export type LoadState = "idle" | "loading" | "error";
 
 export class OrdersStore {
   orders: Order[] = [];
-  state: LoadState = 'idle';
+  state: LoadState = "idle";
   error: string | null = null;
   shopId: string | null = null;
 
@@ -46,55 +46,61 @@ export class OrdersStore {
 
   async fetchOrders(statusFilter?: string) {
     runInAction(() => {
-      this.state = 'loading';
+      this.state = "loading";
       this.error = null;
     });
-    
+
     const shopId = await this.ensureShopId();
     if (!shopId) {
       runInAction(() => {
-        this.state = 'error';
-        this.error = 'No shop ID found';
+        this.state = "error";
+        this.error = "No shop ID found";
       });
       return;
     }
 
     // Map UI filter status to API status code
     let apiStatus: string | undefined = undefined;
-    if (statusFilter === 'New Orders') apiStatus = 'PLACED';
-    else if (statusFilter === 'Accepted') apiStatus = 'ACCEPTED';
-    else if (statusFilter === 'Packed') apiStatus = 'PACKING'; // Also includes READY_FOR_PICKUP if we fetch all
-    else if (statusFilter === 'Out For Delivery') apiStatus = 'OUT_FOR_DELIVERY';
-    else if (statusFilter === 'Delivered') apiStatus = 'DELIVERED';
-    else if (statusFilter === 'Cancelled') apiStatus = 'CANCELLED';
+    if (statusFilter === "New Orders") apiStatus = "PLACED";
+    else if (statusFilter === "Accepted") apiStatus = "ACCEPTED";
+    else if (statusFilter === "Packed")
+      apiStatus = "PACKING"; // Also includes READY_FOR_PICKUP if we fetch all
+    else if (statusFilter === "Out For Delivery")
+      apiStatus = "OUT_FOR_DELIVERY";
+    else if (statusFilter === "Delivered") apiStatus = "DELIVERED";
+    else if (statusFilter === "Cancelled") apiStatus = "CANCELLED";
 
     const res = await this.service.fetchOrders(shopId, apiStatus);
-    
+
     runInAction(() => {
       if (res.ok && res.data) {
         this.orders = res.data.results.map((o) => this.mapApiOrderToModel(o));
-        this.state = 'idle';
+        this.state = "idle";
       } else {
-        this.state = 'error';
-        this.error = res.message || 'Failed to load orders';
+        this.state = "error";
+        this.error = res.message || "Failed to load orders";
       }
     });
   }
 
   private mapApiOrderToModel(api: ApiOrder): Order {
-    let uiStatus: Order['status'] = 'New Orders';
-    if (api.status === 'PLACED') uiStatus = 'New Orders';
-    else if (api.status === 'ACCEPTED') uiStatus = 'Accepted';
-    else if (api.status === 'PACKING' || api.status === 'READY_FOR_PICKUP') uiStatus = 'Packed';
-    else if (api.status === 'OUT_FOR_DELIVERY') uiStatus = 'Out For Delivery';
-    else if (api.status === 'DELIVERED') uiStatus = 'Delivered';
-    else if (api.status === 'CANCELLED') uiStatus = 'Cancelled';
+    let uiStatus: Order["status"] = "New Orders";
+    if (api.status === "PLACED") uiStatus = "New Orders";
+    else if (api.status === "ACCEPTED") uiStatus = "Accepted";
+    else if (api.status === "PACKING" || api.status === "READY_FOR_PICKUP")
+      uiStatus = "Packed";
+    else if (api.status === "OUT_FOR_DELIVERY") uiStatus = "Out For Delivery";
+    else if (api.status === "DELIVERED") uiStatus = "Delivered";
+    else if (api.status === "CANCELLED") uiStatus = "Cancelled";
 
     const addressStr = api.address
-      ? `${api.address.address_line1}${api.address.address_line2 ? ', ' + api.address.address_line2 : ''}, ${api.address.state} - ${api.address.pincode}`
-      : 'No address provided';
+      ? `${api.address.address_line1}${api.address.address_line2 ? ", " + api.address.address_line2 : ""}, ${api.address.state} - ${api.address.pincode}`
+      : "No address provided";
 
-    const timeStr = new Date(api.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = new Date(api.created_at).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
     // Handle both list response (no items) and detail response (with items)
     const items = api.items ?? [];
@@ -104,57 +110,57 @@ export class OrdersStore {
       id: api.order_id,
       customerName: api.customer_name,
       itemsCount: itemsCount,
-      items: items.map(i => ({
+      items: items.map((i) => ({
         id: i.variant_id,
         name: i.product_name,
         quantity: i.quantity,
-        price: Number(i.unit_price)
+        price: Number(i.unit_price),
       })),
       amount: Number(api.total_amount),
-      paymentMethod: api.payment?.payment_method === 'COD' ? 'COD' : 'Online',
+      paymentMethod: api.payment?.payment_method === "COD" ? "COD" : "Online",
       orderTime: timeStr,
       status: uiStatus,
       deliveryAddress: addressStr,
       customerPhone: api.customer_phone,
-      timeline: [
-        { status: 'Order Placed', time: timeStr, completed: true }
-      ]
+      timeline: [{ status: "Order Placed", time: timeStr, completed: true }],
     });
   }
 
   get newOrders() {
-    return this.orders.filter((o) => o.status === 'New Orders');
+    return this.orders.filter((o) => o.status === "New Orders");
   }
 
   get acceptedOrders() {
-    return this.orders.filter((o) => o.status === 'Accepted');
+    return this.orders.filter((o) => o.status === "Accepted");
   }
 
   get packedOrders() {
-    return this.orders.filter((o) => o.status === 'Packed');
+    return this.orders.filter((o) => o.status === "Packed");
   }
 
   get outForDeliveryOrders() {
-    return this.orders.filter((o) => o.status === 'Out For Delivery');
+    return this.orders.filter((o) => o.status === "Out For Delivery");
   }
 
   get deliveredOrders() {
-    return this.orders.filter((o) => o.status === 'Delivered');
+    return this.orders.filter((o) => o.status === "Delivered");
   }
 
   get cancelledOrders() {
-    return this.orders.filter((o) => o.status === 'Cancelled' || o.status === 'Rejected');
+    return this.orders.filter(
+      (o) => o.status === "Cancelled" || o.status === "Rejected",
+    );
   }
 
   async acceptOrder(id: string) {
     const shopId = await this.ensureShopId();
     if (!shopId) return;
 
-    const res = await this.service.updateOrderStatus(shopId, id, 'ACCEPTED');
+    const res = await this.service.updateOrderStatus(shopId, id, "ACCEPTED");
     if (res.ok) {
       runInAction(() => {
         const order = this.orders.find((o) => o.id === id);
-        if (order) order.updateStatus('Accepted');
+        if (order) order.updateStatus("Accepted");
       });
     }
   }
@@ -163,16 +169,23 @@ export class OrdersStore {
     const shopId = await this.ensureShopId();
     if (!shopId) return;
 
-    const res = await this.service.updateOrderStatus(shopId, id, 'CANCELLED');
+    const res = await this.service.updateOrderStatus(shopId, id, "CANCELLED");
     if (res.ok) {
       runInAction(() => {
         const order = this.orders.find((o) => o.id === id);
-        if (order) order.updateStatus('Rejected');
+        if (order) order.updateStatus("Rejected");
       });
     }
   }
 
-  async advanceOrder(id: string, nextApiStatus: 'PACKING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED') {
+  async advanceOrder(
+    id: string,
+    nextApiStatus:
+      | "PACKING"
+      | "READY_FOR_PICKUP"
+      | "OUT_FOR_DELIVERY"
+      | "DELIVERED",
+  ) {
     const shopId = await this.ensureShopId();
     if (!shopId) return;
 
@@ -181,10 +194,15 @@ export class OrdersStore {
       runInAction(() => {
         const order = this.orders.find((o) => o.id === id);
         if (order) {
-          let uiStatus: Order['status'] = 'Accepted';
-          if (nextApiStatus === 'PACKING' || nextApiStatus === 'READY_FOR_PICKUP') uiStatus = 'Packed';
-          else if (nextApiStatus === 'OUT_FOR_DELIVERY') uiStatus = 'Out For Delivery';
-          else if (nextApiStatus === 'DELIVERED') uiStatus = 'Delivered';
+          let uiStatus: Order["status"] = "Accepted";
+          if (
+            nextApiStatus === "PACKING" ||
+            nextApiStatus === "READY_FOR_PICKUP"
+          )
+            uiStatus = "Packed";
+          else if (nextApiStatus === "OUT_FOR_DELIVERY")
+            uiStatus = "Out For Delivery";
+          else if (nextApiStatus === "DELIVERED") uiStatus = "Delivered";
           order.updateStatus(uiStatus);
         }
       });

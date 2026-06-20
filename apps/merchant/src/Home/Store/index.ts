@@ -8,14 +8,16 @@ import { OrdersApiService } from '../../Orders/Services/index.api';
 import { OrdersFixtureService } from '../../Orders/Services/index.fixture';
 
 export class DashboardStore {
-  todayOrders: number = 42;
-  todayRevenue: number = 12840;
-  pendingOrders: number = 8;
-  deliveredOrders: number = 32;
+  todayOrders: number = 0;
+  todayRevenue: number = 0;
+  pendingOrders: number = 0;
+  deliveredOrders: number = 0;
   activeDeliveryPartners: number = 5;
   averageRating: number = 4.8;
   insights: AIInsight[] = [];
   shopId: string | null = null;
+  metricsState: 'idle' | 'loading' | 'error' = 'idle';
+  metricsError: string | null = null;
 
   private session: SessionStore;
   private service: any;
@@ -43,17 +45,31 @@ export class DashboardStore {
   }
 
   async refreshMetrics() {
+    runInAction(() => {
+      this.metricsState = 'loading';
+      this.metricsError = null;
+    });
     const shopId = await this.ensureShopId();
-    if (!shopId) return;
+    if (!shopId) {
+      runInAction(() => {
+        this.metricsState = 'error';
+        this.metricsError = 'No shop ID found';
+      });
+      return;
+    }
 
     const res = await this.service.fetchDashboardSummary(shopId);
-    if (res.ok && res.data) {
-      runInAction(() => {
+    runInAction(() => {
+      if (res.ok && res.data) {
         this.todayOrders = res.data.orders_today_count;
         this.pendingOrders = res.data.pending_orders_count;
         this.todayRevenue = Math.round(Number(res.data.revenue_today));
-      });
-    }
+        this.metricsState = 'idle';
+      } else {
+        this.metricsState = 'error';
+        this.metricsError = res.message ?? 'Failed to load dashboard';
+      }
+    });
   }
 
   removeInsight(id: string) {

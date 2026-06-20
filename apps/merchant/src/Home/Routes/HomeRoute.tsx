@@ -1,22 +1,25 @@
 import { router } from 'expo-router';
 import {
-  ArrowUpRight,
   Award,
+  BarChart2,
   Bell,
   Boxes,
   ChevronRight,
+  Clock,
+  MessageSquare,
   Package,
   PackagePlus,
   ShoppingBag,
   Star,
   Tags,
+  TrendingUp,
   Truck,
+  X,
 } from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Image,
   ScrollView,
   StatusBar,
@@ -25,9 +28,7 @@ import {
   View,
 } from 'react-native';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Circle, Polyline, Svg } from 'react-native-svg';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { useStores } from '../../Common/hooks/useStores';
 import { Toast } from '../../components/ui/MerchantPrimitives';
@@ -35,12 +36,17 @@ import { Colors } from '../../theme/colors';
 import styles from './styles';
 
 const AvatarImg = require('../../../assets/images/avatar.png');
-const TomatoImg = require('../../../assets/images/tomato.png');
-const MilkImg = require('../../../assets/images/milk.png');
-const BreadImg = require('../../../assets/images/bread.png');
 
 function formatCurrency(value: number) {
   return `₹${value.toLocaleString('en-IN')}`;
+}
+
+function formatExpiry(seconds: number): string {
+  if (seconds <= 0) return 'Expired';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins} min`;
 }
 
 function getGreeting() {
@@ -50,12 +56,6 @@ function getGreeting() {
   return 'Good evening';
 }
 
-const REVENUE_DATA = [
-  { label: 'Revenue', value: '₹86,430', trend: 16, data: [30, 40, 35, 55, 48, 65, 60, 80] },
-  { label: 'Orders', value: '268', trend: 12, data: [40, 38, 50, 46, 58, 55, 68, 72] },
-  { label: 'Customers', value: '142', trend: 18, data: [20, 28, 25, 38, 34, 48, 44, 60] },
-  { label: 'Avg. order', value: '₹322', trend: 8, data: [50, 45, 55, 48, 60, 58, 65, 70] },
-];
 
 const STATIC_ORDERS = [
   { id: '1', customerName: 'Rahul Verma', amount: 694, itemsCount: 4, orderTime: '10 mins ago', paymentMethod: 'Online Payment', distance: '1.2 km' },
@@ -63,16 +63,7 @@ const STATIC_ORDERS = [
   { id: '3', customerName: 'Suresh Kumar', amount: 80, itemsCount: 1, orderTime: '45 mins ago', paymentMethod: 'Online Payment', distance: '0.6 km' },
 ];
 
-const STATIC_BARGAINS = [
-  { id: '1', customerName: 'Priya Sharma', items: 'Organic Vegetables · 3 items', customerOffer: 580, yourPrice: 700, status: 'waiting', expiresIn: '12 min' },
-  { id: '2', customerName: 'Deepa Nair', items: 'Fruits · 5 items', customerOffer: 390, yourPrice: 480, status: 'urgent', expiresIn: '2 min' },
-];
 
-const STATIC_INVENTORY = [
-  { id: '1', name: 'Tomatoes (1kg)', qty: '0 units left', alert: 'Out of stock', action: 'Restock', color: Colors.error, bg: Colors.errorBg, img: TomatoImg, prog: 1 },
-  { id: '2', name: 'Milk (1L)', qty: '5 units · ~3 hrs left', alert: 'Low stock', action: 'Add stock', color: Colors.warning, bg: Colors.warningBg, img: MilkImg, prog: 10 },
-  { id: '3', name: 'Bread', qty: '12 units · ~5 hrs left', alert: 'Low stock', action: 'Add stock', color: Colors.warning, bg: Colors.warningBg, img: BreadImg, prog: 20 },
-];
 
 const ACTIVITY_FEED = [
   { Icon: ShoppingBag, label: 'Order #2847 accepted', time: '10 mins ago', iconBg: Colors.primaryLight, iconColor: Colors.primary, connectorColor: Colors.primaryLight },
@@ -81,25 +72,6 @@ const ACTIVITY_FEED = [
   { Icon: Tags, label: 'Offer created · 10% OFF Fruits', time: '2 hrs ago', iconBg: '#F3E8FF', iconColor: '#8B5CF6', connectorColor: '#F3E8FF' },
   { Icon: Truck, label: 'Order #2846 delivered', time: '3 hrs ago', iconBg: Colors.successBg, iconColor: Colors.success, connectorColor: Colors.successBg },
 ];
-
-// ── Sparkline ─────────────────────────────────────────────────────────────
-function Sparkline({ data, color, width = 120, height = 32 }: { data: number[]; color: string; width?: number; height?: number }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const step = width / (data.length - 1);
-  const points = data
-    .map((v, i) => `${i * step},${height - ((v - min) / range) * (height - 4) - 2}`)
-    .join(' ');
-  const lastX = (data.length - 1) * step;
-  const lastY = height - ((data[data.length - 1] - min) / range) * (height - 4) - 2;
-  return (
-    <Svg width={width} height={height}>
-      <Polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={lastX} cy={lastY} r={3.5} fill={color} />
-    </Svg>
-  );
-}
 
 // ── Skeleton box with pulse animation ────────────────────────────────────
 function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: number | string; height: number; borderRadius?: number; style?: any }) {
@@ -235,11 +207,13 @@ function HomeSkeleton({ insetTop }: { insetTop: number }) {
       </View>
       <View style={[styles.revenueGrid]}>
         {[0, 1, 2, 3].map(i => (
-          <View key={i} style={[styles.revenueSnapCard, { gap: 6 }]}>
+          <View key={i} style={[styles.revenueSnapCard, { gap: 8 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SkeletonBox width={32} height={32} borderRadius={16} />
+              <SkeletonBox width={40} height={18} borderRadius={9} />
+            </View>
             <SkeletonBox width={60} height={10} />
-            <SkeletonBox width={80} height={20} />
-            <SkeletonBox width={90} height={10} />
-            <SkeletonBox height={32} borderRadius={4} />
+            <SkeletonBox width={80} height={22} />
           </View>
         ))}
       </View>
@@ -250,17 +224,19 @@ function HomeSkeleton({ insetTop }: { insetTop: number }) {
 // ── Main screen ───────────────────────────────────────────────────────────
 export default observer(function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { authStore, dashboardStore, ordersStore, sessionStore } = useStores();
+  const { authStore, dashboardStore, ordersStore, sessionStore, bargainingStore, inventoryStore } = useStores();
 
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' | 'neutral' });
 
   const blinkAnim = useRef(new Animated.Value(1)).current;
 
-  // Skeleton load simulation
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1800);
-    return () => clearTimeout(timer);
+    Promise.all([
+      dashboardStore.refreshMetrics(),
+      ordersStore.fetchOrders('New Orders'),
+      inventoryStore.fetchStock(),
+    ]).finally(() => setIsLoading(false));
   }, []);
 
   // Blinking alert strip animation
@@ -293,7 +269,7 @@ export default observer(function HomeScreen() {
   const storeName = authStore.storeName || 'FreshMart Hyperlocal';
   const ownerFirstName = sessionStore.user?.full_name?.trim().split(/\s+/)[0] || 'Yaswanth';
 
-  const orders = ordersStore.newOrders.length > 0 ? ordersStore.newOrders : STATIC_ORDERS;
+  const orders = ordersStore.newOrders;
 
   const quickActions = [
     { label: 'Add Product', Icon: PackagePlus, route: '/(tabs)/products' },
@@ -353,25 +329,25 @@ export default observer(function HomeScreen() {
               {/* Alert strip */}
               <View style={styles.alertStrip}>
                 <Animated.View style={[styles.alertDot, { opacity: blinkAnim }]} />
-                <Text style={styles.alertText}>3 orders pending</Text>
+                <Text style={styles.alertText}>{dashboardStore.pendingOrders} orders pending</Text>
                 <View style={styles.alertDivider} />
                 <Animated.View style={[styles.alertDotAmber, { opacity: blinkAnim }]} />
-                <Text style={styles.alertTextAmber}>2 bargains waiting</Text>
+                <Text style={styles.alertTextAmber}>{bargainingStore.pendingBargains.length} bargains waiting</Text>
               </View>
 
               {/* KPI row */}
               <View style={styles.kpiRow}>
                 <View style={styles.kpiItem}>
-                  <Text style={styles.kpiLabel}>Today's revenue</Text>
+                  <Text style={styles.kpiLabel}>Today&apos;s revenue</Text>
                   <Text style={styles.kpiValue}>
-                    {formatCurrency(dashboardStore.todayRevenue || 12840)}
+                    {formatCurrency(dashboardStore.todayRevenue)}
                   </Text>
                   <Text style={styles.kpiSubGreen}>+18% vs yday</Text>
                 </View>
                 <View style={styles.kpiDivider} />
                 <View style={styles.kpiItem}>
                   <Text style={styles.kpiLabel}>Orders</Text>
-                  <Text style={styles.kpiValue}>{dashboardStore.todayOrders || 42}</Text>
+                  <Text style={styles.kpiValue}>{dashboardStore.todayOrders}</Text>
                   <Text style={styles.kpiSub}>Active today</Text>
                 </View>
                 <View style={styles.kpiDivider} />
@@ -419,6 +395,12 @@ export default observer(function HomeScreen() {
                 <ChevronRight size={13} color={Colors.primary} />
               </TouchableOpacity>
             </View>
+
+            {orders.length === 0 && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 20, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textMuted, fontSize: 14 }}>No new orders right now</Text>
+              </View>
+            )}
 
             {orders.map((order: any, idx) => (
               <View key={order.id ?? idx} style={styles.orderCard}>
@@ -479,9 +461,11 @@ export default observer(function HomeScreen() {
             <View style={styles.sectionRow}>
               <View style={styles.sectionLeft}>
                 <Text style={styles.sectionTitle}>Bargain Sessions</Text>
-                <Text style={[styles.sectionBadge, styles.sectionBadgeAmber]}>
-                  {STATIC_BARGAINS.length} waiting
-                </Text>
+                {(bargainingStore.activeDeals + bargainingStore.chatAlerts.length) > 0 && (
+                  <Text style={[styles.sectionBadge, styles.sectionBadgeAmber]}>
+                    {bargainingStore.activeDeals + bargainingStore.chatAlerts.length} waiting
+                  </Text>
+                )}
               </View>
               <TouchableOpacity
                 style={styles.viewAllBtn}
@@ -492,22 +476,69 @@ export default observer(function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {STATIC_BARGAINS.map(b => (
+            {/* WS notification cards — new offers and customer messages */}
+            {bargainingStore.chatAlerts.map(alert => (
+              <View
+                key={alert.id}
+                style={[styles.bargainCard, { borderLeftWidth: 3, borderLeftColor: alert.type === 'offer' ? Colors.primary : Colors.warning }]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.bargainAvatar, { backgroundColor: alert.type === 'offer' ? Colors.primaryLight : '#FEF3C7' }]}>
+                    {alert.type === 'offer'
+                      ? <Tags size={16} color={Colors.primary} />
+                      : <MessageSquare size={16} color={Colors.warning} />
+                    }
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.bargainName}>{alert.customerName}</Text>
+                    <Text style={styles.bargainSub} numberOfLines={2}>{alert.message}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => bargainingStore.dismissChatAlert(alert.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                  <TouchableOpacity
+                    style={[styles.bargainAcceptBtn, { flex: 1 }]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      bargainingStore.dismissChatAlert(alert.id);
+                      router.push(`/bargaining/${alert.sessionId}` as any);
+                    }}
+                  >
+                    <Text style={styles.bargainAcceptText}>View Session</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.bargainDeclineBtn, { paddingHorizontal: 16 }]}
+                    activeOpacity={0.8}
+                    onPress={() => bargainingStore.dismissChatAlert(alert.id)}
+                  >
+                    <Text style={styles.bargainDeclineText}>Dismiss</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+
+            {/* Live pending bargain sessions from API */}
+            {bargainingStore.pendingBargains.map(b => (
               <View key={b.id} style={styles.bargainCard}>
                 <View style={styles.bargainCardTop}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={styles.bargainAvatar}>
                       <Text style={styles.bargainAvatarText}>
-                        {b.customerName.charAt(0)}
+                        {b.customerName.charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.bargainName}>{b.customerName}</Text>
-                      <Text style={styles.bargainSub}>{b.items}</Text>
+                      <Text style={styles.bargainSub}>{b.productName}</Text>
                     </View>
                   </View>
-                  <Text style={b.status === 'urgent' ? styles.bargainStatusUrgent : styles.bargainStatusWaiting}>
-                    {b.status === 'urgent' ? 'Urgent' : 'Waiting'}
+                  <Text style={b.isExpiringSoon ? styles.bargainStatusUrgent : styles.bargainStatusWaiting}>
+                    {b.isExpiringSoon ? 'Urgent' : 'Waiting'}
                   </Text>
                 </View>
 
@@ -519,79 +550,114 @@ export default observer(function HomeScreen() {
                   <View style={styles.bargainPriceVsSep} />
                   <View style={[styles.bargainPriceSide, { alignItems: 'flex-end' }]}>
                     <Text style={styles.bargainPriceLabel}>Your price</Text>
-                    <Text style={styles.bargainPriceMerchant}>{formatCurrency(b.yourPrice)}</Text>
+                    <Text style={styles.bargainPriceMerchant}>{formatCurrency(b.originalPrice)}</Text>
                   </View>
                 </View>
 
                 <View style={styles.bargainExpiry}>
-                  <View style={[styles.bargainExpiryDot, { backgroundColor: b.status === 'urgent' ? Colors.error : Colors.warning }]} />
-                  <Text style={[styles.bargainExpiryText, { color: b.status === 'urgent' ? Colors.error : Colors.warning }]}>
-                    Expires in {b.expiresIn}
+                  <View style={[styles.bargainExpiryDot, { backgroundColor: b.isExpiringSoon ? Colors.error : Colors.warning }]} />
+                  <Text style={[styles.bargainExpiryText, { color: b.isExpiringSoon ? Colors.error : Colors.warning }]}>
+                    {b.expirationTime > 0 ? `Expires in ${formatExpiry(b.expirationTime)}` : 'Expiring soon'}
                   </Text>
                   <Text style={styles.bargainGapText}>
-                    Gap: {formatCurrency(b.yourPrice - b.customerOffer)}
+                    Gap: {formatCurrency(Math.max(0, b.originalPrice - b.customerOffer))}
                   </Text>
                 </View>
 
                 <View style={styles.bargainBtnRow}>
-                  <TouchableOpacity style={styles.bargainAcceptBtn} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={styles.bargainAcceptBtn}
+                    activeOpacity={0.8}
+                    onPress={() => bargainingStore.acceptBargain(b.id)}
+                  >
                     <Text style={styles.bargainAcceptText}>Accept {formatCurrency(b.customerOffer)}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.bargainCounterBtn} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={styles.bargainCounterBtn}
+                    activeOpacity={0.8}
+                    onPress={() => router.push(`/bargaining/${b.sessionId}` as any)}
+                  >
                     <Text style={styles.bargainCounterText}>Counter</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.bargainDeclineBtn} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={styles.bargainDeclineBtn}
+                    activeOpacity={0.8}
+                    onPress={() => bargainingStore.rejectBargain(b.id)}
+                  >
                     <Text style={styles.bargainDeclineText}>Decline</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ))}
 
-            {/* ── Inventory Alerts ────────────────────────────────────── */}
-            <View style={styles.sectionRow}>
-              <View style={styles.sectionLeft}>
-                <Text style={styles.sectionTitle}>Inventory Alerts</Text>
-                <Text style={[styles.sectionBadge, styles.sectionBadgeRed]}>
-                  {STATIC_INVENTORY.length} items
-                </Text>
+            {bargainingStore.pendingBargains.length === 0 && bargainingStore.chatAlerts.length === 0 && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 16, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textMuted, fontSize: 14 }}>No active bargain sessions</Text>
               </View>
-              <TouchableOpacity
-                style={styles.viewAllBtn}
-                onPress={() => router.push('/(tabs)/inventory' as any)}
-              >
-                <Text style={styles.viewAllText}>View all</Text>
-                <ChevronRight size={13} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
+            )}
 
-            <View style={styles.inventoryCard}>
-              {STATIC_INVENTORY.map((item, i) => (
-                <View
-                  key={item.id}
-                  style={[styles.inventoryRow, i > 0 && styles.inventoryRowBorder]}
-                >
-                  <View style={styles.inventoryImgBox}>
-                    <Image source={item.img} style={{ width: 32, height: 32, resizeMode: 'contain' }} />
-                  </View>
-                  <View style={styles.inventoryInfo}>
-                    <Text style={styles.inventoryName}>{item.name}</Text>
-                    <Text style={item.color === Colors.error ? styles.inventoryQtyRed : styles.inventoryQtyAmber}>
-                      {item.qty}
-                    </Text>
-                    <View style={styles.inventoryProgBg}>
-                      <View style={[styles.inventoryProg, { width: `${item.prog}%`, backgroundColor: item.color }]} />
+            {/* ── Inventory Alerts ────────────────────────────────────── */}
+            {(() => {
+              const outOfStock = inventoryStore.outOfStockItems;
+              const lowStock = inventoryStore.lowStockItems;
+              const alertItems = [...outOfStock, ...lowStock].slice(0, 3);
+              if (inventoryStore.stockState === 'loading' || alertItems.length === 0) return null;
+              return (
+                <>
+                  <View style={styles.sectionRow}>
+                    <View style={styles.sectionLeft}>
+                      <Text style={styles.sectionTitle}>Inventory Alerts</Text>
+                      <Text style={[styles.sectionBadge, styles.sectionBadgeRed]}>
+                        {alertItems.length} items
+                      </Text>
                     </View>
+                    <TouchableOpacity
+                      style={styles.viewAllBtn}
+                      onPress={() => router.push('/(tabs)/inventory' as any)}
+                    >
+                      <Text style={styles.viewAllText}>View all</Text>
+                      <ChevronRight size={13} color={Colors.primary} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.inventoryActionBtn, { backgroundColor: item.bg }]}
-                    activeOpacity={0.8}
-                    onPress={() => router.push('/(tabs)/inventory' as any)}
-                  >
-                    <Text style={[styles.inventoryActionText, { color: item.color }]}>{item.action}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
+                  <View style={styles.inventoryCard}>
+                    {alertItems.map((item, i) => {
+                      const qty = Number(item.available_stock);
+                      const isOut = qty <= 0;
+                      const color = isOut ? Colors.error : Colors.warning;
+                      const bg = isOut ? Colors.errorBg : Colors.warningBg;
+                      const prog = isOut ? 1 : Math.min(Math.round((qty / 5) * 20), 20);
+                      return (
+                        <View key={item.variant_id} style={[styles.inventoryRow, i > 0 && styles.inventoryRowBorder]}>
+                          <View style={[styles.inventoryImgBox, { alignItems: 'center', justifyContent: 'center' }]}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.primary }}>
+                              {item.product_name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={styles.inventoryInfo}>
+                            <Text style={styles.inventoryName}>{item.product_name} ({item.variant_name})</Text>
+                            <Text style={isOut ? styles.inventoryQtyRed : styles.inventoryQtyAmber}>
+                              {isOut ? 'Out of stock' : `${qty} ${item.unit_symbol} · Low stock`}
+                            </Text>
+                            <View style={styles.inventoryProgBg}>
+                              <View style={[styles.inventoryProg, { width: `${prog}%`, backgroundColor: color }]} />
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.inventoryActionBtn, { backgroundColor: bg }]}
+                            activeOpacity={0.8}
+                            onPress={() => router.push('/(tabs)/inventory' as any)}
+                          >
+                            <Text style={[styles.inventoryActionText, { color }]}>
+                              {isOut ? 'Restock' : 'Add stock'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
+              );
+            })()}
 
             {/* ── Revenue Snapshot ────────────────────────────────────── */}
             <View style={styles.sectionRow}>
@@ -606,19 +672,65 @@ export default observer(function HomeScreen() {
             </View>
 
             <View style={styles.revenueGrid}>
-              {REVENUE_DATA.map(snap => (
-                <View key={snap.label} style={styles.revenueSnapCard}>
-                  <Text style={styles.revenueSnapLabel}>{snap.label}</Text>
-                  <Text style={styles.revenueSnapValue}>{snap.value}</Text>
-                  <View style={styles.revenueSnapTrend}>
-                    <ArrowUpRight size={12} color={Colors.success} />
-                    <Text style={styles.revenueSnapTrendText}>{snap.trend}% vs last week</Text>
+              {/* Revenue Today */}
+              <View style={styles.revenueSnapCard}>
+                <View style={styles.revenueCardHeader}>
+                  <View style={[styles.revenueIconCircle, { backgroundColor: Colors.success + '20' }]}>
+                    <TrendingUp size={16} color={Colors.success} />
                   </View>
-                  <View style={styles.revenueSparkWrap}>
-                    <Sparkline data={snap.data} color={Colors.primary} width={((SCREEN_WIDTH - 42) / 2) - 28} height={32} />
+                  <View style={styles.revenuePeriodPill}>
+                    <Text style={styles.revenuePeriodText}>Today</Text>
                   </View>
                 </View>
-              ))}
+                <Text style={styles.revenueSnapLabel}>Revenue</Text>
+                <Text style={styles.revenueSnapValue}>{formatCurrency(dashboardStore.todayRevenue)}</Text>
+              </View>
+
+              {/* Orders Today */}
+              <View style={styles.revenueSnapCard}>
+                <View style={styles.revenueCardHeader}>
+                  <View style={[styles.revenueIconCircle, { backgroundColor: Colors.primary + '20' }]}>
+                    <ShoppingBag size={16} color={Colors.primary} />
+                  </View>
+                  <View style={styles.revenuePeriodPill}>
+                    <Text style={styles.revenuePeriodText}>Today</Text>
+                  </View>
+                </View>
+                <Text style={styles.revenueSnapLabel}>Orders</Text>
+                <Text style={styles.revenueSnapValue}>{dashboardStore.todayOrders}</Text>
+              </View>
+
+              {/* Pending Orders */}
+              <View style={styles.revenueSnapCard}>
+                <View style={styles.revenueCardHeader}>
+                  <View style={[styles.revenueIconCircle, { backgroundColor: Colors.warning + '20' }]}>
+                    <Clock size={16} color={Colors.warning} />
+                  </View>
+                  <View style={[styles.revenuePeriodPill, { backgroundColor: Colors.warning + '20' }]}>
+                    <Text style={[styles.revenuePeriodText, { color: Colors.warning }]}>Action</Text>
+                  </View>
+                </View>
+                <Text style={styles.revenueSnapLabel}>Pending</Text>
+                <Text style={styles.revenueSnapValue}>{dashboardStore.pendingOrders}</Text>
+              </View>
+
+              {/* Avg. Order Value */}
+              <View style={styles.revenueSnapCard}>
+                <View style={styles.revenueCardHeader}>
+                  <View style={[styles.revenueIconCircle, { backgroundColor: '#3B82F620' }]}>
+                    <BarChart2 size={16} color="#3B82F6" />
+                  </View>
+                  <View style={styles.revenuePeriodPill}>
+                    <Text style={styles.revenuePeriodText}>Today</Text>
+                  </View>
+                </View>
+                <Text style={styles.revenueSnapLabel}>Avg. Order</Text>
+                <Text style={styles.revenueSnapValue}>
+                  {dashboardStore.todayOrders > 0
+                    ? formatCurrency(dashboardStore.todayRevenue / dashboardStore.todayOrders)
+                    : '—'}
+                </Text>
+              </View>
             </View>
 
             {/* ── Activity Feed ────────────────────────────────────────── */}

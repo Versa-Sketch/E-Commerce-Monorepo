@@ -19,6 +19,16 @@ import { BargainingApiService } from "../Services/index.api";
  * clearing the pending spinner and surfacing an error. */
 const OFFER_RESPONSE_TIMEOUT_MS = 15000;
 
+export interface ChatAlert {
+  id: string;
+  sessionId: string;
+  customerName: string;
+  message: string;
+  time: string;
+  type: 'offer' | 'message';
+  offerAmount?: number;
+}
+
 export class BargainingStore {
   sessions: BargainSession[] = [];
   connectionStatus: GatewayConnectionStatus = "offline";
@@ -28,6 +38,8 @@ export class BargainingStore {
   pendingOfferActions = new Set<string>();
   /** Last action-level error (offer response, etc.) surfaced as a toast by the UI. */
   actionError: string | null = null;
+  /** In-app notification alerts from incoming WS events (new offers, customer messages). */
+  chatAlerts: ChatAlert[] = [];
   /** Bumped every second so `bargains`/`expirationTime` re-derive and countdowns tick live. */
   private nowTick = 0;
 
@@ -107,6 +119,14 @@ export class BargainingStore {
 
   clearActionError() {
     this.actionError = null;
+  }
+
+  dismissChatAlert(id: string) {
+    this.chatAlerts = this.chatAlerts.filter((a) => a.id !== id);
+  }
+
+  dismissAllChatAlerts() {
+    this.chatAlerts = [];
   }
 
   isOfferActionPending(offerId: string): boolean {
@@ -308,6 +328,19 @@ export class BargainingStore {
               cartItemId,
             );
           }
+          // Push an in-app alert for incoming offers from the customer.
+          if (message.type === "new_offer" || message.type === "counter_offer") {
+            const customerName = session ? this.resolveCustomerName(session) : "Customer";
+            const productName = session?.cart.find((c) => c.cartItemId === cartItemId)?.productName ?? "item";
+            const offerAmount = Number(offerData.offered_amount ?? offerData.offeredAmount ?? 0);
+            const alertMsg = message.type === "new_offer"
+              ? `Offered ₹${offerAmount} for ${productName}`
+              : `Counter-offered ₹${offerAmount} for ${productName}`;
+            this.chatAlerts = [
+              { id: `alert-${Date.now()}`, sessionId: message.session_id ?? "", customerName, message: alertMsg, time: "Just now", type: "offer", offerAmount },
+              ...this.chatAlerts,
+            ].slice(0, 20);
+          }
           // Clear the pending spinner for whichever offer this responds to - the
           // accepted/rejected offer itself, or its parent when a counter supersedes it.
           if (offerData.offer_id) this.pendingOfferActions.delete(offerData.offer_id);
@@ -324,6 +357,19 @@ export class BargainingStore {
               "[Bargaining] chat_message -> appended to session",
               session.sessionId,
             );
+            // Push an in-app alert for messages from the customer (not our own echo).
+            const senderId = msgObj.sender_id ?? msgObj.senderId;
+            const isOwnMessage = senderId != null && String(senderId) === this.currentUserId;
+            const messageType = (msgObj.message_type ?? msgObj.messageType ?? "").toUpperCase();
+            const isSystemMsg = messageType === "SYSTEM";
+            if (!isOwnMessage && !isSystemMsg) {
+              const customerName = this.resolveCustomerName(session);
+              const text: string = msgObj.message ?? msgObj.text ?? "";
+              this.chatAlerts = [
+                { id: `alert-${Date.now()}`, sessionId: session.sessionId, customerName, message: text, time: "Just now", type: "message" },
+                ...this.chatAlerts,
+              ].slice(0, 20);
+            }
           } else {
             console.warn(
               "[Bargaining] chat_message -> no matching session",

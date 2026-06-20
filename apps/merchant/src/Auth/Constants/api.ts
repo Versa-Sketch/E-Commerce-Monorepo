@@ -12,6 +12,7 @@ export const AUTH_ENDPOINTS = {
   VERIFY_OTP: `${BASE}/accounts/verify-otp/`,
   LOGIN: `${BASE}/accounts/login/`,
   ME: `${BASE}/accounts/me/`,
+  ADDRESSES: `${BASE}/accounts/addresses/`,
 } as const;
 
 export const SHOP_ENDPOINTS = {
