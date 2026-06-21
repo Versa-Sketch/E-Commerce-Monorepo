@@ -52,6 +52,8 @@ export class CartStore {
   private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private snapshotByShop: Map<string, Map<string, CartItem | undefined>> = new Map();
   private inFlightByShop: Map<string, Set<string>> = new Map();
+  private mutationVersionByVariant: Map<string, number> = new Map();
+  private inFlightVersionByShop: Map<string, Map<string, number>> = new Map();
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -61,6 +63,8 @@ export class CartStore {
       debounceTimers: false,
       snapshotByShop: false,
       inFlightByShop: false,
+      mutationVersionByVariant: false,
+      inFlightVersionByShop: false,
       pollTimer: false,
     } as never);
   }
@@ -169,8 +173,36 @@ export class CartStore {
       this.walletCreditsUsed = 0;
     }
     if (product.variantId) {
+      this.bumpMutationVersion(product.variantId);
       this.queueBulkUpdate(product.storeId, product.variantId, Math.max(0, quantity), previousItem);
     }
+  }
+
+  private bumpMutationVersion(variantId: string): number {
+    const nextVersion = (this.mutationVersionByVariant.get(variantId) ?? 0) + 1;
+    this.mutationVersionByVariant.set(variantId, nextVersion);
+    return nextVersion;
+  }
+
+  private getCurrentMutationVersion(variantId: string): number {
+    return this.mutationVersionByVariant.get(variantId) ?? 0;
+  }
+
+  private isVariantPendingOrInFlight(variantId: string): boolean {
+    for (const pending of this.pendingByShop.values()) {
+      if (pending.has(variantId)) return true;
+    }
+    for (const inFlight of this.inFlightByShop.values()) {
+      if (inFlight.has(variantId)) return true;
+    }
+    return false;
+  }
+
+  private isShopPendingOrInFlight(shopId: string): boolean {
+    return (
+      (this.pendingByShop.get(shopId)?.size ?? 0) > 0 ||
+      (this.inFlightByShop.get(shopId)?.size ?? 0) > 0
+    );
   }
 
   private queueBulkUpdate(
@@ -238,7 +270,11 @@ export class CartStore {
       else toRemove.push(variant_id);
     });
     const allVariantIds = Array.from(pending.keys());
+    const requestVersions = new Map(
+      allVariantIds.map((variantId) => [variantId, this.getCurrentMutationVersion(variantId)])
+    );
     this.inFlightByShop.set(shopId, new Set(allVariantIds));
+    this.inFlightVersionByShop.set(shopId, requestVersions);
     runInAction(() => {
       this.syncStatus.set(shopId, API_STATUS.FETCHING);
     });
@@ -253,25 +289,38 @@ export class CartStore {
       runInAction(() => {
         if (cart) {
           this.shopCarts.set(shopId, cart);
-          this.hydrateFromShopCart(cart);
+          this.hydrateFromShopCart(cart, requestVersions);
         }
         this.syncStatus.set(shopId, API_STATUS.SUCCESS);
       });
     } catch (e) {
       runInAction(() => {
         this.syncStatus.set(shopId, API_STATUS.ERROR);
-        this.rollback(allVariantIds, snapshot);
+        this.rollback(allVariantIds, snapshot, requestVersions);
         this.onSyncError?.(normalizeError(e));
       });
     } finally {
-      this.inFlightByShop.delete(shopId);
+      if (this.inFlightVersionByShop.get(shopId) === requestVersions) {
+        this.inFlightByShop.delete(shopId);
+        this.inFlightVersionByShop.delete(shopId);
+      }
     }
   }
 
   /** Reverts items to their pre-edit state after a failed sync. */
-  private rollback(variantIds: string[], snapshot?: Map<string, CartItem | undefined>): void {
+  private rollback(
+    variantIds: string[],
+    snapshot?: Map<string, CartItem | undefined>,
+    requestVersions?: Map<string, number>
+  ): void {
     if (!snapshot) return;
     variantIds.forEach((variantId) => {
+      if (
+        requestVersions?.has(variantId) &&
+        requestVersions.get(variantId) !== this.getCurrentMutationVersion(variantId)
+      ) {
+        return;
+      }
       const previousItem = snapshot.get(variantId);
       const index = this.items.findIndex((i) => i.product.variantId === variantId);
       if (!previousItem || previousItem.quantity <= 0) {
@@ -328,12 +377,16 @@ export class CartStore {
   }
 
   /** Fully reconciles local items for this shop against the server's cart (adds, updates, removes). */
-  private hydrateFromShopCart(cart: CartResponse): void {
+  private hydrateFromShopCart(cart: CartResponse, acceptedVersions?: Map<string, number>): void {
     const apiVariantIds = new Set(cart.items.map((i) => i.variant_id));
     this.items = this.items.filter(
-      (i) => i.product.storeId !== cart.shop_id || apiVariantIds.has(i.product.variantId ?? '')
+      (i) =>
+        i.product.storeId !== cart.shop_id ||
+        this.shouldPreserveLocalVariant(i.product.variantId, acceptedVersions) ||
+        apiVariantIds.has(i.product.variantId ?? '')
     );
     cart.items.forEach((apiItem) => {
+      if (this.shouldPreserveLocalVariant(apiItem.variant_id, acceptedVersions)) return;
       const existing = this.items.find((i) => i.product.variantId === apiItem.variant_id);
       if (existing) {
         existing.quantity = apiItem.quantity;
@@ -341,6 +394,15 @@ export class CartStore {
       }
       this.items.push(this.mapApiItemToCartItem(apiItem, cart.shop_id, cart.shop_name));
     });
+  }
+
+  private shouldPreserveLocalVariant(
+    variantId?: string,
+    acceptedVersions?: Map<string, number>
+  ): boolean {
+    if (!variantId || !this.isVariantPendingOrInFlight(variantId)) return false;
+    if (!acceptedVersions?.has(variantId)) return true;
+    return acceptedVersions.get(variantId) !== this.getCurrentMutationVersion(variantId);
   }
 
   /** Cross-shop cart summaries, e.g. for a global cart badge/list. */
@@ -441,7 +503,9 @@ export class CartStore {
     await Promise.all([this.fetchCartSummaries(), this.fetchCartsWithProducts()]);
     const validShopIds = new Set(this.cartSummaries.map((summary) => summary.shop_id));
     runInAction(() => {
-      this.items = this.items.filter((i) => validShopIds.has(i.product.storeId));
+      this.items = this.items.filter(
+        (i) => validShopIds.has(i.product.storeId) || this.isShopPendingOrInFlight(i.product.storeId)
+      );
       this.cartsWithProducts.forEach((group) => {
         const summary = this.cartSummaries.find((s) => s.shop_id === group.shop_id);
         const cart: CartResponse = {
