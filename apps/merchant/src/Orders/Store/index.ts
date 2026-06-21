@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { Order } from "../Models/Order";
+import { Order, OrderDetail } from "../Models/Order";
 import type { SessionStore } from "../../Auth/Store";
 import { USE_FIXTURES } from "../../Common/services/config";
 import { resolveShopId } from "../../Common/services/shopId";
@@ -15,6 +15,12 @@ export class OrdersStore {
   state: LoadState = "idle";
   error: string | null = null;
   shopId: string | null = null;
+  searchQuery: string = '';
+
+  // Full order detail — GET .../orders/{order_id}/
+  orderDetail: OrderDetail | null = null;
+  orderDetailState: LoadState = 'idle';
+  orderDetailError: string | null = null;
 
   private session: SessionStore;
   private service: IOrdersService;
@@ -44,10 +50,13 @@ export class OrdersStore {
     return id;
   }
 
-  async fetchOrders(statusFilter?: string) {
+  async fetchOrders(statusFilter?: string, search?: string) {
     runInAction(() => {
       this.state = "loading";
       this.error = null;
+      if (search !== undefined) {
+        this.searchQuery = search;
+      }
     });
 
     const shopId = await this.ensureShopId();
@@ -70,8 +79,7 @@ export class OrdersStore {
     else if (statusFilter === "Delivered") apiStatus = "DELIVERED";
     else if (statusFilter === "Cancelled") apiStatus = "CANCELLED";
 
-    const res = await this.service.fetchOrders(shopId, apiStatus);
-
+    const res = await this.service.fetchOrders(shopId, apiStatus, 1, this.searchQuery);
     runInAction(() => {
       if (res.ok && res.data) {
         this.orders = res.data.results.map((o) => this.mapApiOrderToModel(o));
@@ -79,6 +87,32 @@ export class OrdersStore {
       } else {
         this.state = "error";
         this.error = res.message || "Failed to load orders";
+      }
+    });
+  }
+
+  async fetchOrderDetail(orderId: string): Promise<void> {
+    runInAction(() => {
+      this.orderDetailState = 'loading';
+      this.orderDetailError = null;
+      this.orderDetail = null;
+    });
+    const shopId = await this.ensureShopId();
+    if (!shopId) {
+      runInAction(() => {
+        this.orderDetailState = 'error';
+        this.orderDetailError = 'No shop ID found';
+      });
+      return;
+    }
+    const res = await this.service.fetchOrderDetail(shopId, orderId);
+    runInAction(() => {
+      if (res.ok && res.data) {
+        this.orderDetail = new OrderDetail(res.data);
+        this.orderDetailState = 'idle';
+      } else {
+        this.orderDetailState = 'error';
+        this.orderDetailError = res.message || 'Failed to load order detail';
       }
     });
   }

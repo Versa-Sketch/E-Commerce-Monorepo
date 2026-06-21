@@ -1,14 +1,13 @@
+import { router, useFocusEffect } from 'expo-router';
 import {
   CheckCircle2,
-  ChevronLeft,
   Clock3,
   MessageSquare,
   TrendingUp,
-  XCircle,
-  Zap,
+  Zap
 } from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -22,9 +21,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
 import { BottomSheet } from '../../Common/components/BottomSheet';
 import { useStores } from '../../Common/hooks/useStores';
-import type { Bargain } from '../Models/Bargain';
 import { Colors } from '../../theme/colors';
 import { CountdownBadge, DealHealthTag, ProbabilityBar } from '../Components/DealVisuals';
+import type { Bargain } from '../Models/Bargain';
 import styles from './styles';
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -33,7 +32,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: numbe
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(opacity, { toValue: 1,   duration: 700, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
       Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
     ]));
     loop.start(); return () => loop.stop();
@@ -47,16 +46,16 @@ function BargainSkeleton({ insetTop }: { insetTop: number }) {
       <View style={{ backgroundColor: Colors.primary, paddingTop: insetTop + 12, paddingHorizontal: 16, paddingBottom: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
-          <SkeletonBox width={100} height={22} borderRadius={6}  style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
+          <SkeletonBox width={100} height={22} borderRadius={6} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
           <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {[0,1,2,3].map((i) => <SkeletonBox key={i} width={'48%' as any} height={60} borderRadius={12} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
+          {[0, 1, 2, 3].map((i) => <SkeletonBox key={i} width={'48%' as any} height={60} borderRadius={12} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
         </View>
       </View>
       <View style={{ flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 12 }}>
         <SkeletonBox height={18} width={120} borderRadius={6} />
-        {[0,1,2].map((i) => <SkeletonBox key={i} height={160} borderRadius={18} />)}
+        {[0, 1, 2].map((i) => <SkeletonBox key={i} height={160} borderRadius={18} />)}
       </View>
     </View>
   );
@@ -69,14 +68,16 @@ function DealCard({
   onAccept,
   onCounter,
   onReject,
+  onOpenChat,
 }: {
   bargain: Bargain;
   onAccept: () => void;
   onCounter: () => void;
   onReject: () => void;
+  onOpenChat: () => void;
 }) {
   return (
-    <View style={bStyles.dealCard}>
+    <TouchableOpacity style={bStyles.dealCard} activeOpacity={0.9} onPress={onOpenChat}>
       {/* Top row */}
       <View style={bStyles.dealTopRow}>
         <View style={bStyles.dealEmoji}>
@@ -125,7 +126,7 @@ function DealCard({
           <Text style={[bStyles.actionBtnText, { color: Colors.error }]}>Reject</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -135,23 +136,31 @@ export default observer(function BargainingScreen() {
   const insets = useSafeAreaInsets();
   const { bargainingStore } = useStores();
 
-  const [counterId,    setCounterId]    = useState<string | null>(null);
+  // Tracked by cart item, not offer id — a counter round replaces the live offer with a
+  // brand-new offer id, so an id captured at "open sheet" time can go stale mid-negotiation.
+  const [counterCartItemId, setCounterCartItemId] = useState<string | null>(null);
   const [counterPrice, setCounterPrice] = useState(0);
 
-  const pending  = bargainingStore.pendingBargains;
+  const pending = bargainingStore.pendingBargains;
   const resolved = [
     ...bargainingStore.acceptedBargains,
     ...bargainingStore.rejectedBargains,
     ...bargainingStore.expiredBargains,
   ];
 
-  const counterBargain = pending.find((b) => b.id === counterId) ?? null;
+  useFocusEffect(
+    useCallback(() => {
+      void bargainingStore.loadSessions();
+    }, [bargainingStore]),
+  );
 
-  const suggestions      = counterBargain
+  const counterBargain = pending.find((b) => b.cartItemId === counterCartItemId) ?? null;
+
+  const suggestions = counterBargain
     ? [0.3, 0.5, 0.75].map((t) => Math.round(counterBargain.customerOffer + (counterBargain.originalPrice - counterBargain.customerOffer) * t))
     : [];
   const suggestionLabels = ['Quick win', 'Balanced', 'Hold firm'];
-  const acceptancePct    = counterBargain
+  const acceptancePct = counterBargain
     ? Math.max(5, Math.min(95, Math.round(100 - ((counterPrice - counterBargain.customerOffer) / Math.max(1, counterBargain.originalPrice - counterBargain.customerOffer)) * 60)))
     : 0;
 
@@ -167,14 +176,14 @@ export default observer(function BargainingScreen() {
   };
 
   const openCounter = (bargain: Bargain) => {
-    setCounterId(bargain.id);
+    setCounterCartItemId(bargain.cartItemId);
     setCounterPrice(Math.round(bargain.customerOffer + (bargain.originalPrice - bargain.customerOffer) * 0.5));
   };
 
   const sendCounter = () => {
     if (!counterBargain) return;
     bargainingStore.counterBargain(counterBargain.id, counterPrice);
-    setCounterId(null);
+    setCounterCartItemId(null);
   };
 
   if (bargainingStore.sessionsLoading) return <BargainSkeleton insetTop={insets.top} />;
@@ -186,9 +195,6 @@ export default observer(function BargainingScreen() {
       {/* ── Orange Header ── */}
       <View style={[bStyles.header, { paddingTop: insets.top + 12 }]}>
         <View style={bStyles.headerTopRow}>
-          <TouchableOpacity style={bStyles.headerBtn} activeOpacity={0.8}>
-            <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
           <View style={{ alignItems: 'center' }}>
             <Text style={bStyles.headerTitle}>Bargains</Text>
             <Text style={bStyles.headerSubtitle}>Live deal room</Text>
@@ -201,10 +207,10 @@ export default observer(function BargainingScreen() {
         {/* Hero stats grid */}
         <View style={bStyles.heroGrid}>
           {[
-            { label: 'Active deals',      value: String(bargainingStore.activeDeals),                                        color: '#FFFFFF' },
-            { label: 'Potential revenue', value: `₹${bargainingStore.potentialRevenue}`,                                     color: '#BBF7D0' },
-            { label: 'Closing rate',      value: `${bargainingStore.closingRate}%`,                                          color: '#FFFFFF' },
-            { label: 'Expiring soon',     value: String(bargainingStore.expiringSoonCount), color: bargainingStore.expiringSoonCount > 0 ? '#FCA5A5' : '#FFFFFF' },
+            { label: 'Active deals', value: String(bargainingStore.activeDeals), color: '#FFFFFF' },
+            { label: 'Potential revenue', value: `₹${bargainingStore.potentialRevenue}`, color: '#BBF7D0' },
+            { label: 'Closing rate', value: `${bargainingStore.closingRate}%`, color: '#FFFFFF' },
+            { label: 'Expiring soon', value: String(bargainingStore.expiringSoonCount), color: bargainingStore.expiringSoonCount > 0 ? '#FCA5A5' : '#FFFFFF' },
           ].map((stat) => (
             <View key={stat.label} style={bStyles.heroStat}>
               <Text style={[bStyles.heroStatValue, { color: stat.color }]}>{stat.value}</Text>
@@ -217,6 +223,14 @@ export default observer(function BargainingScreen() {
       {/* ── White body ── */}
       <View style={{ flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -1 }}>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
+
+          {bargainingStore.sessionsError && (
+            <View style={[bStyles.secondaryCard, { backgroundColor: Colors.errorBg, borderColor: Colors.error }]}>
+              <Text style={[bStyles.secondaryLabel, { color: Colors.error, fontWeight: '700' }]}>
+                Couldn't load bargains: {bargainingStore.sessionsError}
+              </Text>
+            </View>
+          )}
 
           {/* Secondary stats row */}
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -258,6 +272,7 @@ export default observer(function BargainingScreen() {
                 onAccept={() => handleAccept(bargain.id)}
                 onCounter={() => openCounter(bargain)}
                 onReject={() => handleReject(bargain.id)}
+                onOpenChat={() => router.push(`/bargaining/${bargain.id}` as any)}
               />
             ))
           )}
@@ -265,28 +280,30 @@ export default observer(function BargainingScreen() {
           {/* Recent activity */}
           <Text style={bStyles.sectionTitle}>Recent activity</Text>
 
-          {resolved.length === 0 ? (
+          {bargainingStore.resolvedHistory.length === 0 ? (
             <View style={bStyles.emptyCard}>
               <Clock3 size={28} color={Colors.textSecondary} />
               <Text style={bStyles.emptyTitle}>Nothing closed yet</Text>
               <Text style={bStyles.emptyText}>Accepted, rejected, and expired deals show up here.</Text>
             </View>
           ) : (
-            resolved.map((bargain) => {
-              const tone =
-                bargain.status === 'Accepted' ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed'  } :
-                bargain.status === 'Rejected' ? { bg: Colors.errorBg,   fg: Colors.error,   Icon: XCircle,      label: 'Rejected'     } :
-                                                { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: 'Expired' };
+            bargainingStore.resolvedHistory.map((histSession) => {
+              const hasDeal = histSession.status === 'ENDED' && histSession.final_accepted_amount !== null;
+              const tone = hasDeal
+                ? { bg: Colors.successBg, fg: Colors.success, Icon: CheckCircle2, label: 'Deal closed' } :
+                { bg: Colors.surfaceElevated, fg: Colors.textSecondary, Icon: Clock3, label: histSession.status === 'EXPIRED' ? 'Expired' : 'Ended' };
               return (
-                <View key={bargain.id} style={bStyles.resolvedCard}>
+                <View key={histSession.session_id} style={bStyles.resolvedCard}>
                   <View style={[bStyles.resolvedIcon, { backgroundColor: tone.bg }]}>
                     <tone.Icon size={18} color={tone.fg} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={bStyles.resolvedProduct} numberOfLines={1}>{bargain.productName}</Text>
-                    <Text style={bStyles.resolvedMeta}>{bargain.customerName} · {tone.label}</Text>
+                    <Text style={bStyles.resolvedProduct} numberOfLines={1}>Cart Bargain Session</Text>
+                    <Text style={bStyles.resolvedMeta}>{histSession.customer_name} · {tone.label}</Text>
                   </View>
-                  <Text style={bStyles.resolvedPrice}>₹{bargain.customerOffer}</Text>
+                  <Text style={bStyles.resolvedPrice}>
+                    {histSession.final_accepted_amount ? `₹${Number(histSession.final_accepted_amount)}` : '—'}
+                  </Text>
                 </View>
               );
             })
@@ -295,7 +312,7 @@ export default observer(function BargainingScreen() {
       </View>
 
       {/* ── Counter offer sheet ── */}
-      <BottomSheet isVisible={counterId !== null} onClose={() => setCounterId(null)} title="Counter offer" height={0.6}>
+      <BottomSheet isVisible={counterCartItemId !== null} onClose={() => setCounterCartItemId(null)} title="Counter offer" height={0.6}>
         {counterBargain ? (
           <View style={styles.sheet}>
             <Text style={styles.sheetProduct}>{counterBargain.productName}</Text>
@@ -323,7 +340,7 @@ export default observer(function BargainingScreen() {
                 return (
                   <TouchableOpacity key={amount} style={[styles.chip, active && styles.chipActive]} onPress={() => setCounterPrice(amount)}>
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>₹{amount}</Text>
-                    <Text style={[styles.chipSub,   active && styles.chipSubActive]}>{suggestionLabels[i]}</Text>
+                    <Text style={[styles.chipSub, active && styles.chipSubActive]}>{suggestionLabels[i]}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -373,7 +390,7 @@ const bStyles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle:    { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
   headerSubtitle: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
   heroGrid: {
@@ -423,17 +440,17 @@ const bStyles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  dealProduct:  { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  dealProduct: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   dealCustomer: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary, marginTop: 2 },
 
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   originalPrice: { fontSize: 13, color: Colors.textMuted, textDecorationLine: 'line-through' },
-  offerPrice:    { fontSize: 22, fontWeight: '800', color: Colors.primaryDark },
-  discountPill:  { backgroundColor: Colors.errorBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
-  discountText:  { fontSize: 11, fontWeight: '800', color: Colors.error },
+  offerPrice: { fontSize: 22, fontWeight: '800', color: Colors.primaryDark },
+  discountPill: { backgroundColor: Colors.errorBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
+  discountText: { fontSize: 11, fontWeight: '800', color: Colors.error },
 
   expiringBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
-  expiringText:  { fontSize: 11, fontWeight: '700', color: '#B45309' },
+  expiringText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
 
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   actionBtn: {
@@ -441,9 +458,9 @@ const bStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },
-  actionAccept:  { backgroundColor: Colors.successBg, borderColor: Colors.success },
-  actionCounter: { backgroundColor: '#0F172A',         borderColor: '#0F172A'      },
-  actionReject:  { backgroundColor: Colors.errorBg,   borderColor: Colors.error   },
+  actionAccept: { backgroundColor: Colors.successBg, borderColor: Colors.success },
+  actionCounter: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  actionReject: { backgroundColor: Colors.errorBg, borderColor: Colors.error },
   actionBtnText: { fontSize: 12, fontWeight: '800' },
 
   emptyCard: {
@@ -452,7 +469,7 @@ const bStyles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  emptyText:  { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', lineHeight: 18 },
+  emptyText: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', lineHeight: 18 },
 
   resolvedCard: {
     backgroundColor: Colors.surface,
@@ -461,10 +478,10 @@ const bStyles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
     ...Shadows.soft,
   },
-  resolvedIcon:    { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  resolvedIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   resolvedProduct: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  resolvedMeta:    { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  resolvedPrice:   { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  resolvedMeta: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  resolvedPrice: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
 
   sendCounterBtn: {
     backgroundColor: Colors.primary,

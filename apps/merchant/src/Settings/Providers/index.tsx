@@ -4,7 +4,7 @@ import { AuthStore } from '../Store';
 const AuthStoreContext = createContext<AuthStore | null>(null);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [store] = useState(() => new AuthStore());
+  const [store] = useState(() => new AuthStore({} as any));
   return <AuthStoreContext.Provider value={store}>{children}</AuthStoreContext.Provider>;
 }
 

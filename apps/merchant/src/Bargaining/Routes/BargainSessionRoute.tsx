@@ -34,10 +34,20 @@ export default observer(function BargainSessionScreen() {
       (b) => b.sessionId === resolvedKeyRef.current!.sessionId && b.cartItemId === resolvedKeyRef.current!.cartItemId,
     );
   }
+  // Fallback: the param may be a session id rather than a bargain/offer id (e.g. a
+  // chat-alert notification only knows the session, not which cart item it's about).
+  // Resolve to the session's pending bargain, or its first bargain if none are pending.
+  if (!bargain) {
+    const sessionBargains = bargainingStore.bargains.filter((b) => b.sessionId === String(sessionId));
+    bargain = sessionBargains.find((b) => b.status === 'Pending') ?? sessionBargains[0];
+    if (bargain) resolvedKeyRef.current = { sessionId: bargain.sessionId, cartItemId: bargain.cartItemId };
+  }
   const session = bargain ? bargainingStore.sessions.find((s) => s.sessionId === bargain.sessionId) : undefined;
 
   const [chatInput, setChatInput] = useState('');
-  const [counterOfferId, setCounterOfferId] = useState<string | null>(null);
+  // Tracked by cart item, not offer id — a counter round replaces the live offer with a
+  // brand-new offer id, so an id captured at "open sheet" time can go stale mid-negotiation.
+  const [counterCartItemId, setCounterCartItemId] = useState<string | null>(null);
   const [counterPrice, setCounterPrice] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
@@ -115,7 +125,7 @@ export default observer(function BargainSessionScreen() {
     return offer ? [{ item, offer }] : [];
   });
 
-  const counterEntry = items.find((entry) => entry.offer.offerId === counterOfferId);
+  const counterEntry = items.find((entry) => entry.item.cartItemId === counterCartItemId);
 
   const getInitials = (name: string) => {
     return name
@@ -126,9 +136,9 @@ export default observer(function BargainSessionScreen() {
       .toUpperCase();
   };
 
-  const openCounter = (offerId: string, currentPrice: number, customerOffer: number) => {
+  const openCounter = (cartItemId: string, currentPrice: number, customerOffer: number) => {
     setCounterPrice(Math.round(customerOffer + (currentPrice - customerOffer) * 0.5));
-    setCounterOfferId(offerId);
+    setCounterCartItemId(cartItemId);
   };
 
   const handleAccept = (offerId: string) => {
@@ -457,7 +467,7 @@ export default observer(function BargainSessionScreen() {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                   style={[styles.offerInlineBtn, styles.offerInlineBtnCounter]}
-                                  onPress={() => openCounter(offer.offerId, offer.originalPrice, offer.offeredAmount)}
+                                  onPress={() => openCounter(offer.cartItemId, offer.originalPrice, offer.offeredAmount)}
                                 >
                                   <Text style={styles.offerInlineBtnText}>Counter</Text>
                                 </TouchableOpacity>
@@ -576,13 +586,13 @@ export default observer(function BargainSessionScreen() {
       </KeyboardAvoidingView>
 
       {/* Counter Offer Bottom Sheet (Make an offer UI styled with White Theme) */}
-      <BottomSheet isVisible={counterOfferId !== null} onClose={() => setCounterOfferId(null)} height={0.65}>
+      <BottomSheet isVisible={counterCartItemId !== null} onClose={() => setCounterCartItemId(null)} height={0.65}>
         {counterEntry ? (
           <View style={styles.sheet}>
             {/* Header Row */}
             <View style={styles.sheetHeaderRow}>
               <Text style={styles.sheetHeaderTitle}>Make a counter offer</Text>
-              <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setCounterOfferId(null)}>
+              <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setCounterCartItemId(null)}>
                 <X size={22} color="#475569" />
               </TouchableOpacity>
             </View>
@@ -596,7 +606,7 @@ export default observer(function BargainSessionScreen() {
                   <TouchableOpacity
                     key={item.cartItemId}
                     style={selected ? styles.cartItemCard : styles.cartItemCardUnselected}
-                    onPress={() => openCounter(offer.offerId, item.effectivePrice, offer.offeredAmount)}
+                    onPress={() => openCounter(item.cartItemId, item.effectivePrice, offer.offeredAmount)}
                   >
                     <View style={styles.cartItemIconContainer}>
                       <ShoppingBag size={18} color={selected ? '#3B82F6' : '#94A3B8'} />
@@ -663,7 +673,7 @@ export default observer(function BargainSessionScreen() {
               style={styles.sendCounterBtn}
               onPress={() => {
                 bargainingStore.counterBargain(counterEntry.offer.offerId, counterPrice);
-                setCounterOfferId(null);
+                setCounterCartItemId(null);
               }}
             >
               <Text style={styles.sendCounterBtnText}>Send offer</Text>

@@ -445,12 +445,6 @@ export default StyleSheet.create({
   pillText: { fontSize: 10, fontWeight: '700' },
   commerceBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  productImgPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
   productCardInactive2: { opacity: 0.62 },
   backButton: {
     width: 40, height: 40, borderRadius: 12,

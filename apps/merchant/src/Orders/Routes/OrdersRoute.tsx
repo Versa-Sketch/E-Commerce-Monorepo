@@ -1,8 +1,9 @@
+import { debounce } from 'lodash';
 import {
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   Clock,
+  CreditCard,
   MapPin,
   Package,
   Search,
@@ -10,54 +11,220 @@ import {
   SlidersHorizontal,
   Truck,
   User,
-  BarChart2,
-  XCircle,
+  XCircle
 } from 'lucide-react-native';
 import { observer } from 'mobx-react-lite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
+  Image,
   ScrollView,
   StatusBar,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomSheet } from '../../Common/components/BottomSheet';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
+import { BottomSheet } from '../../Common/components/BottomSheet';
+import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
-import { useStores } from '../../stores/RootStore';
-import type { Order } from '../Models/Order';
+import { Order } from '../Models/Order';
 import styles from './styles';
 
-type FilterKey  = 'All' | 'New' | 'Active' | 'Completed' | 'Cancelled';
+type FilterKey = 'All' | 'New' | 'Active' | 'Completed' | 'Cancelled';
 
-// Mock drivers for assignment (TODO: replace with API data)
-const MOCK_DRIVERS = [
-  { id: 'd1', name: 'Rajan Pillai',  phone: '+91 98400 11234', rating: 4.8 },
-  { id: 'd2', name: 'Suresh Babu',   phone: '+91 98765 55678', rating: 4.6 },
-  { id: 'd3', name: 'Anil Kumar',    phone: '+91 97890 33456', rating: 4.9 },
+const STATIC_DRIVERS = [
+  { id: 'd1', name: 'Rajan Pillai', phone: '+91 98400 11234', rating: 4.8 },
+  { id: 'd2', name: 'Suresh Babu', phone: '+91 98765 55678', rating: 4.6 },
+  { id: 'd3', name: 'Anil Kumar', phone: '+91 97890 33456', rating: 4.9 },
+];
+
+type OrderStatus = 'New Orders' | 'Accepted' | 'Packed' | 'Out For Delivery' | 'Delivered' | 'Cancelled';
+
+interface StaticOrder {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  amount: number;
+  itemsCount: number;
+  orderTime: string;
+  paymentMethod: 'Online' | 'COD';
+  deliveryPartnerId: string | null;
+  items: { id: string; name: string; quantity: number; price: number }[];
+  timeline: { status: string; time: string }[];
+}
+
+const STATIC_ORDERS: StaticOrder[] = [
+  {
+    id: 'ORD-8492',
+    customerName: 'Aravind Swamy',
+    customerPhone: '+91 94440 56789',
+    deliveryAddress: '12, 4th Cross, Indiranagar, Bengaluru 560038',
+    amount: 694, itemsCount: 4, orderTime: '10:32 AM', paymentMethod: 'Online', deliveryPartnerId: null,
+    items: [
+      { id: 'i1', name: 'Organic Tomatoes (500g)', quantity: 2, price: 60 },
+      { id: 'i2', name: 'Fresh Spinach (250g)', quantity: 1, price: 45 },
+      { id: 'i3', name: 'Basmati Rice (1kg)', quantity: 1, price: 120 },
+    ],
+    timeline: [{ status: 'Order Placed', time: '10:32 AM' }],
+  },
+  {
+    id: 'ORD-8488',
+    customerName: 'Meera Nair',
+    customerPhone: '+91 98840 12345',
+    deliveryAddress: '45, 2nd Main, Koramangala 3rd Block, Bengaluru 560034',
+    amount: 1290, itemsCount: 5, orderTime: '10:18 AM', paymentMethod: 'COD', deliveryPartnerId: null,
+    items: [
+      { id: 'i1', name: 'Alphonso Mangoes (1 dozen)', quantity: 1, price: 480 },
+      { id: 'i2', name: 'Fresh Pomegranate (500g)', quantity: 2, price: 180 },
+      { id: 'i3', name: 'Kiwi (4 pcs)', quantity: 1, price: 160 },
+    ],
+    timeline: [{ status: 'Order Placed', time: '10:18 AM' }],
+  },
+  {
+    id: 'ORD-8475',
+    customerName: 'Rohan Das',
+    customerPhone: '+91 97760 98765',
+    deliveryAddress: '7, Brigade Road, Bengaluru 560001',
+    amount: 340, itemsCount: 2, orderTime: '10:05 AM', paymentMethod: 'Online', deliveryPartnerId: null,
+    items: [
+      { id: 'i1', name: 'Mixed Greens Box', quantity: 1, price: 200 },
+      { id: 'i2', name: 'Coriander (100g)', quantity: 2, price: 20 },
+    ],
+    timeline: [{ status: 'Order Placed', time: '10:05 AM' }],
+  },
+  {
+    id: 'ORD-8461',
+    customerName: 'Sanjay Dutt',
+    customerPhone: '+91 96650 45678',
+    deliveryAddress: '22, 10th Main, Jayanagar 4th Block, Bengaluru 560011',
+    amount: 870, itemsCount: 3, orderTime: '9:55 AM', paymentMethod: 'Online', deliveryPartnerId: null,
+    items: [
+      { id: 'i1', name: 'Mixed Vegetables Box', quantity: 1, price: 350 },
+      { id: 'i2', name: 'Coconut (1 pc)', quantity: 2, price: 55 },
+      { id: 'i3', name: 'Green Chillies (100g)', quantity: 1, price: 30 },
+    ],
+    timeline: [
+      { status: 'Order Placed', time: '9:55 AM' },
+      { status: 'Accepted', time: '10:00 AM' },
+    ],
+  },
+  {
+    id: 'ORD-8430',
+    customerName: 'Kiran Rao',
+    customerPhone: '+91 95540 23456',
+    deliveryAddress: '34, JP Nagar 7th Phase, Bengaluru 560078',
+    amount: 540, itemsCount: 2, orderTime: '9:20 AM', paymentMethod: 'Online', deliveryPartnerId: 'd1',
+    items: [
+      { id: 'i1', name: 'Dragon Fruit (2 pcs)', quantity: 2, price: 200 },
+      { id: 'i2', name: 'Fresh Herbs Bundle', quantity: 1, price: 140 },
+    ],
+    timeline: [
+      { status: 'Order Placed', time: '9:20 AM' },
+      { status: 'Accepted', time: '9:25 AM' },
+      { status: 'Packed', time: '9:40 AM' },
+    ],
+  },
+  {
+    id: 'ORD-8412',
+    customerName: 'Anita Desai',
+    customerPhone: '+91 93320 87654',
+    deliveryAddress: '7, Whitefield Main Road, Bengaluru 560066',
+    amount: 1150, itemsCount: 6, orderTime: '8:45 AM', paymentMethod: 'Online', deliveryPartnerId: 'd2',
+    items: [
+      { id: 'i1', name: 'Avocado (2 pcs)', quantity: 2, price: 280 },
+      { id: 'i2', name: 'Cherry Tomatoes (250g)', quantity: 1, price: 90 },
+      { id: 'i3', name: 'Baby Carrots (500g)', quantity: 1, price: 75 },
+    ],
+    timeline: [
+      { status: 'Order Placed', time: '8:45 AM' },
+      { status: 'Accepted', time: '8:50 AM' },
+      { status: 'Packed', time: '9:05 AM' },
+      { status: 'Out for Delivery', time: '9:15 AM' },
+    ],
+  },
+  {
+    id: 'ORD-8401',
+    customerName: 'Vikram Seth',
+    customerPhone: '+91 92210 54321',
+    deliveryAddress: '88, MG Road, Bengaluru 560001',
+    amount: 380, itemsCount: 2, orderTime: '7:30 AM', paymentMethod: 'COD', deliveryPartnerId: 'd3',
+    items: [
+      { id: 'i1', name: 'Watermelon (1 pc)', quantity: 1, price: 280 },
+      { id: 'i2', name: 'Lime (6 pcs)', quantity: 1, price: 40 },
+    ],
+    timeline: [
+      { status: 'Order Placed', time: '7:30 AM' },
+      { status: 'Accepted', time: '7:35 AM' },
+      { status: 'Packed', time: '7:50 AM' },
+      { status: 'Out for Delivery', time: '8:00 AM' },
+      { status: 'Delivered', time: '8:22 AM' },
+    ],
+  },
+  {
+    id: 'ORD-8395',
+    customerName: 'Rahul Dravid',
+    customerPhone: '+91 91100 98765',
+    deliveryAddress: '15, Malleshwaram 11th Cross, Bengaluru 560003',
+    amount: 730, itemsCount: 4, orderTime: '7:05 AM', paymentMethod: 'Online', deliveryPartnerId: 'd1',
+    items: [
+      { id: 'i1', name: 'Organic Banana (1 dozen)', quantity: 1, price: 80 },
+      { id: 'i2', name: 'Papaya (1 kg)', quantity: 1, price: 90 },
+    ],
+    timeline: [
+      { status: 'Order Placed', time: '7:05 AM' },
+      { status: 'Accepted', time: '7:10 AM' },
+      { status: 'Packed', time: '7:25 AM' },
+      { status: 'Out for Delivery', time: '7:35 AM' },
+      { status: 'Delivered', time: '7:55 AM' },
+    ],
+  },
+  {
+    id: 'ORD-8380',
+    customerName: 'Shashi Tharoor',
+    customerPhone: '+91 90090 12345',
+    deliveryAddress: '9, Cunningham Road, Bengaluru 560052',
+    amount: 450, itemsCount: 1, orderTime: '6:50 AM', paymentMethod: 'Online', deliveryPartnerId: null,
+    items: [{ id: 'i1', name: 'Seasonal Fruit Box', quantity: 1, price: 450 }],
+    timeline: [
+      { status: 'Order Placed', time: '6:50 AM' },
+      { status: 'Cancelled by Customer', time: '6:54 AM' },
+    ],
+  },
 ];
 
 // ─── Filter config ────────────────────────────────────────────────────────────
 
 const FILTER_TABS: { key: FilterKey; label: string }[] = [
-  { key: 'All',       label: 'All' },
-  { key: 'New',       label: 'New' },
-  { key: 'Active',    label: 'Active' },
+  { key: 'All', label: 'All' },
+  { key: 'New', label: 'New' },
+  { key: 'Active', label: 'Active' },
   { key: 'Completed', label: 'Completed' },
   { key: 'Cancelled', label: 'Cancelled' },
 ];
 
+const FILTER_TO_STATUS: Record<FilterKey, string | undefined> = {
+  All: undefined,
+  New: 'New Orders',
+  Active: 'Accepted',
+  Completed: 'Delivered',
+  Cancelled: 'Cancelled',
+};
+
+const SEARCH_DEBOUNCE_MS = 400;
+
 function filterOrders(orders: Order[], filter: FilterKey): Order[] {
   switch (filter) {
-    case 'New':       return orders.filter((o) => o.status === 'New Orders');
-    case 'Active':    return orders.filter((o) => ['Accepted', 'Packed', 'Out For Delivery'].includes(o.status));
+    case 'New': return orders.filter((o) => o.status === 'New Orders');
+    case 'Active': return orders.filter((o) => ['Accepted', 'Packed', 'Out For Delivery'].includes(o.status));
     case 'Completed': return orders.filter((o) => o.status === 'Delivered');
-    case 'Cancelled': return orders.filter((o) => o.status === 'Cancelled' || o.status === 'Rejected');
-    default:          return orders;
+    case 'Cancelled': return orders.filter((o) => ['Cancelled', 'Rejected'].includes(o.status));
+    default: return orders;
   }
 }
 
@@ -65,112 +232,83 @@ function filterOrders(orders: Order[], filter: FilterKey): Order[] {
 
 function getStatusTag(status: Order['status']): { label: string; bgColor: string; textColor: string } {
   switch (status) {
-    case 'New Orders':       return { label: 'NEW ORDER',  bgColor: Colors.primaryLight, textColor: Colors.primary };
-    case 'Accepted':         return { label: 'ACCEPTED',   bgColor: '#DBEAFE',           textColor: '#1D4ED8' };
-    case 'Packed':           return { label: 'PACKED',     bgColor: '#EDE9FE',           textColor: '#6D28D9' };
-    case 'Out For Delivery': return { label: 'ON THE WAY', bgColor: '#FEF3C7',           textColor: '#B45309' };
-    case 'Delivered':        return { label: 'DELIVERED',  bgColor: '#DCFCE7',           textColor: '#15803D' };
-    default:                 return { label: 'CANCELLED',  bgColor: '#FEE2E2',           textColor: '#B91C1C' };
+    case 'New Orders': return { label: 'NEW ORDER', bgColor: Colors.primaryLight, textColor: Colors.primary };
+    case 'Accepted': return { label: 'ACCEPTED', bgColor: Colors.primary + '1A', textColor: Colors.primaryMid };
+    case 'Packed': return { label: 'PACKED', bgColor: Colors.primary + '26', textColor: Colors.primary };
+    case 'Out For Delivery': return { label: 'ON THE WAY', bgColor: Colors.primary + '33', textColor: Colors.primaryDark };
+    case 'Delivered': return { label: 'DELIVERED', bgColor: Colors.successBg, textColor: Colors.success };
+    default: return { label: 'CANCELLED', bgColor: Colors.errorBg, textColor: Colors.error };
   }
 }
 
 function getProgressConfig(status: Order['status']): { pct: number; label: string; color: string } | null {
   switch (status) {
-    case 'Accepted':         return { pct: 33, label: 'Accepted · Packing now',      color: '#3B82F6' };
-    case 'Packed':           return { pct: 66, label: 'Packed · Awaiting pickup',    color: '#8B5CF6' };
-    case 'Out For Delivery': return { pct: 85, label: 'Out for delivery · En route', color: '#F59E0B' };
-    default:                 return null;
+    case 'Accepted': return { pct: 33, label: 'Accepted · Packing now', color: Colors.primaryMid };
+    case 'Packed': return { pct: 66, label: 'Packed · Awaiting pickup', color: Colors.primary };
+    case 'Out For Delivery': return { pct: 85, label: 'Out for delivery · En route', color: Colors.primaryDark };
+    default: return null;
   }
 }
 
 function getCardBorderColor(status: Order['status']): string {
   switch (status) {
-    case 'New Orders':       return Colors.primary;
-    case 'Accepted':         return '#3B82F6';
-    case 'Packed':           return '#8B5CF6';
-    case 'Out For Delivery': return '#F59E0B';
-    case 'Delivered':        return '#22C55E';
-    default:                 return Colors.error;
+    case 'New Orders': return Colors.primary;
+    case 'Accepted': return Colors.primaryMid;
+    case 'Packed': return Colors.primary;
+    case 'Out For Delivery': return Colors.primaryDark;
+    case 'Delivered': return Colors.success;
+    default: return Colors.error;
   }
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-function SkeletonBox({ width, height, borderRadius = 8, style }: {
-  width?: number | string; height: number; borderRadius?: number; style?: any;
-}) {
+function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: number | string; height: number; borderRadius?: number; style?: any }) {
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 1,   duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
   }, [opacity]);
-  return (
-    <Animated.View style={[{ width: width ?? '100%', height, borderRadius, backgroundColor: '#E2E8F0', opacity }, style]} />
-  );
+
+  return <Animated.View style={[{ width: width ?? '100%', height, borderRadius, backgroundColor: '#E2E8F0', opacity }, style]} />;
 }
 
 function OrdersSkeleton({ insetTop }: { insetTop: number }) {
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      {/* Header */}
+    <View style={{ flex: 1, backgroundColor: Colors.primary }}>
       <View style={{ backgroundColor: Colors.primary, paddingTop: insetTop + 12, paddingHorizontal: 16, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
-          <SkeletonBox width={90} height={22} borderRadius={6}  style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
+          <SkeletonBox width={90} height={22} borderRadius={6} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
           <SkeletonBox width={36} height={36} borderRadius={10} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
         </View>
         <SkeletonBox height={44} borderRadius={14} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
       </View>
-      {/* Pills + stats */}
-      <View style={{ backgroundColor: '#FFF', paddingTop: 14, paddingBottom: 4, paddingHorizontal: 16 }}>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-          {[64, 80, 76, 100, 85].map((w, i) => (
-            <SkeletonBox key={i} width={w} height={34} borderRadius={20} />
+      <View style={{ flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+          {[0, 1, 2].map((i) => (
+            <SkeletonBox key={i} width={75} height={34} borderRadius={20} />
           ))}
         </View>
         <View style={{ flexDirection: 'row' }}>
-          {[0,1,2,3].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
               <SkeletonBox width={60} height={18} borderRadius={4} />
               <SkeletonBox width={50} height={12} borderRadius={4} />
             </View>
           ))}
         </View>
-      </View>
-      {/* Cards */}
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} showsVerticalScrollIndicator={false}>
+        <View style={{ height: 24 }} />
         {[0, 1, 2].map((i) => (
-          <View key={i} style={{ backgroundColor: '#FFF', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4, borderLeftColor: '#E2E8F0', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
-            <SkeletonBox width={80} height={18} borderRadius={6} style={{ marginBottom: 12 }} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <SkeletonBox width={44} height={44} borderRadius={14} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <SkeletonBox width={140} height={14} borderRadius={4} />
-                <SkeletonBox width={100} height={10} borderRadius={4} />
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                <SkeletonBox width={60} height={16} borderRadius={4} />
-                <SkeletonBox width={50} height={18} borderRadius={6} />
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-              <SkeletonBox width={80} height={28} borderRadius={12} />
-              <SkeletonBox width={100} height={28} borderRadius={12} />
-            </View>
-            <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 }} />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <SkeletonBox height={38} borderRadius={12} style={{ flex: 1 }} />
-              <SkeletonBox height={38} borderRadius={12} style={{ flex: 1 }} />
-            </View>
-          </View>
+          <SkeletonBox key={i} height={130} borderRadius={18} />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -180,27 +318,46 @@ function OrdersSkeleton({ insetTop }: { insetTop: number }) {
 export default observer(function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const { ordersStore } = useStores();
-  const [activeFilter,     setActiveFilter]     = useState<FilterKey>('All');
-  const [selectedOrderId,  setSelectedOrderId]  = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('All');
+  const [searchInput, setSearchInput] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    ordersStore.fetchOrders();
-  }, [ordersStore]);
+    void ordersStore.fetchOrders();
+  }, []);
 
-  const displayed    = filterOrders(ordersStore.orders, activeFilter);
-  const totalCount   = ordersStore.orders.length;
-  const newCount     = ordersStore.newOrders.length;
+  // Debounced so typing doesn't fire an API call (and a loading-state re-render) on every keystroke.
+  const debouncedSearch = useMemo(
+    () => debounce((text: string, filter: FilterKey) => {
+      void ordersStore.fetchOrders(FILTER_TO_STATUS[filter], text);
+    }, SEARCH_DEBOUNCE_MS),
+    [ordersStore],
+  );
+
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
+  const handleSearchChange = (text: string) => {
+    setSearchInput(text);
+    debouncedSearch(text, activeFilter);
+  };
+
+  const orders = ordersStore.orders;
+  const isLoading = ordersStore.state === 'loading';
+
+  const displayed = filterOrders(orders, activeFilter);
+  const totalCount = orders.length;
+  const newCount = orders.filter((o) => o.status === 'New Orders').length;
   const pendingCount = newCount;
-  const totalRevenue = ordersStore.deliveredOrders.reduce((s, o) => s + o.amount, 0);
-  const deliveredCount = ordersStore.deliveredOrders.length;
-  const avgOrder     = deliveredCount > 0 ? Math.round(totalRevenue / deliveredCount) : 0;
+  const totalRevenue = orders.filter((o) => o.status === 'Delivered').reduce((s, o) => s + o.amount, 0);
+  const deliveredCount = orders.filter((o) => o.status === 'Delivered').length;
+  const avgOrder = deliveredCount > 0 ? Math.round(totalRevenue / deliveredCount) : 0;
 
-  const countForFilter = (key: FilterKey) => filterOrders(ordersStore.orders, key).length;
-  const activeOrder    = ordersStore.orders.find((o) => o.id === selectedOrderId) ?? null;
+  const countForFilter = (key: FilterKey) => filterOrders(orders, key).length;
+  const activeOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
 
   const handleAccept = (id: string) => {
-    ordersStore.acceptOrder(id);
+    void ordersStore.acceptOrder(id);
   };
 
   const handleReject = (id: string) => {
@@ -208,39 +365,33 @@ export default observer(function OrdersScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reject', style: 'destructive',
-        onPress: () => ordersStore.rejectOrder(id),
+        onPress: () => void ordersStore.rejectOrder(id),
       },
     ]);
   };
 
   const handleAdvance = (id: string, status: Order['status']) => {
-    const order = ordersStore.orders.find((o) => o.id === id);
+    const order = orders.find((o) => o.id === id);
     if (status === 'Packed' && !order?.deliveryPartnerId) {
       setAssigningOrderId(id);
       return;
     }
-    const nextMap: Partial<Record<Order['status'], 'PACKING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED'>> = {
-      'Accepted': 'PACKING',
-      'Packed': 'READY_FOR_PICKUP',
-      'Out For Delivery': 'DELIVERED',
-    };
-    const next = nextMap[status];
-    if (!next) return;
-    ordersStore.advanceOrder(id, next);
+    if (status === 'Accepted') {
+      void ordersStore.advanceOrder(id, 'PACKING');
+    } else if (status === 'Packed') {
+      void ordersStore.advanceOrder(id, 'OUT_FOR_DELIVERY');
+    } else if (status === 'Out For Delivery') {
+      void ordersStore.advanceOrder(id, 'DELIVERED');
+    }
   };
 
   const handleAssignDriver = (orderId: string, driverId: string) => {
-    const order = ordersStore.orders.find((o) => o.id === orderId);
-    if (order) {
-      order.assignDeliveryPartner(driverId);
-      ordersStore.advanceOrder(orderId, 'OUT_FOR_DELIVERY');
-    }
+    ordersStore.assignDeliveryPartner(orderId, driverId);
+    void ordersStore.advanceOrder(orderId, 'OUT_FOR_DELIVERY');
     setAssigningOrderId(null);
   };
 
-  const isLoading = ordersStore.state === 'loading';
-
-  if (isLoading) return <OrdersSkeleton insetTop={insets.top} />;
+  if (isLoading && orders.length === 0) return <OrdersSkeleton insetTop={insets.top} />;
 
   return (
     <AnimatedScreen style={styles.root}>
@@ -250,9 +401,6 @@ export default observer(function OrdersScreen() {
       <View style={[styles.headerContainer, { paddingTop: insets.top + 12 }]}>
         {/* Back · Title · Filter row */}
         <View style={styles.headerTopRow}>
-          {/* <TouchableOpacity style={styles.headerBackBtn} activeOpacity={0.8}>
-            <ChevronLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity> */}
           <Text style={styles.headerTitleText}>Orders</Text>
           <TouchableOpacity style={styles.headerFilterBtn} activeOpacity={0.8}>
             <SlidersHorizontal size={18} color="#FFFFFF" />
@@ -261,8 +409,14 @@ export default observer(function OrdersScreen() {
 
         {/* Search bar */}
         <View style={styles.searchBar}>
-          <Search size={16} color="rgba(255,255,255,0.7)" />
-          <Text style={styles.searchText}>Search by name or order ID...</Text>
+          <Search size={16} color="rgba(255,255,255,0.7)" style={{ marginRight: 8 }} />
+          <TextInput
+            value={searchInput}
+            onChangeText={handleSearchChange}
+            placeholder="Search by name or order ID..."
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            style={{ flex: 1, color: '#FFFFFF', fontSize: 14, paddingVertical: 0 }}
+          />
         </View>
       </View>
 
@@ -272,7 +426,7 @@ export default observer(function OrdersScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillTabsScroll}>
           {FILTER_TABS.map(({ key, label }) => {
             const active = activeFilter === key;
-            const count  = countForFilter(key);
+            const count = countForFilter(key);
             return (
               <TouchableOpacity
                 key={key}
@@ -323,86 +477,152 @@ export default observer(function OrdersScreen() {
         {displayed.length === 0 ? (
           <EmptyState filter={activeFilter} />
         ) : (
-          displayed.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onAccept={() => handleAccept(order.id)}
-              onReject={() => handleReject(order.id)}
-              onAdvance={() => handleAdvance(order.id, order.status)}
-              onAssign={() => setAssigningOrderId(order.id)}
-              onView={() => setSelectedOrderId(order.id)}
-            />
-          ))
+          displayed.map((order) => {
+            const driver = STATIC_DRIVERS.find((d) => d.id === order.deliveryPartnerId) ?? null;
+            return (
+              <OrderCard
+                key={order.id}
+                order={order}
+                driver={driver}
+                onAccept={() => handleAccept(order.id)}
+                onReject={() => handleReject(order.id)}
+                onAdvance={() => handleAdvance(order.id, order.status)}
+                onAssign={() => setAssigningOrderId(order.id)}
+                onView={() => {
+                  setSelectedOrderId(order.id);
+                  void ordersStore.fetchOrderDetail(order.id);
+                }}
+              />
+            );
+          })
         )}
-
-        {/* Footer banner */}
-        <View style={styles.footerPerformanceBanner}>
-          <View style={styles.footerIconContainer}>
-            <BarChart2 size={16} color={Colors.primary} />
-          </View>
-          <Text style={styles.footerPerformanceText}>
-            Great job! You've completed {deliveredCount} orders today.
-          </Text>
-          <TouchableOpacity style={styles.footerLinkButton}>
-            <Text style={styles.footerLinkText}>Analytics</Text>
-            <ChevronRight size={13} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* ── Order Details Sheet ── */}
-      <BottomSheet isVisible={selectedOrderId !== null} onClose={() => setSelectedOrderId(null)} title="Order Details" height={0.75}>
-        {activeOrder ? (
+      <BottomSheet isVisible={selectedOrderId !== null} onClose={() => setSelectedOrderId(null)} title="Order Details" height={0.78}>
+        {ordersStore.orderDetailState === 'loading' ? (
+          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+          </View>
+        ) : ordersStore.orderDetailError ? (
+          <View style={{ paddingVertical: 48, alignItems: 'center', paddingHorizontal: 24, gap: 6 }}>
+            <Text style={{ color: Colors.error, fontWeight: '700', fontSize: 14 }}>Couldn't load order</Text>
+            <Text style={{ color: Colors.textSecondary, fontSize: 13, textAlign: 'center' }}>
+              {ordersStore.orderDetailError}
+            </Text>
+          </View>
+        ) : ordersStore.orderDetail ? (
           <ScrollView contentContainerStyle={styles.sheet}>
-            <View style={styles.sheetSection}>
-              <View style={styles.sheetSectionHead}>
-                <User size={14} color={Colors.primary} />
-                <Text style={styles.sheetSectionTitle}>Customer</Text>
-              </View>
-              <Text style={styles.sheetName}>{activeOrder.customerName}</Text>
-              <Text style={styles.sheetMeta}>{activeOrder.customerPhone}</Text>
-              <View style={styles.addressRow}>
-                <MapPin size={12} color="#94A3B8" />
-                <Text style={styles.addressText}>{activeOrder.deliveryAddress}</Text>
-              </View>
-            </View>
-
-            <View style={styles.sheetSection}>
-              <View style={styles.sheetSectionHead}>
-                <Package size={14} color={Colors.primary} />
-                <Text style={styles.sheetSectionTitle}>Items ({activeOrder.itemsCount})</Text>
-              </View>
-              {activeOrder.items.map((item) => (
-                <View key={item.id} style={styles.itemRow}>
-                  <Text style={styles.itemName}>{item.name} ×{item.quantity}</Text>
-                  <Text style={styles.itemPrice}>₹{item.price * item.quantity}</Text>
-                </View>
-              ))}
-              <View style={styles.itemTotal}>
-                <Text style={styles.itemTotalLabel}>Total</Text>
-                <Text style={styles.itemTotalValue}>₹{activeOrder.amount}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.sheetSection, { borderBottomWidth: 0 }]}>
-              <View style={styles.sheetSectionHead}>
-                <Clock size={14} color={Colors.primary} />
-                <Text style={styles.sheetSectionTitle}>Timeline</Text>
-              </View>
-              {activeOrder.timeline.map((event, i) => (
-                <View key={i} style={styles.timelineRow}>
-                  <View style={styles.timelineDotWrap}>
-                    <View style={styles.timelineDot} />
-                    {i < activeOrder.timeline.length - 1 && <View style={styles.timelineLine} />}
+            {(() => {
+              const detail = ordersStore.orderDetail!;
+              return (
+                <>
+                  <View style={styles.sheetSection}>
+                    <View style={styles.sheetSectionHead}>
+                      <User size={14} color={Colors.primary} />
+                      <Text style={styles.sheetSectionTitle}>Customer</Text>
+                    </View>
+                    <Text style={styles.sheetName}>{detail.customerName}</Text>
+                    <Text style={styles.sheetMeta}>{detail.customerPhone}</Text>
+                    {detail.address && (
+                      <>
+                        <View style={styles.addressRow}>
+                          <MapPin size={12} color="#94A3B8" />
+                          <Text style={styles.addressText}>
+                            {detail.address.addressLine1}
+                            {detail.address.addressLine2 ? `, ${detail.address.addressLine2}` : ''}, {detail.address.state} - {detail.address.pincode}
+                          </Text>
+                        </View>
+                        <View style={[styles.badgeChip, { alignSelf: 'flex-start', marginTop: 6 }]}>
+                          <Text style={styles.badgeChipText}>{detail.address.addressType}</Text>
+                        </View>
+                      </>
+                    )}
                   </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.timelineStatus}>{event.status}</Text>
-                    <Text style={styles.timelineTime}>{event.time}</Text>
+
+                  <View style={styles.sheetSection}>
+                    <View style={styles.sheetSectionHead}>
+                      <Package size={14} color={Colors.primary} />
+                      <Text style={styles.sheetSectionTitle}>Items ({detail.items.length})</Text>
+                    </View>
+                    {detail.items.map((item: any) => (
+                      <View key={item.variantId} style={[styles.itemRow, { alignItems: 'center' }]}>
+                        {item.productImage ? (
+                          <Image source={{ uri: item.productImage }} style={{ width: 36, height: 36, borderRadius: 8, marginRight: 10 }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.itemName}>{item.productName} ({item.variantName}) ×{item.quantity}</Text>
+                        </View>
+                        <Text style={styles.itemPrice}>₹{item.totalPrice}</Text>
+                      </View>
+                    ))}
+
+                    <View style={[styles.itemRow, { marginTop: 8 }]}>
+                      <Text style={styles.itemName}>Subtotal</Text>
+                      <Text style={styles.itemPrice}>₹{detail.subtotal}</Text>
+                    </View>
+                    <View style={styles.itemRow}>
+                      <Text style={styles.itemName}>Delivery charge</Text>
+                      <Text style={styles.itemPrice}>₹{detail.deliveryCharge}</Text>
+                    </View>
+                    {detail.discountAmount > 0 && (
+                      <View style={styles.itemRow}>
+                        <Text style={styles.itemName}>Discount</Text>
+                        <Text style={[styles.itemPrice, { color: Colors.success }]}>-₹{detail.discountAmount}</Text>
+                      </View>
+                    )}
+                    <View style={styles.itemTotal}>
+                      <Text style={styles.itemTotalLabel}>Total</Text>
+                      <Text style={styles.itemTotalValue}>₹{detail.totalAmount}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
+
+                  {detail.payment && (
+                    <View style={styles.sheetSection}>
+                      <View style={styles.sheetSectionHead}>
+                        <CreditCard size={14} color={Colors.primary} />
+                        <Text style={styles.sheetSectionTitle}>Payment</Text>
+                      </View>
+                      <View style={styles.itemRow}>
+                        <Text style={styles.itemName}>Method</Text>
+                        <Text style={styles.itemPrice}>
+                          {detail.payment.method === 'COD' ? 'Cash on Delivery' : detail.payment.method}
+                        </Text>
+                      </View>
+                      <View style={styles.itemRow}>
+                        <Text style={styles.itemName}>Amount</Text>
+                        <Text style={styles.itemPrice}>₹{detail.payment.amount}</Text>
+                      </View>
+                      <View style={styles.itemRow}>
+                        <Text style={styles.itemName}>Status</Text>
+                        <Text style={[styles.itemPrice, { color: detail.payment.status === 'SUCCESS' ? Colors.success : Colors.warning }]}>
+                          {detail.payment.status}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={[styles.sheetSection, { borderBottomWidth: 0 }]}>
+                    <View style={styles.sheetSectionHead}>
+                      <Clock size={14} color={Colors.primary} />
+                      <Text style={styles.sheetSectionTitle}>Timeline</Text>
+                    </View>
+                    {(activeOrder?.timeline ?? []).map((event, i) => (
+                      <View key={i} style={styles.timelineRow}>
+                        <View style={styles.timelineDotWrap}>
+                          <View style={styles.timelineDot} />
+                          {i < (activeOrder?.timeline.length ?? 0) - 1 && <View style={styles.timelineLine} />}
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.timelineStatus}>{event.status}</Text>
+                          <Text style={styles.timelineTime}>{event.time}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              );
+            })()}
           </ScrollView>
         ) : null}
       </BottomSheet>
@@ -410,7 +630,7 @@ export default observer(function OrdersScreen() {
       {/* ── Assign Driver Sheet ── */}
       <BottomSheet isVisible={assigningOrderId !== null} onClose={() => setAssigningOrderId(null)} title="Assign Driver" height={0.5}>
         <ScrollView contentContainerStyle={styles.sheet}>
-          {MOCK_DRIVERS.map((driver) => (
+          {STATIC_DRIVERS.map((driver) => (
             <View key={driver.id} style={styles.driverRow}>
               <View style={styles.driverAvatar}>
                 <Text style={styles.driverAvatarText}>{driver.name.charAt(0)}</Text>
@@ -436,24 +656,25 @@ export default observer(function OrdersScreen() {
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
-function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
+function OrderCard({ order, driver, onAccept, onReject, onAdvance, onAssign, onView }: {
   order: Order;
+  driver: typeof STATIC_DRIVERS[number] | null;
   onAccept: () => void;
   onReject: () => void;
   onAdvance: () => void;
   onAssign: () => void;
   onView: () => void;
 }) {
-  const isNew       = order.status === 'New Orders';
-  const isAccepted  = order.status === 'Accepted';
-  const isPacked    = order.status === 'Packed';
-  const isOFD       = order.status === 'Out For Delivery';
+  const isNew = order.status === 'New Orders';
+  const isAccepted = order.status === 'Accepted';
+  const isPacked = order.status === 'Packed';
+  const isOFD = order.status === 'Out For Delivery';
   const isDelivered = order.status === 'Delivered';
-  const isCancelled = order.status === 'Cancelled';
+  const isCancelled = order.status === 'Cancelled' || order.status === 'Rejected';
 
-  const tag      = getStatusTag(order.status);
-  const progress = getProgressConfig(order.status);
-  const border   = getCardBorderColor(order.status);
+  const tag = getStatusTag(order.status as any);
+  const progress = getProgressConfig(order.status as any);
+  const border = getCardBorderColor(order.status as any);
 
   return (
     <View style={[
@@ -477,8 +698,8 @@ function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={styles.amount}>₹{order.amount}</Text>
-          <View style={[styles.payPill, { backgroundColor: order.paymentMethod === 'COD' ? '#FEF3C7' : Colors.primaryLight }]}>
-            <Text style={[styles.payPillText, { color: order.paymentMethod === 'COD' ? '#D97706' : Colors.primary }]}>
+          <View style={[styles.payPill, { backgroundColor: order.paymentMethod === 'COD' ? Colors.primary + '1A' : Colors.primaryLight }]}>
+            <Text style={[styles.payPillText, { color: order.paymentMethod === 'COD' ? Colors.primaryDark : Colors.primary }]}>
               {order.paymentMethod === 'COD' ? 'Cash' : 'Online'}
             </Text>
           </View>
@@ -491,16 +712,16 @@ function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
           <Package size={12} color="#64748B" />
           <Text style={styles.badgeChipText}>{order.itemsCount} items</Text>
         </View>
-        {order.deliveryPartnerId && (
-          <View style={[styles.badgeChip, { backgroundColor: '#EDE9FE' }]}>
-            <Truck size={12} color="#6D28D9" />
-            <Text style={[styles.badgeChipText, { color: '#6D28D9' }]}>Assigned</Text>
+        {driver && (
+          <View style={[styles.badgeChip, { backgroundColor: Colors.primary + '26' }]}>
+            <Truck size={12} color={Colors.primaryDark} />
+            <Text style={[styles.badgeChipText, { color: Colors.primaryDark }]}>{driver.name}</Text>
           </View>
         )}
         {isNew && (
-          <View style={[styles.badgeChip, { backgroundColor: '#FEE2E2' }]}>
-            <Clock size={12} color="#EF4444" />
-            <Text style={[styles.badgeChipText, { color: '#EF4444', fontWeight: '700' }]}>Needs response</Text>
+          <View style={[styles.badgeChip, { backgroundColor: Colors.primary + '1A' }]}>
+            <Clock size={12} color={Colors.primary} />
+            <Text style={[styles.badgeChipText, { color: Colors.primary, fontWeight: '700' }]}>Needs response</Text>
           </View>
         )}
       </View>
@@ -536,7 +757,7 @@ function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
         )}
         {isAccepted && (
           <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[styles.acceptBtn, { backgroundColor: '#3B82F6' }]} activeOpacity={0.8} onPress={onAdvance}>
+            <TouchableOpacity style={[styles.acceptBtn, { backgroundColor: Colors.primaryMid }]} activeOpacity={0.8} onPress={onAdvance}>
               <Package size={14} color="#FFFFFF" />
               <Text style={styles.acceptBtnText}>Mark Packed</Text>
             </TouchableOpacity>
@@ -547,13 +768,13 @@ function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
           </View>
         )}
         {isPacked && (
-          <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: '#8B5CF6' }]} activeOpacity={0.8} onPress={onAdvance}>
+          <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.primary }]} activeOpacity={0.8} onPress={onAdvance}>
             <Truck size={14} color="#FFFFFF" />
             <Text style={styles.acceptBtnText}>Send Out for Delivery</Text>
           </TouchableOpacity>
         )}
         {isOFD && (
-          <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: '#F59E0B' }]} activeOpacity={0.8} onPress={onAdvance}>
+          <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.primaryDark }]} activeOpacity={0.8} onPress={onAdvance}>
             <CheckCircle2 size={14} color="#FFFFFF" />
             <Text style={styles.acceptBtnText}>Mark Delivered</Text>
           </TouchableOpacity>
@@ -581,11 +802,11 @@ function OrderCard({ order, onAccept, onReject, onAdvance, onAssign, onView }: {
 
 function EmptyState({ filter }: { filter: FilterKey }) {
   const messages: Record<FilterKey, [string, string]> = {
-    All:       ['No Orders Yet',      'Orders will appear here as they come in.'],
-    New:       ['No New Orders',      "You're all caught up. New orders appear here instantly."],
-    Active:    ['No Active Orders',   'Orders being prepared or on the way will show here.'],
-    Completed: ['No Completed Orders','Delivered orders will appear here.'],
-    Cancelled: ['No Cancelled Orders','Cancelled orders will appear here.'],
+    All: ['No Orders Yet', 'Orders will appear here as they come in.'],
+    New: ['No New Orders', "You're all caught up. New orders appear here instantly."],
+    Active: ['No Active Orders', 'Orders being prepared or on the way will show here.'],
+    Completed: ['No Completed Orders', 'Delivered orders will appear here.'],
+    Cancelled: ['No Cancelled Orders', 'Cancelled orders will appear here.'],
   };
   const [title, sub] = messages[filter];
   return (
@@ -597,10 +818,4 @@ function EmptyState({ filter }: { filter: FilterKey }) {
       <Text style={styles.emptySubtitle}>{sub}</Text>
     </View>
   );
-}
-
-// ─── Util ─────────────────────────────────────────────────────────────────────
-
-function nowTime() {
-  return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }

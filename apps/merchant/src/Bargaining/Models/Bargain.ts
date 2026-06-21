@@ -118,3 +118,15 @@ export class Bargain {
     return this.status === 'Pending' && this.expirationTime > 0 && this.expirationTime <= 120;
   }
 }
+
+export interface BargainHistorySession {
+  session_id: string;
+  cart_id: string;
+  status: 'ENDED' | 'EXPIRED';
+  customer_name: string;
+  started_at: string;
+  expires_at: string;
+  ended_at: string | null;
+  final_accepted_amount: string | null;
+}
+

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Award,
   BarChart2,
@@ -20,7 +20,6 @@ import { observer } from 'mobx-react-lite';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   ScrollView,
   StatusBar,
   Text,
@@ -34,8 +33,6 @@ import { useStores } from '../../Common/hooks/useStores';
 import { Toast } from '../../components/ui/MerchantPrimitives';
 import { Colors } from '../../theme/colors';
 import styles from './styles';
-
-const AvatarImg = require('../../../assets/images/avatar.png');
 
 function formatCurrency(value: number) {
   return `₹${value.toLocaleString('en-IN')}`;
@@ -65,13 +62,62 @@ const STATIC_ORDERS = [
 
 
 
-const ACTIVITY_FEED = [
-  { Icon: ShoppingBag, label: 'Order #2847 accepted', time: '10 mins ago', iconBg: Colors.primaryLight, iconColor: Colors.primary, connectorColor: Colors.primaryLight },
-  { Icon: Award, label: 'Payment ₹420 received', time: '25 mins ago', iconBg: Colors.successBg, iconColor: Colors.success, connectorColor: Colors.successBg },
-  { Icon: Package, label: 'Inventory updated', time: '1 hr ago', iconBg: Colors.infoBg, iconColor: Colors.info, connectorColor: Colors.infoBg },
-  { Icon: Tags, label: 'Offer created · 10% OFF Fruits', time: '2 hrs ago', iconBg: '#F3E8FF', iconColor: '#8B5CF6', connectorColor: '#F3E8FF' },
-  { Icon: Truck, label: 'Order #2846 delivered', time: '3 hrs ago', iconBg: Colors.successBg, iconColor: Colors.success, connectorColor: Colors.successBg },
-];
+function getActivityVisuals(eventType: string) {
+  switch (eventType) {
+    case 'ORDER_ACCEPTED':
+      return {
+        Icon: ShoppingBag,
+        iconColor: Colors.primary,
+        iconBg: Colors.primaryLight,
+        connectorColor: Colors.primaryLight,
+      };
+    case 'BARGAIN_OFFER_ACCEPTED':
+    case 'BARGAIN_OFFER_REJECTED':
+      return {
+        Icon: Tags,
+        iconColor: '#8B5CF6',
+        iconBg: '#F3E8FF',
+        connectorColor: '#F3E8FF',
+      };
+    case 'BATCH_ADDED':
+      return {
+        Icon: Package,
+        iconColor: Colors.info,
+        iconBg: Colors.infoBg,
+        connectorColor: Colors.infoBg,
+      };
+    case 'ORDER_CANCELLED':
+      return {
+        Icon: X,
+        iconColor: Colors.error,
+        iconBg: Colors.errorBg,
+        connectorColor: Colors.errorBg,
+      };
+    case 'ORDER_STATUS_CHANGED':
+    default:
+      return {
+        Icon: Award,
+        iconColor: Colors.success,
+        iconBg: Colors.successBg,
+        connectorColor: Colors.successBg,
+      };
+  }
+}
+
+function formatRelativeTime(dateStr: string): string {
+  try {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} mins ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+    return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return 'Recently';
+  }
+}
+
 
 // ── Skeleton box with pulse animation ────────────────────────────────────
 function SkeletonBox({ width, height, borderRadius = 8, style }: { width?: number | string; height: number; borderRadius?: number; style?: any }) {
@@ -231,13 +277,16 @@ export default observer(function HomeScreen() {
 
   const blinkAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    Promise.all([
-      dashboardStore.refreshMetrics(),
-      ordersStore.fetchOrders('New Orders'),
-      inventoryStore.fetchStock(),
-    ]).finally(() => setIsLoading(false));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      Promise.all([
+        dashboardStore.refreshMetrics(),
+        ordersStore.fetchOrders('New Orders'),
+        inventoryStore.fetchStockAlerts(),
+        bargainingStore.loadSessions(),
+      ]).finally(() => setIsLoading(false));
+    }, [dashboardStore, ordersStore, inventoryStore, bargainingStore]),
+  );
 
   // Blinking alert strip animation
   useEffect(() => {
@@ -315,13 +364,6 @@ export default observer(function HomeScreen() {
                     <View style={styles.notifBadge}>
                       <Text style={styles.notifBadgeText}>5</Text>
                     </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.headerAvatarBtn}
-                    activeOpacity={0.8}
-                    onPress={() => router.push('/profile' as any)}
-                  >
-                    <Image source={AvatarImg} style={styles.headerAvatar} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -575,7 +617,7 @@ export default observer(function HomeScreen() {
                   <TouchableOpacity
                     style={styles.bargainCounterBtn}
                     activeOpacity={0.8}
-                    onPress={() => router.push(`/bargaining/${b.sessionId}` as any)}
+                    onPress={() => router.push(`/bargaining/${b.id}` as any)}
                   >
                     <Text style={styles.bargainCounterText}>Counter</Text>
                   </TouchableOpacity>
@@ -601,7 +643,7 @@ export default observer(function HomeScreen() {
               const outOfStock = inventoryStore.outOfStockItems;
               const lowStock = inventoryStore.lowStockItems;
               const alertItems = [...outOfStock, ...lowStock].slice(0, 3);
-              if (inventoryStore.stockState === 'loading' || alertItems.length === 0) return null;
+              if (inventoryStore.alertStockState === 'loading' || alertItems.length === 0) return null;
               return (
                 <>
                   <View style={styles.sectionRow}>
@@ -746,26 +788,33 @@ export default observer(function HomeScreen() {
             </View>
 
             <View style={styles.timelineWrap}>
-              {ACTIVITY_FEED.map((activity, i) => {
-                const { Icon } = activity;
-                const isLast = i === ACTIVITY_FEED.length - 1;
-                return (
-                  <View key={i} style={styles.timelineItem}>
-                    <View style={styles.timelineLeft}>
-                      <View style={[styles.timelineIconCircle, { backgroundColor: activity.iconBg }]}>
-                        <Icon size={13} color={activity.iconColor} />
+              {dashboardStore.activityLog.length === 0 ? (
+                <View style={{ paddingVertical: 10, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No recent activity</Text>
+                </View>
+              ) : (
+                dashboardStore.activityLog.map((activity, i) => {
+                  const visuals = getActivityVisuals(activity.event_type);
+                  const { Icon } = visuals;
+                  const isLast = i === dashboardStore.activityLog.length - 1;
+                  return (
+                    <View key={activity.id ?? i} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View style={[styles.timelineIconCircle, { backgroundColor: visuals.iconBg }]}>
+                          <Icon size={13} color={visuals.iconColor} />
+                        </View>
+                        {!isLast && (
+                          <View style={[styles.timelineConnector, { backgroundColor: visuals.connectorColor }]} />
+                        )}
                       </View>
-                      {!isLast && (
-                        <View style={[styles.timelineConnector, { backgroundColor: activity.connectorColor }]} />
-                      )}
+                      <View style={[styles.timelineRight, isLast && { paddingBottom: 0 }]}>
+                        <Text style={styles.timelineLabel}>{activity.description}</Text>
+                        <Text style={styles.timelineTime}>{formatRelativeTime(activity.created_at)}</Text>
+                      </View>
                     </View>
-                    <View style={[styles.timelineRight, isLast && { paddingBottom: 0 }]}>
-                      <Text style={styles.timelineLabel}>{activity.label}</Text>
-                      <Text style={styles.timelineTime}>{activity.time}</Text>
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                })
+              )}
             </View>
           </>
         )}

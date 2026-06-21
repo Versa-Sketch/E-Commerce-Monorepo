@@ -4,7 +4,7 @@ import { AnalyticsStore } from '../Store';
 const AnalyticsStoreContext = createContext<AnalyticsStore | null>(null);
 
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
-  const [store] = useState(() => new AnalyticsStore());
+  const [store] = useState(() => new AnalyticsStore({} as any));
   return <AnalyticsStoreContext.Provider value={store}>{children}</AnalyticsStoreContext.Provider>;
 }
 

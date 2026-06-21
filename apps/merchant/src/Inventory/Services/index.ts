@@ -8,6 +8,7 @@ import type {
   StockListParams,
   StockSummaryItem,
   UpdateBatchInput,
+  InventoryMetrics,
 } from '../types/domain';
 
 export interface IInventoryService {
@@ -25,4 +26,5 @@ export interface IInventoryService {
   ): Promise<ApiResult<PaginatedResult<StockSummaryItem>>>;
   adjustStock(shopId: string, input: AdjustStockInput): Promise<ApiResult<InventoryBatch>>;
   listTransactions(shopId: string, batchId?: string): Promise<ApiResult<InventoryTransaction[]>>;
+  getInventoryMetrics(shopId: string): Promise<ApiResult<InventoryMetrics>>;
 }

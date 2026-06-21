@@ -4,6 +4,7 @@ export const BARGAIN_ENDPOINTS = {
   ACTIVE_SESSIONS: `${API_BASE}/logistics/bargain/sessions/active/`,
   SESSION: (sessionId: string) => `${API_BASE}/logistics/bargain/sessions/${sessionId}/`,
   SESSION_HISTORY: (sessionId: string) => `${API_BASE}/logistics/bargain/sessions/${sessionId}/history/`,
+  HISTORY: (shopId: string) => `${API_BASE}/commerce/shop-owner/${shopId}/bargains/history/`,
 } as const;
 
 /** Derives the `/ws/bargain/` gateway URL from API_BASE, e.g.

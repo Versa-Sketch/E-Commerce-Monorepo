@@ -14,6 +14,7 @@ import type {
   InventoryTransaction,
   StockSummaryItem,
   UpdateBatchInput,
+  InventoryMetrics,
 } from "../types/domain";
 
 const STOCK_PAGE_SIZE = 20;
@@ -31,6 +32,7 @@ const SHOP_ID_ERROR =
 export class InventoryStore {
   shopId: string | null = null;
   shopIdState: LoadState = "idle";
+  metrics: InventoryMetrics | null = null;
 
   // Stock overview — GET /inventory/{shop_id}/stock/
   stock: StockSummaryItem[] = [];
@@ -41,6 +43,12 @@ export class InventoryStore {
   stockTotalCount = 0;
   stockLoadingMore = false;
   stockSearch = "";
+  stockFilter: "all" | "low" | "out" = "all";
+
+  // Dashboard stock alerts — fetched directly with stock_status=low/out so the
+  // Home screen never depends on the Inventory tab's paginated/filtered `stock` list.
+  alertStock: StockSummaryItem[] = [];
+  alertStockState: LoadState = "idle";
 
   // Batches — GET /inventory/{shop_id}/batches/
   batches: InventoryBatch[] = [];
@@ -72,14 +80,14 @@ export class InventoryStore {
   // ── Derived ───────────────────────────────────────────────────────────────
 
   get lowStockItems(): StockSummaryItem[] {
-    return this.stock.filter((s) => {
+    return this.alertStock.filter((s) => {
       const qty = Number(s.available_stock);
       return Number.isFinite(qty) && qty > 0 && qty <= 5;
     });
   }
 
   get outOfStockItems(): StockSummaryItem[] {
-    return this.stock.filter((s) => Number(s.available_stock) <= 0);
+    return this.alertStock.filter((s) => Number(s.available_stock) <= 0);
   }
 
   /** Transactions sorted newest first. */
@@ -160,6 +168,38 @@ export class InventoryStore {
 
   // ── Stock overview ────────────────────────────────────────────────────────
 
+  setStockFilter(filter: "all" | "low" | "out"): void {
+    if (this.stockFilter === filter) return;
+    this.stockFilter = filter;
+    void this.fetchStock();
+  }
+
+  /** Dashboard-only: fetches just the out-of-stock and low-stock items directly via
+   * stock_status=out / stock_status=low, independent of the Inventory tab's `stock` list. */
+  async fetchStockAlerts(): Promise<void> {
+    runInAction(() => {
+      this.alertStockState = "loading";
+    });
+    const shopId = await this.ensureShopId();
+    if (!shopId) {
+      runInAction(() => {
+        this.alertStockState = "error";
+      });
+      return;
+    }
+    const [outRes, lowRes] = await Promise.all([
+      this.service.getStockSummary(shopId, { page: 1, page_size: 20, stock_status: "out" }),
+      this.service.getStockSummary(shopId, { page: 1, page_size: 20, stock_status: "low" }),
+    ]);
+    runInAction(() => {
+      this.alertStockState = "idle";
+      this.alertStock = [
+        ...(outRes.ok ? outRes.data?.results ?? [] : []),
+        ...(lowRes.ok ? lowRes.data?.results ?? [] : []),
+      ];
+    });
+  }
+
   async fetchStock(search?: string): Promise<void> {
     if (search !== undefined) this.stockSearch = search;
     runInAction(() => {
@@ -174,11 +214,15 @@ export class InventoryStore {
       });
       return;
     }
-    const res = await this.service.getStockSummary(shopId, {
-      page: 1,
-      page_size: STOCK_PAGE_SIZE,
-      search: this.stockSearch || undefined,
-    });
+    const [res, metricsRes] = await Promise.all([
+      this.service.getStockSummary(shopId, {
+        page: 1,
+        page_size: STOCK_PAGE_SIZE,
+        search: this.stockSearch || undefined,
+        stock_status: this.stockFilter === "all" ? undefined : this.stockFilter,
+      }),
+      this.service.getInventoryMetrics(shopId),
+    ]);
     runInAction(() => {
       if (res.ok) {
         this.stock = res.data?.results ?? [];
@@ -189,6 +233,9 @@ export class InventoryStore {
       } else {
         this.stockState = "error";
         this.stockError = res.message;
+      }
+      if (metricsRes.ok && metricsRes.data) {
+        this.metrics = metricsRes.data;
       }
     });
   }
@@ -210,6 +257,7 @@ export class InventoryStore {
       page: nextPage,
       page_size: STOCK_PAGE_SIZE,
       search: this.stockSearch || undefined,
+      stock_status: this.stockFilter === "all" ? undefined : this.stockFilter,
     });
     runInAction(() => {
       this.stockLoadingMore = false;

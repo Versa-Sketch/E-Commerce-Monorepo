@@ -1,7 +1,42 @@
 import { ApiResult, PaginatedResult } from '../../Common/services/http';
-import { ApiOrder, ApiDashboardSummary } from '../types/domain';
+import { ApiOrder, ApiDashboardSummary, ActivityLogItem } from '../types/domain';
 import { IOrdersService } from './index';
 import { fixtureDelay } from '../../Common/services/config';
+
+
+export const activityLogFixtures: ActivityLogItem[] = [
+  {
+    id: 'act-1',
+    event_type: 'ORDER_ACCEPTED',
+    description: 'Order #ORD-8490 accepted',
+    created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago
+  },
+  {
+    id: 'act-2',
+    event_type: 'ORDER_STATUS_CHANGED',
+    description: 'Payment ₹420 received for Order #ORD-8480',
+    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
+  },
+  {
+    id: 'act-3',
+    event_type: 'BATCH_ADDED',
+    description: 'Inventory updated - 50 units added for fresh Spinach',
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hr ago
+  },
+  {
+    id: 'act-4',
+    event_type: 'BARGAIN_OFFER_ACCEPTED',
+    description: 'Bargain offer accepted: Tomato 500g at ₹35.00',
+    created_at: new Date(Date.now() - 120 * 60 * 1000).toISOString(), // 2 hrs ago
+  },
+  {
+    id: 'act-5',
+    event_type: 'ORDER_STATUS_CHANGED',
+    description: 'Order #ORD-8488 marked as Packed',
+    created_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(), // 3 hrs ago
+  },
+];
+
 
 export const orderFixtures = [
   {
@@ -123,7 +158,7 @@ export const orderFixtures = [
 ];
 
 export class OrdersFixtureService implements IOrdersService {
-  async fetchOrders(shopId: string, status?: string, page = 1): Promise<ApiResult<PaginatedResult<ApiOrder>>> {
+  async fetchOrders(shopId: string, status?: string, page = 1, search?: string): Promise<ApiResult<PaginatedResult<ApiOrder>>> {
     const apiOrders: ApiOrder[] = orderFixtures.map(f => ({
       order_id: f.id,
       shop_id: shopId,
@@ -170,7 +205,15 @@ export class OrdersFixtureService implements IOrdersService {
       },
     }));
 
-    const filtered = status ? apiOrders.filter(o => o.status === status) : apiOrders;
+    let filtered = status ? apiOrders.filter(o => o.status === status) : apiOrders;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(o =>
+        o.customer_name.toLowerCase().includes(q) ||
+        o.customer_phone.toLowerCase().includes(q) ||
+        o.order_id.toLowerCase().includes(q)
+      );
+    }
 
     return fixtureDelay({
       ok: true,
@@ -215,6 +258,15 @@ export class OrdersFixtureService implements IOrdersService {
         revenue_today: '12840.00',
         revenue_total: '124500.00',
       },
+    });
+  }
+
+  async fetchActivityLog(shopId: string): Promise<ApiResult<ActivityLogItem[]>> {
+    return fixtureDelay({
+      ok: true,
+      status: 200,
+      message: null,
+      data: activityLogFixtures,
     });
   }
 }

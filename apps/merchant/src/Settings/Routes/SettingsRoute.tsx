@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
@@ -44,7 +44,21 @@ export default observer(function SettingsScreen() {
   const [refundInput, setRefundInput] = useState(authStore.refundPolicy);
   const [returnInput, setReturnInput] = useState(authStore.returnPolicy);
 
-  const handleSaveSettings = () => {
+  useEffect(() => {
+    const load = async () => {
+      await authStore.fetchProfile();
+      setStoreNameInput(authStore.storeName);
+      setTimingsInput(authStore.timings);
+      setRadiusInput(authStore.deliveryRadius.toString());
+      setMinOrderInput(authStore.minimumOrder.toString());
+      setSurgeInput(authStore.surgeFee.toString());
+      setRefundInput(authStore.refundPolicy);
+      setReturnInput(authStore.returnPolicy);
+    };
+    void load();
+  }, []);
+
+  const handleSaveSettings = async () => {
     if (!storeNameInput.trim()) { Alert.alert('Validation Error', 'Store Name cannot be empty.'); return; }
     if (!timingsInput.trim()) { Alert.alert('Validation Error', 'Operating Hours cannot be empty.'); return; }
     const radius = parseFloat(radiusInput);
@@ -53,8 +67,22 @@ export default observer(function SettingsScreen() {
     if (isNaN(minOrder) || minOrder < 0) { Alert.alert('Validation Error', 'Please enter a valid minimum order amount.'); return; }
     const surgeFee = parseInt(surgeInput, 10);
     if (isNaN(surgeFee) || surgeFee < 0) { Alert.alert('Validation Error', 'Please enter a valid surge fee.'); return; }
-    authStore.updateSettings({ storeName: storeNameInput.trim(), timings: timingsInput.trim(), deliveryRadius: radius, minimumOrder: minOrder, surgeFee, refundPolicy: refundInput.trim(), returnPolicy: returnInput.trim() });
-    Alert.alert('Settings Saved', 'Operational rules and policies updated successfully.');
+    
+    const res = await authStore.updateSettings({
+      storeName: storeNameInput.trim(),
+      timings: timingsInput.trim(),
+      deliveryRadius: radius,
+      minimumOrder: minOrder,
+      surgeFee,
+      refundPolicy: refundInput.trim(),
+      returnPolicy: returnInput.trim(),
+    });
+
+    if (res.ok) {
+      Alert.alert('Settings Saved', 'Operational rules and policies updated successfully.');
+    } else {
+      Alert.alert('Save Failed', res.message);
+    }
   };
 
   return (
@@ -124,7 +152,7 @@ export default observer(function SettingsScreen() {
             <TextInput value={returnInput} onChangeText={setReturnInput} multiline numberOfLines={3} placeholder="Enter return window and items acceptable..." placeholderTextColor={Colors.textSecondary} style={[settingsStyles.formInput, settingsStyles.multilineInput]} />
           </View>
 
-          <Button label="Save Operational Rules" variant="primary" onPress={handleSaveSettings} style={settingsStyles.saveBtn} />
+          <Button label="Save Operational Rules" variant="primary" onPress={handleSaveSettings} style={settingsStyles.saveBtn} loading={authStore.saving} />
           <View style={{ height: 100 }} />
         </ScrollView>
       </View>
