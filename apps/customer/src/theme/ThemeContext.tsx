@@ -21,13 +21,13 @@ interface ThemeContextProps {
 export const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemScheme = useColorScheme();
-  const [themeType, setThemeTypeState] = useState<ThemeType>('dark');
+  const [themeType, setThemeTypeState] = useState<ThemeType>('light');
   useEffect(() => {
     const savedTheme = themeStorage.getString('user-theme') as ThemeType | undefined;
     if (savedTheme) {
       setThemeTypeState(savedTheme);
     } else {
-      setThemeTypeState('dark');
+      setThemeTypeState('light');
     }
   }, []);
   const setThemeType = (type: ThemeType) => {

@@ -119,63 +119,65 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
     }
 
     return (
-      <View
-        style={{ width: '100%', height: BANNER_HEIGHT, backgroundColor: placeholder.background }}
-        onLayout={(e) => {
-          const w = Math.floor(e.nativeEvent.layout.width);
-          if (w > 0 && w !== carouselWidth) setCarouselWidth(w);
-        }}
-      >
-        {carouselWidth > 0 && (
-          <ScrollView
-            horizontal
-            snapToInterval={carouselWidth}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            disableIntervalMomentum
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onMomentumScrollEnd={onScrollEnd}
-            onScrollEndDrag={onScrollEnd}
-            style={{ width: carouselWidth, height: BANNER_HEIGHT }}
-          >
-            {imageUris.map((uri, i) => (
-              <Image
-                key={i}
-                source={{ uri }}
-                style={{ width: carouselWidth, height: BANNER_HEIGHT }}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-              />
-            ))}
-          </ScrollView>
-        )}
+      <Pressable onPress={onPress}>
         <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: 0,
-            right: 0,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 5,
+          style={{ width: '100%', height: BANNER_HEIGHT, backgroundColor: placeholder.background }}
+          onLayout={(e) => {
+            const w = Math.floor(e.nativeEvent.layout.width);
+            if (w > 0 && w !== carouselWidth) setCarouselWidth(w);
           }}
         >
-          {imageUris.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                width: i === activeImageIndex ? 16 : 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: i === activeImageIndex ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
-              }}
-            />
-          ))}
+          {carouselWidth > 0 && (
+            <ScrollView
+              horizontal
+              snapToInterval={carouselWidth}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              disableIntervalMomentum
+              showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onMomentumScrollEnd={onScrollEnd}
+              onScrollEndDrag={onScrollEnd}
+              style={{ width: carouselWidth, height: BANNER_HEIGHT }}
+            >
+              {imageUris.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={{ width: carouselWidth, height: BANNER_HEIGHT }}
+                  resizeMode="cover"
+                  onError={() => setImageError(true)}
+                />
+              ))}
+            </ScrollView>
+          )}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: 0,
+              right: 0,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
+            {imageUris.map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: i === activeImageIndex ? 16 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: i === activeImageIndex ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                }}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
