@@ -19,7 +19,7 @@ export class RootStore {
   sessionStore = new SessionStore();
   onboardingStore: OnboardingStore;
   shopSetupStore: ShopSetupStore;
-  authStore = new AuthStore();
+  authStore: AuthStore;
   dashboardStore: DashboardStore;
   ordersStore: OrdersStore;
   productsStore: ProductsStore;
@@ -27,12 +27,13 @@ export class RootStore {
   bargainingStore: BargainingStore;
   deliveryStore = new DeliveryStore();
   paymentsStore = new PaymentsStore();
-  analyticsStore = new AnalyticsStore();
+  analyticsStore: AnalyticsStore;
   customersStore = new CustomersStore();
   notificationStore = new NotificationStore();
   supportStore = new SupportStore();
 
   constructor() {
+    this.authStore = new AuthStore(this.sessionStore);
     this.onboardingStore = new OnboardingStore(this.sessionStore);
     this.shopSetupStore = new ShopSetupStore(this.sessionStore);
     this.productsStore = new ProductsStore(this.sessionStore);
@@ -40,6 +41,7 @@ export class RootStore {
     this.bargainingStore = new BargainingStore(this.sessionStore);
     this.ordersStore = new OrdersStore(this.sessionStore);
     this.dashboardStore = new DashboardStore(this.sessionStore);
+    this.analyticsStore = new AnalyticsStore(this.sessionStore);
     makeAutoObservable(this);
     // Restore session from AsyncStorage on app start
     this.sessionStore.initializeFromAsyncStorage().catch(() => {});

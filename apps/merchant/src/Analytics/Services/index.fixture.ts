@@ -1,27 +1,53 @@
-export const analyticsFixtures = {
-  salesToday: [
-    { label: '08:00', value: 1200 }, { label: '10:00', value: 2400 }, { label: '12:00', value: 1800 },
-    { label: '14:00', value: 1500 }, { label: '16:00', value: 2200 }, { label: '18:00', value: 3800 },
-    { label: '20:00', value: 4100 }, { label: '22:00', value: 1840 },
+import type { ApiResult } from '../../Common/services/http';
+import { fixtureDelay } from '../../Common/services/config';
+import type { AnalyticsData } from '../types/domain';
+import type { IAnalyticsService } from './index';
+
+export const mockAnalyticsData: AnalyticsData = {
+  revenue_trend: [
+    { date: '2026-06-15', revenue: '14200.00' },
+    { date: '2026-06-16', revenue: '12840.00' },
+    { date: '2026-06-17', revenue: '15100.00' },
+    { date: '2026-06-18', revenue: '16500.00' },
+    { date: '2026-06-19', revenue: '18200.00' },
+    { date: '2026-06-20', revenue: '22000.00' },
+    { date: '2026-06-21', revenue: '24500.00' },
   ],
-  weeklyRevenue: [
-    { label: 'Mon', value: 14200 }, { label: 'Tue', value: 12840 }, { label: 'Wed', value: 15100 },
-    { label: 'Thu', value: 16500 }, { label: 'Fri', value: 18200 }, { label: 'Sat', value: 22000 }, { label: 'Sun', value: 24500 },
+  peak_hours: [
+    { hour: 8, order_count: 5 },
+    { hour: 10, order_count: 12 },
+    { hour: 12, order_count: 8 },
+    { hour: 14, order_count: 6 },
+    { hour: 16, order_count: 10 },
+    { hour: 18, order_count: 22 },
+    { hour: 20, order_count: 25 },
+    { hour: 22, order_count: 9 },
   ],
-  monthlyRevenue: [
-    { label: 'Jan', value: 340000 }, { label: 'Feb', value: 380000 }, { label: 'Mar', value: 420000 },
-    { label: 'Apr', value: 410000 }, { label: 'May', value: 480000 }, { label: 'Jun', value: 12840 },
+  category_shares: [
+    { category: 'Grocery', revenue: '45000.00' },
+    { category: 'Pharmacy', revenue: '20000.00' },
+    { category: 'Restaurants', revenue: '15000.00' },
+    { category: 'Electronics', revenue: '10000.00' },
+    { category: 'Fashion', revenue: '10000.00' },
   ],
-  categoryPerformance: [
-    { label: 'Grocery', value: 45 }, { label: 'Pharmacy', value: 20 }, { label: 'Restaurants', value: 15 },
-    { label: 'Electronics', value: 10 }, { label: 'Fashion', value: 10 },
-  ],
-  peakSellingHours: [
-    { label: 'Morning', value: 25 }, { label: 'Afternoon', value: 15 }, { label: 'Evening', value: 45 }, { label: 'Night', value: 15 },
-  ],
-  topProducts: [
-    { id: 'TP-01', name: 'Organic Roma Tomatoes', unitsSold: 124, revenue: 7440, image: 'https://images.unsplash.com/photo-1595855759920-86582396756a?w=100' },
-    { id: 'TP-02', name: 'Hass Avocados', unitsSold: 42, revenue: 12558, image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=100' },
-    { id: 'TP-03', name: 'Gourmet Butter Chicken Rice Bowl', unitsSold: 38, revenue: 9462, image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=100' },
-  ],
+  retention: {
+    new_customers: 25,
+    repeat_customers: 65,
+  },
 };
+
+export const defaultTopProducts = [
+  { id: 'TP-01', name: 'Organic Roma Tomatoes', unitsSold: 124, revenue: 7440, image: 'https://images.unsplash.com/photo-1595855759920-86582396756a?w=100' },
+  { id: 'TP-02', name: 'Hass Avocados', unitsSold: 42, revenue: 12558, image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=100' },
+  { id: 'TP-03', name: 'Gourmet Butter Chicken Rice Bowl', unitsSold: 38, revenue: 9462, image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=100' },
+];
+
+function ok<T>(data: T): ApiResult<T> {
+  return { ok: true, status: 200, data, message: null };
+}
+
+export class AnalyticsFixtureService implements IAnalyticsService {
+  async fetchAnalytics(_shopId: string): Promise<ApiResult<AnalyticsData>> {
+    return fixtureDelay(ok(mockAnalyticsData));
+  }
+}

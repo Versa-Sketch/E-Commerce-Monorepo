@@ -1,11 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
+
+function ShopTypesSkeleton() {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Animated.View style={{ opacity: pulse, gap: 12 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i} style={[styles.card, { borderColor: Colors.border, gap: 12, justifyContent: 'flex-start', marginBottom: 0 }]}>
+          <View style={{ width: 120, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+          <View style={{ flex: 1 }} />
+          <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#E2E8F0' }} />
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
 
 export default observer(function ShopTypeSelectionRoute() {
   const { shopSetupStore } = useStores();
@@ -39,7 +66,7 @@ export default observer(function ShopTypeSelectionRoute() {
           ) : null}
 
           {isLoading ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+            <ShopTypesSkeleton />
           ) : (
             shopSetupStore.availableTypes.map((opt) => {
               const isSelected = shopSetupStore.selectedIds.includes(opt.id);

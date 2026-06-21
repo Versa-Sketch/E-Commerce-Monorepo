@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
@@ -14,6 +14,10 @@ export default observer(function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { analyticsStore, dashboardStore } = useStores();
   const [chartTab, setChartTab] = useState<'today' | 'weekly' | 'monthly'>('today');
+
+  useEffect(() => {
+    void analyticsStore.loadAnalytics();
+  }, []);
 
   const formatCurrency = (val: number) => `₹${val.toLocaleString('en-IN')}`;
 

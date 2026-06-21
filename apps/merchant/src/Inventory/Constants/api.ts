@@ -9,4 +9,6 @@ export const INVENTORY_ENDPOINTS = {
   ADJUST: (shopId: string) => `${API_BASE}/inventory/${shopId}/adjust/`,
   TRANSACTIONS: (shopId: string) =>
     `${API_BASE}/inventory/${shopId}/transactions/`,
+  METRICS: (shopId: string) =>
+    `${API_BASE}/commerce/shop-owner/${shopId}/inventory-metrics/`,
 } as const;

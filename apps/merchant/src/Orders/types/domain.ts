@@ -63,3 +63,17 @@ export interface ApiDashboardSummary {
   revenue_today: string;
   revenue_total: string;
 }
+
+export interface ActivityLogItem {
+  id: string;
+  event_type:
+    | 'ORDER_ACCEPTED'
+    | 'ORDER_STATUS_CHANGED'
+    | 'ORDER_CANCELLED'
+    | 'BATCH_ADDED'
+    | 'BARGAIN_OFFER_ACCEPTED'
+    | 'BARGAIN_OFFER_REJECTED';
+  description: string;
+  created_at: string;
+}
+

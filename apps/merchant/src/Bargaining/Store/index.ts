@@ -1,7 +1,7 @@
 import { makeAutoObservable, reaction, runInAction } from "mobx";
 import type { SessionStore } from "../../Auth/Store";
 import { decodeJwtPayload } from "../../Common/services/jwt";
-import { Bargain, BargainMessage } from "../Models/Bargain";
+import { Bargain, BargainMessage, BargainHistorySession } from "../Models/Bargain";
 import {
   BargainCartItem,
   BargainChatMessage,
@@ -14,6 +14,7 @@ import {
   GatewayConnectionStatus,
 } from "../Services/gateway";
 import { BargainingApiService } from "../Services/index.api";
+import { resolveShopId } from "../../Common/services/shopId";
 
 /** How long to wait for the gateway to echo back an offer-response result before
  * clearing the pending spinner and surfacing an error. */
@@ -31,9 +32,11 @@ export interface ChatAlert {
 
 export class BargainingStore {
   sessions: BargainSession[] = [];
+  resolvedHistory: BargainHistorySession[] = [];
   connectionStatus: GatewayConnectionStatus = "offline";
   sessionsLoading = false;
   sessionsError: string | null = null;
+  shopId: string | null = null;
   /** offerIds currently awaiting a respond-to-offer API result, so buttons can show a spinner. */
   pendingOfferActions = new Set<string>();
   /** Last action-level error (offer response, etc.) surfaced as a toast by the UI. */
@@ -90,29 +93,59 @@ export class BargainingStore {
     console.log("[Bargaining] disconnecting");
     this.gateway.disconnect();
     this.sessions = [];
+    this.resolvedHistory = [];
+  }
+
+  async ensureShopId(): Promise<string | null> {
+    if (this.shopId) return this.shopId;
+    if (this.session.user?.shop_id) {
+      runInAction(() => {
+        this.shopId = this.session.user!.shop_id;
+      });
+      return this.shopId;
+    }
+    const id = await resolveShopId(this.session.accessToken);
+    runInAction(() => {
+      this.shopId = id;
+    });
+    return id;
   }
 
   async loadSessions() {
-    console.log("[Bargaining] GET /logistics/bargain/sessions/active/");
+    console.log("[Bargaining] loading active and historical sessions");
     this.sessionsLoading = true;
     this.sessionsError = null;
-    const result = await this.api.getActiveSessions();
-    console.log("[Bargaining] active sessions response", result);
+
+    const shopId = await this.ensureShopId();
+    if (!shopId) {
+      runInAction(() => {
+        this.sessionsLoading = false;
+        this.sessionsError = "No shop ID found";
+      });
+      return;
+    }
+
+    const [activeRes, historyRes] = await Promise.all([
+      this.api.getActiveSessions(),
+      this.api.getResolvedHistory(shopId),
+    ]);
+
     runInAction(() => {
       this.sessionsLoading = false;
-      if (result.ok) {
-        const sessions = (result.data as any)?.sessions ?? [];
+      if (activeRes.ok) {
+        // The endpoint may return either a bare array or `{ sessions: [...] }` —
+        // handle both so a backend shape change doesn't silently empty the list.
+        const raw = activeRes.data as any;
+        const sessions = Array.isArray(raw) ? raw : raw?.sessions ?? [];
         this.sessions = sessions.map(
           (data: Record<string, any>) => new BargainSession(data),
         );
-        console.log("[Bargaining] loaded sessions", this.sessions.length);
-        console.log(
-          "[STATE UPDATED] Active sessions list populated. Current sessions count:",
-          this.sessions.length,
-        );
       } else {
-        this.sessionsError = result.message;
-        console.warn("[Bargaining] failed to load sessions", result.message);
+        this.sessionsError = activeRes.message;
+      }
+
+      if (historyRes.ok && historyRes.data) {
+        this.resolvedHistory = historyRes.data;
       }
     });
   }
@@ -336,8 +369,8 @@ export class BargainingStore {
             const alertMsg = message.type === "new_offer"
               ? `Offered ₹${offerAmount} for ${productName}`
               : `Counter-offered ₹${offerAmount} for ${productName}`;
-            this.chatAlerts = [
-              { id: `alert-${Date.now()}`, sessionId: message.session_id ?? "", customerName, message: alertMsg, time: "Just now", type: "offer", offerAmount },
+             this.chatAlerts = [
+              { id: `alert-${Date.now()}`, sessionId: message.session_id ?? "", customerName, message: alertMsg, time: "Just now", type: "offer" as const, offerAmount },
               ...this.chatAlerts,
             ].slice(0, 20);
           }
@@ -366,7 +399,7 @@ export class BargainingStore {
               const customerName = this.resolveCustomerName(session);
               const text: string = msgObj.message ?? msgObj.text ?? "";
               this.chatAlerts = [
-                { id: `alert-${Date.now()}`, sessionId: session.sessionId, customerName, message: text, time: "Just now", type: "message" },
+                { id: `alert-${Date.now()}`, sessionId: session.sessionId, customerName, message: text, time: "Just now", type: "message" as const },
                 ...this.chatAlerts,
               ].slice(0, 20);
             }

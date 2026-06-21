@@ -6,6 +6,7 @@ import { USE_FIXTURES } from '../../Common/services/config';
 import { resolveShopId } from '../../Common/services/shopId';
 import { OrdersApiService } from '../../Orders/Services/index.api';
 import { OrdersFixtureService } from '../../Orders/Services/index.fixture';
+import type { ActivityLogItem } from '../../Orders/types/domain';
 
 export class DashboardStore {
   todayOrders: number = 0;
@@ -15,6 +16,7 @@ export class DashboardStore {
   activeDeliveryPartners: number = 5;
   averageRating: number = 4.8;
   insights: AIInsight[] = [];
+  activityLog: ActivityLogItem[] = [];
   shopId: string | null = null;
   metricsState: 'idle' | 'loading' | 'error' = 'idle';
   metricsError: string | null = null;
@@ -58,16 +60,25 @@ export class DashboardStore {
       return;
     }
 
-    const res = await this.service.fetchDashboardSummary(shopId);
+    const [summaryRes, activityRes] = await Promise.all([
+      this.service.fetchDashboardSummary(shopId),
+      this.service.fetchActivityLog(shopId),
+    ]);
+
     runInAction(() => {
-      if (res.ok && res.data) {
-        this.todayOrders = res.data.orders_today_count;
-        this.pendingOrders = res.data.pending_orders_count;
-        this.todayRevenue = Math.round(Number(res.data.revenue_today));
+      if (summaryRes.ok && summaryRes.data) {
+        this.todayOrders = summaryRes.data.orders_today_count;
+        this.pendingOrders = summaryRes.data.pending_orders_count;
+        this.todayRevenue = Math.round(Number(summaryRes.data.revenue_today));
+      }
+      if (activityRes.ok && activityRes.data) {
+        this.activityLog = activityRes.data;
+      }
+      if (summaryRes.ok && activityRes.ok) {
         this.metricsState = 'idle';
       } else {
         this.metricsState = 'error';
-        this.metricsError = res.message ?? 'Failed to load dashboard';
+        this.metricsError = summaryRes.message ?? activityRes.message ?? 'Failed to load dashboard';
       }
     });
   }
@@ -77,5 +88,6 @@ export class DashboardStore {
     if (idx !== -1) this.insights.splice(idx, 1);
   }
 }
+
 
 export type DashboardStoreType = DashboardStore;

@@ -13,6 +13,7 @@ import type {
   StockListParams,
   StockSummaryItem,
   UpdateBatchInput,
+  InventoryMetrics,
 } from '../types/domain';
 
 const SHOP_ID = 'shop-fixture-001';
@@ -339,6 +340,11 @@ export class InventoryFixtureService implements IInventoryService {
         (s) => s.product_name.toLowerCase().includes(q) || s.variant_name.toLowerCase().includes(q),
       );
     }
+    if (params.stock_status === 'low') {
+      list = list.filter((s) => { const a = Number(s.available_stock); return a > 0 && a <= 5; });
+    } else if (params.stock_status === 'out') {
+      list = list.filter((s) => Number(s.available_stock) <= 0);
+    }
 
     const page = params.page ?? 1;
     const pageSize = params.page_size ?? 20;
@@ -386,5 +392,14 @@ export class InventoryFixtureService implements IInventoryService {
       ? transactionFixtures.filter((t) => t.batch_id === batchId)
       : transactionFixtures;
     return fixtureDelay(ok(result));
+  }
+
+  async getInventoryMetrics(_shopId: string): Promise<ApiResult<InventoryMetrics>> {
+    return fixtureDelay(ok({
+      total_skus: 120,
+      low_stock: 5,
+      out_of_stock: 2,
+      expiring_soon: 4,
+    }));
   }
 }

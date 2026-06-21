@@ -1,2 +1,6 @@
-import type { analyticsFixtures } from './index.fixture';
-export interface IAnalyticsService { fetchAnalytics(): Promise<typeof analyticsFixtures>; }
+import type { ApiResult } from '../../Common/services/http';
+import type { AnalyticsData } from '../types/domain';
+
+export interface IAnalyticsService {
+  fetchAnalytics(shopId: string): Promise<ApiResult<AnalyticsData>>;
+}

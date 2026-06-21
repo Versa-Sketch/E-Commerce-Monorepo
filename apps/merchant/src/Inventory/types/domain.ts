@@ -74,4 +74,13 @@ export interface StockListParams {
   page?: number;
   page_size?: number;
   search?: string;
+  stock_status?: 'low' | 'out';
 }
+
+export interface InventoryMetrics {
+  total_skus: number;
+  low_stock: number;
+  out_of_stock: number;
+  expiring_soon: number;
+}
+

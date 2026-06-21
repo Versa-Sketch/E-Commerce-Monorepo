@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Animated } from 'react-native';
 import { observer } from 'mobx-react-lite';
 import { router } from 'expo-router';
 import {
@@ -30,12 +30,41 @@ const ADDRESS_TYPE_ICON: Record<string, React.ComponentType<any>> = {
   OTHER: MapPin,
 };
 
+function AddressSkeleton() {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Animated.View style={[styles.addressRow, { opacity: pulse, borderBottomWidth: 0, gap: 12 }]}>
+      <View style={[styles.addressIconCircle, { backgroundColor: '#E2E8F0', borderWidth: 0 }]} />
+      <View style={[styles.addressMeta, { gap: 6, flex: 1 }]}>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={{ width: 60, height: 12, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+          <View style={{ width: 50, height: 12, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+        </View>
+        <View style={{ width: '80%', height: 10, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+        <View style={{ width: '60%', height: 10, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export default observer(function MoreScreen() {
   const { authStore, sessionStore } = useStores();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressLoading, setAddressLoading] = useState(true);
 
   useEffect(() => {
+    void authStore.fetchProfile();
     if (!sessionStore.accessToken) { setAddressLoading(false); return; }
     apiRequest<Address[]>(AUTH_ENDPOINTS.ADDRESSES, { token: sessionStore.accessToken })
       .then(res => {
@@ -89,9 +118,9 @@ export default observer(function MoreScreen() {
           </View>
 
           {addressLoading ? (
-            <View style={styles.addressLoadingRow}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-              <Text style={styles.addressLoadingText}>Loading addresses…</Text>
+            <View style={{ gap: 8 }}>
+              <AddressSkeleton />
+              <AddressSkeleton />
             </View>
           ) : addresses.length === 0 ? (
             <View style={styles.addressEmptyRow}>

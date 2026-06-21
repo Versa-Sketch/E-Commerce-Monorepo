@@ -59,6 +59,33 @@ function SuccessBanner({ visible }: { visible: boolean }) {
   );
 }
 
+function ShopTypesSkeleton() {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Animated.View style={{ opacity: pulse, gap: 12, paddingHorizontal: 24, paddingTop: 20 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i} style={[styles.card, { borderColor: Colors.border, gap: 12, justifyContent: 'flex-start', marginBottom: 0 }]}>
+          <View style={{ width: 120, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4 }} />
+          <View style={{ flex: 1 }} />
+          <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: '#E2E8F0' }} />
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
+
 export default observer(function EditShopTypesRoute() {
   const { shopSetupStore } = useStores();
   const [localSelected, setLocalSelected] = useState<string[]>([]);
@@ -143,10 +170,7 @@ export default observer(function EditShopTypesRoute() {
       <SuccessBanner visible={showSuccess} />
 
       {isLoading && !initialised ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-          <Text style={styles.loadingText}>Loading shop types…</Text>
-        </View>
+        <ShopTypesSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Current shop types */}

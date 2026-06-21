@@ -12,8 +12,9 @@ import {
   Search,
   X,
 } from 'lucide-react-native';
+import { debounce } from 'lodash';
 import { observer } from 'mobx-react-lite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -35,7 +36,7 @@ import { useStores } from '../../Common/hooks/useStores';
 import { Button } from '../../components/ui/Button';
 import { Colors } from '../../theme/colors';
 import { ProductFormModal } from '../Components/ProductFormModal';
-import type { ProductSummary } from '../types/domain';
+import type { ProductListParams, ProductSummary } from '../types/domain';
 import styles from './styles';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -283,16 +284,24 @@ export default observer(function ProductsScreen() {
     void productsStore.fetchCategories();
   }, [productsStore]);
 
+  const debouncedFetchProducts = useMemo(
+    () =>
+      debounce(
+        (params: ProductListParams) => void productsStore.fetchProducts(params),
+        SEARCH_DEBOUNCE_MS,
+      ),
+    [productsStore],
+  );
+
+  useEffect(() => () => debouncedFetchProducts.cancel(), [debouncedFetchProducts]);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void productsStore.fetchProducts({
-        search: searchQuery.trim() || undefined,
-        category_id: categoryFilter ?? undefined,
-        is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
-      });
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [productsStore, searchQuery, statusFilter, categoryFilter]);
+    debouncedFetchProducts({
+      search: searchQuery.trim() || undefined,
+      category_id: categoryFilter ?? undefined,
+      is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
+    });
+  }, [debouncedFetchProducts, searchQuery, statusFilter, categoryFilter]);
 
   function showToast(message: string, error = false) {
     if (toastTimer.current) clearTimeout(toastTimer.current);

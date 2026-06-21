@@ -52,13 +52,13 @@ export const AdjustStockModal = observer(function AdjustStockModal({
     // If presetBatchId is provided, navigate directly to adjustment page
     if (presetBatchId) {
       onClose();
-      router.push(`/inventory/batch-adjustment/${presetBatchId}`);
+      router.push(`/inventory/batch-adjustment/${presetBatchId}` as any);
     }
   }, [visible, presetBatchId, router, onClose]);
 
   const handleBatchSelect = (batchId: string) => {
     onClose();
-    router.push(`/inventory/batch-adjustment/${batchId}`);
+    router.push(`/inventory/batch-adjustment/${batchId}` as any);
   };
 
   return (

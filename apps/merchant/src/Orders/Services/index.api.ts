@@ -1,6 +1,6 @@
 import type { IOrdersService } from './index';
 import { ApiResult, PaginatedResult, apiRequest, apiRequestPaginated, buildQuery } from '../../Common/services/http';
-import { ApiOrder, ApiDashboardSummary } from '../types/domain';
+import { ApiOrder, ApiDashboardSummary, ActivityLogItem } from '../types/domain';
 import { API_BASE } from '../../Auth/Constants/api';
 
 export interface TokenProvider {
@@ -14,8 +14,8 @@ export class OrdersApiService implements IOrdersService {
     return this.session.accessToken;
   }
 
-  async fetchOrders(shopId: string, status?: string, page = 1): Promise<ApiResult<PaginatedResult<ApiOrder>>> {
-    const query = buildQuery({ status, page: page.toString() });
+  async fetchOrders(shopId: string, status?: string, page = 1, search?: string): Promise<ApiResult<PaginatedResult<ApiOrder>>> {
+    const query = buildQuery({ status, page: page.toString(), search });
     const url = `${API_BASE}/commerce/shop-owner/${shopId}/orders/${query}`;
     return apiRequestPaginated<ApiOrder>(url, {
       token: this.token,
@@ -44,4 +44,12 @@ export class OrdersApiService implements IOrdersService {
       token: this.token,
     });
   }
+
+  async fetchActivityLog(shopId: string): Promise<ApiResult<ActivityLogItem[]>> {
+    const url = `${API_BASE}/commerce/shop-owner/${shopId}/activity-log/`;
+    return apiRequest<ActivityLogItem[]>(url, {
+      token: this.token,
+    });
+  }
 }
+

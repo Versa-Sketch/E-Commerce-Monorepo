@@ -1,45 +1,112 @@
+import { useFocusEffect } from 'expo-router';
+import { debounce } from 'lodash';
 import {
-  AlertTriangle,
   ArrowDownCircle,
   ArrowUpCircle,
   Boxes,
   ChevronDown,
-  ChevronLeft,
   ChevronUp,
   Layers,
   Plus,
   PlusCircle,
   Search,
   SlidersHorizontal,
-  X,
-} from "lucide-react-native";
-import { observer } from "mobx-react-lite";
-import { useEffect, useRef, useState } from "react";
+  X
+} from 'lucide-react-native';
+import { observer } from 'mobx-react-lite';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
+  FlatList,
   ScrollView,
   StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AnimatedScreen } from "../../Common/components/AnimatedScreen";
-import { Colors } from "../../theme/colors";
-import { useStores } from "../../stores/RootStore";
-import type {
-  BatchStatus,
-  StockSummaryItem,
-  InventoryBatch,
-  InventoryTransaction,
-} from "../types/domain";
-import { AddBatchModal } from "../Components/AddBatchModal";
-import { AdjustStockModal } from "../Components/AdjustStockModal";
-import styles from "./styles";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
+import { useStores } from '../../Common/hooks/useStores';
+import { Colors } from '../../theme/colors';
+import type { InventoryBatch, InventoryTransaction, StockSummaryItem } from '../types/domain';
+import styles from './styles';
 
-type Segment = "stock" | "batches" | "activity";
-type StockFilter = "all" | "low" | "out";
+// ─── Fixture Data ─────────────────────────────────────────────────────────────
+
+type BatchStatus = 'ACTIVE' | 'EXPIRED' | 'EXHAUSTED' | 'RECALLED';
+type ActivityType = 'RECEIVE' | 'SALE' | 'ADJUSTMENT';
+type Segment = 'stock' | 'batches' | 'activity';
+
+interface FixtureBatch {
+  id: string;
+  variantId: string;
+  productName: string;
+  variantName: string;
+  batchNumber: string;
+  receivedQty: number;
+  availableQty: number;
+  reservedQty: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  receivedAt: string;
+  expiryAt: string | null;
+  manufacturedAt: string | null;
+  status: BatchStatus;
+}
+
+interface FixtureStock {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  unit: string;
+  available: number;
+  reserved: number;
+}
+
+interface FixtureActivity {
+  id: string;
+  batchId: string;
+  productName: string;
+  type: ActivityType;
+  quantity: number;
+  note: string | null;
+  createdAt: string;
+}
+
+const FIXTURE_STOCK: FixtureStock[] = [
+  { variantId: 'v1', productName: 'Organic Tomatoes', variantName: '500g Pack', unit: 'pcs', available: 142, reserved: 18 },
+  { variantId: 'v2', productName: 'Alphonso Mangoes', variantName: '1 Dozen', unit: 'box', available: 4, reserved: 2 },
+  { variantId: 'v3', productName: 'Fresh Spinach', variantName: '250g Bundle', unit: 'pcs', available: 0, reserved: 0 },
+  { variantId: 'v4', productName: 'Basmati Rice', variantName: '1kg Bag', unit: 'kg', available: 88, reserved: 10 },
+  { variantId: 'v5', productName: 'Dragon Fruit', variantName: '2 pcs Pack', unit: 'pcs', available: 3, reserved: 1 },
+  { variantId: 'v6', productName: 'Avocado', variantName: '2 pcs', unit: 'pcs', available: 22, reserved: 4 },
+  { variantId: 'v7', productName: 'Baby Carrots', variantName: '500g', unit: 'kg', available: 0, reserved: 0 },
+  { variantId: 'v8', productName: 'Seasonal Fruit Box', variantName: 'Assorted 2kg', unit: 'box', available: 55, reserved: 6 },
+];
+
+const FIXTURE_BATCHES: FixtureBatch[] = [
+  { id: 'b1', variantId: 'v1', productName: 'Organic Tomatoes', variantName: '500g Pack', batchNumber: 'BT-0241', receivedQty: 200, availableQty: 142, reservedQty: 18, purchasePrice: 35, sellingPrice: 60, receivedAt: '2026-06-14', expiryAt: '2026-06-22', manufacturedAt: '2026-06-12', status: 'ACTIVE' },
+  { id: 'b2', variantId: 'v2', productName: 'Alphonso Mangoes', variantName: '1 Dozen', batchNumber: 'BT-0238', receivedQty: 30, availableQty: 4, reservedQty: 2, purchasePrice: 350, sellingPrice: 480, receivedAt: '2026-06-12', expiryAt: '2026-06-19', manufacturedAt: null, status: 'ACTIVE' },
+  { id: 'b3', variantId: 'v3', productName: 'Fresh Spinach', variantName: '250g Bundle', batchNumber: 'BT-0229', receivedQty: 80, availableQty: 0, reservedQty: 0, purchasePrice: 20, sellingPrice: 45, receivedAt: '2026-06-10', expiryAt: '2026-06-17', manufacturedAt: null, status: 'EXHAUSTED' },
+  { id: 'b4', variantId: 'v4', productName: 'Basmati Rice', variantName: '1kg Bag', batchNumber: 'BT-0225', receivedQty: 100, availableQty: 88, reservedQty: 10, purchasePrice: 90, sellingPrice: 120, receivedAt: '2026-06-08', expiryAt: null, manufacturedAt: '2026-05-01', status: 'ACTIVE' },
+  { id: 'b5', variantId: 'v5', productName: 'Dragon Fruit', variantName: '2 pcs Pack', batchNumber: 'BT-0218', receivedQty: 40, availableQty: 3, reservedQty: 1, purchasePrice: 150, sellingPrice: 200, receivedAt: '2026-06-05', expiryAt: '2026-06-20', manufacturedAt: null, status: 'ACTIVE' },
+  { id: 'b6', variantId: 'v6', productName: 'Avocado', variantName: '2 pcs', batchNumber: 'BT-0210', receivedQty: 50, availableQty: 22, reservedQty: 4, purchasePrice: 200, sellingPrice: 280, receivedAt: '2026-06-01', expiryAt: '2026-06-24', manufacturedAt: null, status: 'ACTIVE' },
+  { id: 'b7', variantId: 'v7', productName: 'Baby Carrots', variantName: '500g', batchNumber: 'BT-0205', receivedQty: 60, availableQty: 0, reservedQty: 0, purchasePrice: 50, sellingPrice: 75, receivedAt: '2026-06-01', expiryAt: '2026-06-16', manufacturedAt: null, status: 'EXPIRED' },
+  { id: 'b8', variantId: 'v8', productName: 'Seasonal Fruit Box', variantName: 'Assorted 2kg', batchNumber: 'BT-0198', receivedQty: 80, availableQty: 55, reservedQty: 6, purchasePrice: 300, sellingPrice: 450, receivedAt: '2026-05-28', expiryAt: null, manufacturedAt: null, status: 'ACTIVE' },
+];
+
+const FIXTURE_ACTIVITY: FixtureActivity[] = [
+  { id: 'a1', batchId: 'b1', productName: 'Organic Tomatoes · BT-0241', type: 'SALE', quantity: -4, note: null, createdAt: '2026-06-17T10:32:00' },
+  { id: 'a2', batchId: 'b2', productName: 'Alphonso Mangoes · BT-0238', type: 'SALE', quantity: -1, note: null, createdAt: '2026-06-17T10:18:00' },
+  { id: 'a3', batchId: 'b4', productName: 'Basmati Rice · BT-0225', type: 'ADJUSTMENT', quantity: +5, note: 'Stock count recheck', createdAt: '2026-06-17T09:45:00' },
+  { id: 'a4', batchId: 'b6', productName: 'Avocado · BT-0210', type: 'SALE', quantity: -2, note: null, createdAt: '2026-06-17T08:50:00' },
+  { id: 'a5', batchId: 'b8', productName: 'Seasonal Fruit Box · BT-0198', type: 'RECEIVE', quantity: +80, note: 'New stock arrival', createdAt: '2026-06-16T16:20:00' },
+  { id: 'a6', batchId: 'b1', productName: 'Organic Tomatoes · BT-0241', type: 'RECEIVE', quantity: +200, note: 'Fresh batch received', createdAt: '2026-06-16T14:00:00' },
+  { id: 'a7', batchId: 'b5', productName: 'Dragon Fruit · BT-0218', type: 'ADJUSTMENT', quantity: -2, note: 'Spoilage removed', createdAt: '2026-06-16T11:30:00' },
+  { id: 'a8', batchId: 'b3', productName: 'Fresh Spinach · BT-0229', type: 'SALE', quantity: -10, note: null, createdAt: '2026-06-15T17:05:00' },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -275,24 +342,11 @@ function InventorySkeleton({ insetTop }: { insetTop: number }) {
 
 // ─── Stock Card ───────────────────────────────────────────────────────────────
 
-function StockCard({
-  item,
-  expanded,
-  onToggle,
-}: {
-  item: StockSummaryItem;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const available = Number(item.available_stock) || 0;
-  const reserved = Number(item.reserved_stock) || 0;
+function StockCard({ item, expanded, onToggle }: { item: StockSummaryItem; expanded: boolean; onToggle: () => void }) {
+  const available = Number(item.available_stock);
+  const reserved = Number(item.reserved_stock);
   const h = stockHealth(available);
-  const ratio = Math.min(
-    100,
-    available > 0
-      ? Math.round((available / (available + reserved + 10)) * 100)
-      : 0,
-  );
+  const ratio = Math.min(100, available > 0 ? Math.round((available / (available + reserved + 10)) * 100) : 0);
 
   return (
     <TouchableOpacity
@@ -309,9 +363,7 @@ function StockCard({
         />
         <View style={{ flex: 1 }}>
           <Text style={invStyles.stockProduct}>{item.product_name}</Text>
-          <Text style={invStyles.stockVariant}>
-            {item.variant_name} · {item.unit_symbol}
-          </Text>
+          <Text style={invStyles.stockVariant}>{item.variant_name} · {item.unit_symbol}</Text>
         </View>
         {expanded ? (
           <ChevronUp size={18} color={Colors.textMuted} />
@@ -323,9 +375,7 @@ function StockCard({
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <View style={invStyles.metaChip}>
           <Text style={invStyles.metaChipLabel}>AVAILABLE</Text>
-          <Text style={[invStyles.metaChipValue, { color: h.color }]}>
-            {available}
-          </Text>
+          <Text style={[invStyles.metaChipValue, { color: h.color }]}>{available}</Text>
         </View>
         <View style={invStyles.metaChip}>
           <Text style={invStyles.metaChipLabel}>RESERVED</Text>
@@ -338,17 +388,8 @@ function StockCard({
           ]}
         >
           <Text style={invStyles.metaChipLabel}>ACTION</Text>
-          <Text
-            style={[
-              invStyles.metaChipValue,
-              { color: Colors.primary, fontSize: 11 },
-            ]}
-          >
-            {available <= 0
-              ? "Create batch now"
-              : available <= 5
-                ? "Plan reorder today"
-                : "Maintain stock"}
+          <Text style={[invStyles.metaChipValue, { color: Colors.primary, fontSize: 11 }]}>
+            {available <= 0 ? 'Create batch now' : available <= 5 ? 'Plan reorder today' : 'Maintain stock'}
           </Text>
         </View>
       </View>
@@ -361,17 +402,9 @@ function StockCard({
           ]}
         />
       </View>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginTop: 6,
-        }}
-      >
-        <Text style={invStyles.barLabel}>
-          {available} available{reserved > 0 ? ` · ${reserved} reserved` : ""}
-        </Text>
-        {h.tone !== "ok" && (
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+        <Text style={invStyles.barLabel}>{available} available{reserved > 0 ? ` · ${reserved} reserved` : ''}</Text>
+        {h.tone !== 'ok' && (
           <View style={[invStyles.healthBadge, { backgroundColor: h.bg }]}>
             <Text style={[invStyles.healthBadgeText, { color: h.color }]}>
               {h.label}
@@ -390,9 +423,7 @@ function StockCard({
             </View>
             <View style={[invStyles.metaChip, { flex: 1 }]}>
               <Text style={invStyles.metaChipLabel}>TOTAL</Text>
-              <Text style={invStyles.metaChipValue}>
-                {available + reserved}
-              </Text>
+              <Text style={invStyles.metaChipValue}>{available + reserved}</Text>
             </View>
           </View>
         </View>
@@ -403,20 +434,11 @@ function StockCard({
 
 // ─── Batch Card ───────────────────────────────────────────────────────────────
 
-function BatchCard({
-  batch,
-  expanded,
-  onToggle,
-}: {
-  batch: InventoryBatch;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
+function BatchCard({ batch, productName, expanded, onToggle }: { batch: InventoryBatch; productName: string; expanded: boolean; onToggle: () => void }) {
   const tone = STATUS_COLOR[batch.status];
-  const received = Number(batch.received_quantity) || 0;
-  const available = Number(batch.available_quantity) || 0;
-  const reserved = Number(batch.reserved_quantity) || 0;
-  const ratio = received > 0 ? Math.round((available / received) * 100) : 0;
+  const availableQty = Number(batch.available_quantity);
+  const receivedQty = Number(batch.received_quantity);
+  const ratio = receivedQty > 0 ? Math.round((availableQty / receivedQty) * 100) : 0;
   const days = daysUntil(batch.expiry_at);
   const exp = days !== null ? expiryChip(days) : null;
 
@@ -433,12 +455,8 @@ function BatchCard({
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={invStyles.batchProduct} numberOfLines={1}>
-            {batch.variant_name}
-          </Text>
-          <Text style={invStyles.batchNumber}>
-            Batch {batch.batch_number ?? "—"}
-          </Text>
+          <Text style={invStyles.batchProduct}>{productName}</Text>
+          <Text style={invStyles.batchNumber}>Batch {batch.batch_number} · {batch.variant_name}</Text>
         </View>
         {expanded ? (
           <ChevronUp size={18} color={Colors.textMuted} />
@@ -455,17 +473,8 @@ function BatchCard({
           ]}
         />
       </View>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: 6,
-        }}
-      >
-        <Text style={invStyles.barLabel}>
-          {available} / {received} available
-        </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <Text style={invStyles.barLabel}>{availableQty} / {receivedQty} available</Text>
         {exp && (
           <View style={[invStyles.healthBadge, { backgroundColor: exp.bg }]}>
             <Text style={[invStyles.healthBadgeText, { color: exp.color }]}>
@@ -479,15 +488,12 @@ function BatchCard({
         <View style={invStyles.expandedBlock}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: 8 }}>
             {[
-              ["RESERVED", String(reserved)],
-              ["PURCHASE PRICE", `₹${batch.purchase_price}`],
-              [
-                "SELLING PRICE",
-                batch.selling_price ? `₹${batch.selling_price}` : "—",
-              ],
-              ["RECEIVED", batch.received_at],
-              ["EXPIRY", batch.expiry_at ?? "—"],
-              ["MANUFACTURED", batch.manufactured_at ?? "—"],
+              ['RESERVED', String(batch.reserved_quantity)],
+              ['PURCHASE PRICE', `₹${batch.purchase_price}`],
+              ['SELLING PRICE', batch.selling_price ? `₹${batch.selling_price}` : '—'],
+              ['RECEIVED', batch.received_at],
+              ['EXPIRY', batch.expiry_at ?? '—'],
+              ['MANUFACTURED', batch.manufactured_at ?? '—'],
             ].map(([label, value]) => (
               <View key={label} style={{ width: "50%" }}>
                 <Text style={invStyles.metaChipLabel}>{label}</Text>
@@ -503,34 +509,23 @@ function BatchCard({
 
 // ─── Activity Row ─────────────────────────────────────────────────────────────
 
-function ActivityRow({ item }: { item: InventoryTransaction }) {
-  const meta = activityMeta(item.transaction_type);
-  const time = new Date(item.created_at).toLocaleTimeString("en-IN", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const qty = Number(item.quantity) || 0;
+function ActivityRow({ item, productName }: { item: InventoryTransaction; productName: string }) {
+  const quantity = Number(item.quantity);
+  const meta = activityMeta(item.transaction_type as any);
+  const time = new Date(item.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
   return (
     <View style={invStyles.activityCard}>
-      <View style={[invStyles.activityIcon, { backgroundColor: meta.bg }]}>
-        <meta.Icon size={18} color={meta.color} strokeWidth={2} />
+      <View style={[invStyles.activityIcon, { backgroundColor: meta?.bg }]}>
+        {meta && <meta.Icon size={18} color={meta.color} strokeWidth={2} />}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={invStyles.activityTitle}>{meta.label}</Text>
-        <Text style={invStyles.activityMeta} numberOfLines={1}>
-          {item.productName}
-        </Text>
+        <Text style={invStyles.activityTitle}>{meta?.label}</Text>
+        <Text style={invStyles.activityMeta} numberOfLines={1}>{productName}</Text>
         {item.note && <Text style={invStyles.activityNote}>{item.note}</Text>}
       </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <Text
-          style={[
-            invStyles.activityQty,
-            { color: qty > 0 ? Colors.success : Colors.error },
-          ]}
-        >
-          {qty > 0 ? "+" : ""}
-          {qty}
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={[invStyles.activityQty, { color: quantity > 0 ? Colors.success : Colors.error }]}>
+          {quantity > 0 ? '+' : ''}{quantity}
         </Text>
         <Text style={invStyles.activityTime}>{time}</Text>
       </View>
@@ -549,76 +544,66 @@ const SEGMENTS: { key: Segment; label: string }[] = [
 export default observer(function InventoryScreen() {
   const insets = useSafeAreaInsets();
   const { inventoryStore } = useStores();
-
-  const [segment, setSegment] = useState<Segment>("stock");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<BatchStatus | "all">("all");
-  const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [segment, setSegment] = useState<Segment>('stock');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dialOpen, setDialOpen] = useState(false);
   const [showAddBatchModal, setShowAddBatchModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
 
+  const stockFilter = inventoryStore.stockFilter;
+  const statusFilter = inventoryStore.batchFilters.status ?? 'all';
+
+  useFocusEffect(
+    useCallback(() => {
+      void inventoryStore.fetchStock();
+      void inventoryStore.fetchBatches();
+      void inventoryStore.fetchTransactions();
+    }, [inventoryStore]),
+  );
+
+  const debouncedFetchStock = useMemo(
+    () => debounce((query: string) => void inventoryStore.fetchStock(query), 400),
+    [inventoryStore],
+  );
+
+  useEffect(() => () => debouncedFetchStock.cancel(), [debouncedFetchStock]);
+
   useEffect(() => {
-    inventoryStore.fetchStock();
-    inventoryStore.fetchBatches();
-    inventoryStore.fetchTransactions();
+    debouncedFetchStock(searchQuery);
+  }, [searchQuery, debouncedFetchStock]);
+
+  const stock = inventoryStore.stock;
+  const batches = inventoryStore.batches;
+  const transactions = inventoryStore.transactions;
+
+  const isLoading = inventoryStore.stockState === 'loading' && stock.length === 0;
+
+  const filteredActivity = transactions.filter((a) =>
+    activityFilter === 'all' || a.transaction_type === activityFilter,
+  );
+
+  const getProductLabelForTransaction = (txn: InventoryTransaction) => {
+    const batch = batches.find((b) => b.id === txn.batch_id);
+    if (batch) {
+      const stockItem = inventoryStore.stockByVariantId[batch.variant_id];
+      return stockItem ? `${stockItem.product_name} · ${batch.batch_number || ''}` : `${batch.variant_name} · ${batch.batch_number || ''}`;
+    }
+    return `Batch ${txn.batch_id}`;
+  };
+
+  const groupedActivity = filteredActivity.reduce<{ label: string; items: InventoryTransaction[] }[]>((acc, txn) => {
+    const label = dayLabel(txn.created_at);
+    const last = acc[acc.length - 1];
+    if (last && last.label === label) { last.items.push(txn); } else { acc.push({ label, items: [txn] }); }
+    return acc;
   }, []);
 
-  // Derived lists
-  const filteredStock = inventoryStore.stock.filter((s: StockSummaryItem) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      !q ||
-      s.product_name.toLowerCase().includes(q) ||
-      s.variant_name.toLowerCase().includes(q);
-    if (!matchesSearch) return false;
-    const avail = Number(s.available_stock) || 0;
-    if (stockFilter === "low") return avail > 0 && avail <= 5;
-    if (stockFilter === "out") return avail <= 0;
-    return true;
-  });
-
-  const filteredBatches = inventoryStore.batches.filter(
-    (b: InventoryBatch) => statusFilter === "all" || b.status === statusFilter,
-  );
-
-  const filteredActivity = inventoryStore.sortedTransactions.filter(
-    (a: InventoryTransaction) =>
-      activityFilter === "all" || a.transaction_type === activityFilter,
-  );
-
-  const groupedActivity = filteredActivity.reduce<
-    { label: string; items: InventoryTransaction[] }[]
-  >(
-    (
-      acc: { label: string; items: InventoryTransaction[] }[],
-      txn: InventoryTransaction,
-    ) => {
-      const label = dayLabel(txn.created_at);
-      const last = acc[acc.length - 1];
-      if (last && last.label === label) {
-        last.items.push(txn);
-      } else {
-        acc.push({ label, items: [txn] });
-      }
-      return acc;
-    },
-    [],
-  );
-
-  const lowCount = inventoryStore.lowStockItems.length;
-  const outCount = inventoryStore.outOfStockItems.length;
-  const expiringCount = inventoryStore.batches.filter((b: InventoryBatch) => {
-    const d = daysUntil(b.expiry_at);
-    return b.status === "ACTIVE" && d !== null && d <= 3;
-  }).length;
-
-  const isLoading =
-    inventoryStore.stockState === "loading" ||
-    inventoryStore.batchesState === "loading" ||
-    inventoryStore.transactionsState === "loading";
+  const totalSkus = inventoryStore.metrics?.total_skus ?? stock.length;
+  const lowCount = inventoryStore.metrics?.low_stock ?? stock.filter((s) => { const a = Number(s.available_stock); return a > 0 && a <= 5; }).length;
+  const outCount = inventoryStore.metrics?.out_of_stock ?? stock.filter((s) => Number(s.available_stock) <= 0).length;
+  const expiringCount = inventoryStore.metrics?.expiring_soon ?? batches.filter((b) => { const d = daysUntil(b.expiry_at); return b.status === 'ACTIVE' && d !== null && d <= 3; }).length;
 
   if (isLoading) return <InventorySkeleton insetTop={insets.top} />;
 
@@ -660,22 +645,10 @@ export default observer(function InventoryScreen() {
           contentContainerStyle={{ gap: 10, paddingRight: 4 }}
         >
           {[
-            {
-              label: "Total SKUs",
-              value: String(inventoryStore.stock.length),
-              color: "#FFFFFF",
-            },
-            { label: "Low Stock", value: String(lowCount), color: "#FEF08A" },
-            {
-              label: "Out of Stock",
-              value: String(outCount),
-              color: "#FCA5A5",
-            },
-            {
-              label: "Expiring ≤3d",
-              value: String(expiringCount),
-              color: "#FED7AA",
-            },
+            { label: 'Total SKUs', value: String(totalSkus), color: '#FFFFFF' },
+            { label: 'Low Stock', value: String(lowCount), color: '#FEF08A' },
+            { label: 'Out of Stock', value: String(outCount), color: '#FCA5A5' },
+            { label: 'Expiring ≤3d', value: String(expiringCount), color: '#FED7AA' },
           ].map((kpi) => (
             <View key={kpi.label} style={invStyles.kpiCard}>
               <Text style={[invStyles.kpiValue, { color: kpi.color }]}>
@@ -725,68 +698,45 @@ export default observer(function InventoryScreen() {
         </View>
 
         {/* ── STOCK OVERVIEW ── */}
-        {segment === "stock" && (
-          <ScrollView
-            contentContainerStyle={{
-              padding: 16,
-              gap: 12,
-              paddingBottom: insets.bottom + 110,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Filter pills */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {(
-                [
-                  ["all", "All"],
-                  ["low", "Low Stock"],
-                  ["out", "Out of Stock"],
-                ] as const
-              ).map(([k, l]) => (
-                <TouchableOpacity
-                  key={k}
-                  onPress={() => setStockFilter(k)}
-                  activeOpacity={0.8}
-                  style={[
-                    invStyles.filterPill,
-                    stockFilter === k && invStyles.filterPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      invStyles.filterPillText,
-                      stockFilter === k && invStyles.filterPillTextActive,
-                    ]}
-                  >
-                    {l}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Search */}
-            <View style={invStyles.searchBox}>
-              <Search size={15} color={Colors.textMuted} />
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search products, variants…"
-                placeholderTextColor={Colors.textMuted}
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  color: Colors.textPrimary,
-                  paddingVertical: 0,
-                }}
+        {segment === 'stock' && (
+          <FlatList
+            data={stock}
+            keyExtractor={(s) => s.variant_id}
+            renderItem={({ item }) => (
+              <StockCard
+                item={item}
+                expanded={expandedId === item.variant_id}
+                onToggle={() => setExpandedId(expandedId === item.variant_id ? null : item.variant_id)}
               />
-              {searchQuery ? (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <X size={14} color={Colors.textMuted} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            )}
+            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 110 }}
+            showsVerticalScrollIndicator={false}
+            onEndReached={() => {
+              void inventoryStore.loadMoreStock();
+            }}
+            onEndReachedThreshold={0.4}
+            ListHeaderComponent={
+              <View style={{ gap: 12, marginBottom: 12 }}>
+                {/* Filter pills */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {([['all', 'All'], ['low', 'Low Stock'], ['out', 'Out of Stock']] as const).map(([k, l]) => (
+                    <TouchableOpacity key={k} onPress={() => inventoryStore.setStockFilter(k)} activeOpacity={0.8}
+                      style={[invStyles.filterPill, stockFilter === k && invStyles.filterPillActive]}>
+                      <Text style={[invStyles.filterPillText, stockFilter === k && invStyles.filterPillTextActive]}>{l}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-            {filteredStock.length === 0 ? (
+                {/* Search */}
+                <View style={invStyles.searchBox}>
+                  <Search size={15} color={Colors.textMuted} />
+                  <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Search products, variants…"
+                    placeholderTextColor={Colors.textMuted} style={{ flex: 1, fontSize: 13, color: Colors.textPrimary, paddingVertical: 0 }} />
+                  {searchQuery ? <TouchableOpacity onPress={() => setSearchQuery('')}><X size={14} color={Colors.textMuted} /></TouchableOpacity> : null}
+                </View>
+              </View>
+            }
+            ListEmptyComponent={
               <View style={invStyles.emptyWrap}>
                 <Boxes size={32} color={Colors.primary} strokeWidth={1.5} />
                 <Text style={invStyles.emptyTitle}>No matching variants</Text>
@@ -794,116 +744,68 @@ export default observer(function InventoryScreen() {
                   Try a different search or filter.
                 </Text>
               </View>
-            ) : (
-              filteredStock.map((s: StockSummaryItem) => (
-                <StockCard
-                  key={s.variant_id}
-                  item={s}
-                  expanded={expandedId === s.variant_id}
-                  onToggle={() =>
-                    setExpandedId(
-                      expandedId === s.variant_id ? null : s.variant_id,
-                    )
-                  }
-                />
-              ))
-            )}
-          </ScrollView>
+            }
+            ListFooterComponent={
+              inventoryStore.stockLoadingMore ? (
+                <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : null
+            }
+          />
         )}
 
         {/* ── BATCHES ── */}
-        {segment === "batches" && (
-          <ScrollView
-            contentContainerStyle={{
-              padding: 16,
-              gap: 12,
-              paddingBottom: insets.bottom + 110,
+        {segment === 'batches' && (
+          <FlatList
+            data={batches}
+            keyExtractor={(b) => b.id}
+            renderItem={({ item: b }) => {
+              const stockItem = inventoryStore.stockByVariantId[b.variant_id];
+              const pName = stockItem ? stockItem.product_name : b.variant_name;
+              return (
+                <BatchCard key={b.id} batch={b} productName={pName} expanded={expandedId === b.id} onToggle={() => setExpandedId(expandedId === b.id ? null : b.id)} />
+              );
             }}
+            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 110 }}
             showsVerticalScrollIndicator={false}
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-            >
-              {(
-                ["all", "ACTIVE", "EXPIRED", "EXHAUSTED", "RECALLED"] as const
-              ).map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => setStatusFilter(s)}
-                  activeOpacity={0.8}
-                  style={[
-                    invStyles.filterPill,
-                    statusFilter === s && invStyles.filterPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      invStyles.filterPillText,
-                      statusFilter === s && invStyles.filterPillTextActive,
-                    ]}
-                  >
-                    {s === "all" ? "All" : s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {filteredBatches.map((b: InventoryBatch) => (
-              <BatchCard
-                key={b.id}
-                batch={b}
-                expanded={expandedId === b.id}
-                onToggle={() =>
-                  setExpandedId(expandedId === b.id ? null : b.id)
-                }
-              />
-            ))}
-          </ScrollView>
+            ListHeaderComponent={
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+                {(['all', 'ACTIVE', 'EXPIRED', 'EXHAUSTED', 'RECALLED'] as const).map((s) => (
+                  <TouchableOpacity key={s} onPress={() => inventoryStore.setBatchFilters({ ...inventoryStore.batchFilters, status: s === 'all' ? undefined : s })} activeOpacity={0.8}
+                    style={[invStyles.filterPill, statusFilter === s && invStyles.filterPillActive]}>
+                    <Text style={[invStyles.filterPillText, statusFilter === s && invStyles.filterPillTextActive]}>{s === 'all' ? 'All' : s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            }
+          />
         )}
 
         {/* ── ACTIVITY ── */}
-        {segment === "activity" && (
-          <ScrollView
-            contentContainerStyle={{
-              padding: 16,
-              gap: 12,
-              paddingBottom: insets.bottom + 110,
-            }}
+        {segment === 'activity' && (
+          <FlatList
+            data={groupedActivity}
+            keyExtractor={(group) => group.label}
+            renderItem={({ item: group }) => (
+              <View key={group.label} style={{ gap: 10, marginBottom: 12 }}>
+                <Text style={invStyles.dayHeader}>{group.label}</Text>
+                {group.items.map((txn) => <ActivityRow key={txn.id} item={txn} productName={getProductLabelForTransaction(txn)} />)}
+              </View>
+            )}
+            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 110 }}
             showsVerticalScrollIndicator={false}
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-            >
-              {[
-                ["all", "All"],
-                ["RECEIVE", "Receipts"],
-                ["SALE", "Sales"],
-                ["ADJUSTMENT", "Adjustments"],
-              ].map(([k, l]) => (
-                <TouchableOpacity
-                  key={k}
-                  onPress={() => setActivityFilter(k)}
-                  activeOpacity={0.8}
-                  style={[
-                    invStyles.filterPill,
-                    activityFilter === k && invStyles.filterPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      invStyles.filterPillText,
-                      activityFilter === k && invStyles.filterPillTextActive,
-                    ]}
-                  >
-                    {l}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {groupedActivity.length === 0 ? (
+            ListHeaderComponent={
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+                {([['all', 'All'], ['RECEIVE', 'Receipts'], ['SALE', 'Sales'], ['ADJUSTMENT', 'Adjustments']] as const).map(([k, l]) => (
+                  <TouchableOpacity key={k} onPress={() => setActivityFilter(k)} activeOpacity={0.8}
+                    style={[invStyles.filterPill, activityFilter === k && invStyles.filterPillActive]}>
+                    <Text style={[invStyles.filterPillText, activityFilter === k && invStyles.filterPillTextActive]}>{l}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            }
+            ListEmptyComponent={
               <View style={invStyles.emptyWrap}>
                 <Layers size={32} color={Colors.primary} strokeWidth={1.5} />
                 <Text style={invStyles.emptyTitle}>No activity</Text>
@@ -911,19 +813,8 @@ export default observer(function InventoryScreen() {
                   Stock movements will appear here.
                 </Text>
               </View>
-            ) : (
-              groupedActivity.map(
-                (group: { label: string; items: InventoryTransaction[] }) => (
-                  <View key={group.label} style={{ gap: 10 }}>
-                    <Text style={invStyles.dayHeader}>{group.label}</Text>
-                    {group.items.map((txn: InventoryTransaction) => (
-                      <ActivityRow key={txn.id} item={txn} />
-                    ))}
-                  </View>
-                ),
-              )
-            )}
-          </ScrollView>
+            }
+          />
         )}
       </View>
 
@@ -1016,6 +907,8 @@ export default observer(function InventoryScreen() {
 
 import { StyleSheet } from "react-native";
 import { Shadows } from "../../theme/shadows";
+import { AddBatchModal } from '../Components/AddBatchModal';
+import { AdjustStockModal } from '../Components/AdjustStockModal';
 
 const invStyles = StyleSheet.create({
   header: {

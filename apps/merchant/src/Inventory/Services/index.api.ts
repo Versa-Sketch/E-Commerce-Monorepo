@@ -15,6 +15,7 @@ import type {
   StockListParams,
   StockSummaryItem,
   UpdateBatchInput,
+  InventoryMetrics,
 } from "../types/domain";
 import type { IInventoryService } from "./index";
 
@@ -91,6 +92,7 @@ export class InventoryApiService implements IInventoryService {
       page: params.page?.toString(),
       page_size: params.page_size?.toString(),
       search: params.search,
+      stock_status: params.stock_status,
     });
     return apiRequestPaginated<StockSummaryItem>(
       `${INVENTORY_ENDPOINTS.STOCK(shopId)}${qs}`,
@@ -118,6 +120,17 @@ export class InventoryApiService implements IInventoryService {
     const qs = buildQuery({ batch: batchId });
     return apiRequest<InventoryTransaction[]>(
       `${INVENTORY_ENDPOINTS.TRANSACTIONS(shopId)}${qs}`,
+      {
+        token: this.token,
+      },
+    );
+  }
+
+  getInventoryMetrics(
+    shopId: string,
+  ): Promise<ApiResult<InventoryMetrics>> {
+    return apiRequest<InventoryMetrics>(
+      INVENTORY_ENDPOINTS.METRICS(shopId),
       {
         token: this.token,
       },

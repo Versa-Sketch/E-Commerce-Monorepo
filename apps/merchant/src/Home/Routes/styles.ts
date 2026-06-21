@@ -114,19 +114,6 @@ export default StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
   },
-  headerAvatarBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  headerAvatar: {
-    width: '100%',
-    height: '100%',
-  },
-
   // ── Alert Strip ───────────────────────────────────────────────────────────
   alertStrip: {
     flexDirection: 'row',
