@@ -5,32 +5,55 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { OnlineToggle } from '../components/OnlineToggle';
+import { OnboardingStatusBanner } from '../components/OnboardingStatusBanner';
 import { BottomSheet } from '../components/BottomSheet';
 import { useAppStore } from '../store/useAppStore';
+import { useAuthStore } from '../features/Auth/Store/useAuthStore';
+import { useOnboardingStore } from '../features/Onboarding/Store/useOnboardingStore';
 import { mockDP, mockWallet, mockTrips } from '../mock';
 import { colors, typography } from '../theme';
+
+function initialsOf(name: string | undefined): string {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+}
 
 export function FeedScreen({ navigation }: any) {
   const { isOnline, toggleOnline, setActiveOrder } = useAppStore();
   const [geoSheet, setGeoSheet] = useState(!mockDP.isNearStore);
+  const user = useAuthStore((s) => s.user);
+  const onboardingStatus = useOnboardingStore((s) => s.onboardingStatus);
+  const isApproved = onboardingStatus === 'APPROVED';
 
   function simulateOrder() {
     setActiveOrder(mockTrips[1]);
     navigation.navigate('ActiveOrder');
   }
 
+  function handleToggleOnline() {
+    if (!isApproved) return;
+    toggleOnline();
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <OnlineToggle isOnline={isOnline} onToggle={toggleOnline} />
+        <View style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initialsOf(user?.fullName ?? mockDP.name)}</Text>
+          </View>
+          <View>
+            <Text style={styles.profileName}>{user?.fullName ?? mockDP.name}</Text>
+            <View style={styles.profileStatusRow}>
+              <View style={[styles.dot, { backgroundColor: isOnline ? colors.black : colors.gray300 }]} />
+              <Text style={styles.profileStatusText}>{isOnline ? 'Online' : 'Offline'}</Text>
+            </View>
+          </View>
+        </View>
         <View style={styles.topRight}>
-          {/* activeOpacity={1} + no ripple on icon buttons */}
           <Pressable style={styles.sosBtn}>
             <Text style={styles.sosText}>SOS</Text>
-          </Pressable>
-          <Pressable style={styles.helpBtn}>
-            <Text style={styles.helpText}>Help</Text>
           </Pressable>
           <Pressable>
             <Ionicons name="notifications-outline" size={22} color={colors.black87} />
@@ -39,6 +62,8 @@ export function FeedScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <OnboardingStatusBanner navigation={navigation} />
+
         {/* Status indicator */}
         <View style={[styles.statusBanner, { backgroundColor: isOnline ? colors.greenLight : colors.gray50 }]}>
           <Ionicons
@@ -69,12 +94,13 @@ export function FeedScreen({ navigation }: any) {
           </View>
           <Text style={styles.cardSub}>12:00 pm – 4:00 pm</Text>
           <TouchableOpacity
-            style={[styles.goOnlineBtn, isOnline && styles.goOnlineBtnActive]}
-            onPress={toggleOnline}
-            activeOpacity={0.85}
+            style={[styles.goOnlineBtn, isOnline && styles.goOnlineBtnActive, !isApproved && styles.goOnlineBtnLocked]}
+            onPress={handleToggleOnline}
+            activeOpacity={isApproved ? 0.85 : 1}
           >
-            <Text style={styles.goOnlineText}>
-              {isOnline ? 'You are Live!' : "Let's go online"}
+            {!isApproved ? <Ionicons name="lock-closed" size={14} color={colors.gray300} style={styles.lockIcon} /> : null}
+            <Text style={[styles.goOnlineText, !isApproved && styles.goOnlineTextLocked]}>
+              {isApproved ? (isOnline ? 'You are Live!' : "Let's go online") : 'Unlocks once approved'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -146,17 +172,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.white,
     borderBottomWidth: 1, borderBottomColor: colors.gray100,
   },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.black87,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 13, fontWeight: '700', color: colors.white },
+  profileName: { ...typography.small, fontWeight: '700', color: colors.black87 },
+  profileStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
+  profileStatusText: { fontSize: 11, color: colors.gray300 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   sosBtn: {
     backgroundColor: colors.red, paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 20,
   },
   sosText: { ...typography.small, color: colors.white, fontWeight: '700' },
-  helpBtn: {
-    borderWidth: 1.5, borderColor: colors.gray100, paddingHorizontal: 12,
-    paddingVertical: 4, borderRadius: 20,
-  },
-  helpText: { ...typography.small, color: colors.black87, fontWeight: '600' },
   scroll: { paddingBottom: 32 },
   statusBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -184,10 +215,13 @@ const styles = StyleSheet.create({
   cardSub: { ...typography.body, color: colors.gray700, marginBottom: 14 },
   goOnlineBtn: {
     backgroundColor: colors.black87, borderRadius: 8,
-    paddingVertical: 10, alignItems: 'center',
+    paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
   goOnlineBtnActive: { backgroundColor: colors.gray300 },
+  goOnlineBtnLocked: { backgroundColor: colors.gray100 },
   goOnlineText: { ...typography.body, color: colors.white, fontWeight: '600' },
+  goOnlineTextLocked: { color: colors.gray300 },
+  lockIcon: {},
   bankRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bankLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   bankText: { ...typography.body, color: colors.black87, flex: 1 },

@@ -4,6 +4,7 @@ import { FeedScreen } from '../screens/FeedScreen';
 import { ActiveOrderScreen } from '../screens/ActiveOrderScreen';
 import { TripDetailScreen } from '../screens/TripDetailScreen';
 import { HelpCenterScreen } from '../screens/HelpCenterScreen';
+import { ReuploadDocumentsRoute } from '../features/Onboarding/Routes/ReuploadDocumentsRoute';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export function FeedStack() {
       <Stack.Screen name="ActiveOrder" component={ActiveOrderScreen} />
       <Stack.Screen name="TripDetail" component={TripDetailScreen} />
       <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+      <Stack.Screen name="ReuploadDocuments" component={ReuploadDocumentsRoute} />
     </Stack.Navigator>
   );
 }

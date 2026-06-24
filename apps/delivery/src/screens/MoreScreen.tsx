@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { mockDP } from '../mock';
 import { colors, typography } from '../theme';
+import { useAuthStore } from '../features/Auth/Store/useAuthStore';
 
 const menuItems = [
   { icon: 'time-outline', label: 'Trip History', screen: 'TripHistory' },
@@ -13,7 +14,7 @@ const menuItems = [
   { icon: 'person-outline', label: 'My Profile', screen: null },
   { icon: 'document-text-outline', label: 'Documents', screen: null },
   { icon: 'star-outline', label: 'Ratings & Reviews', screen: null },
-  { icon: 'settings-outline', label: 'Settings', screen: null },
+  { icon: 'settings-outline', label: 'Delivery Setup', screen: 'DeliverySetup' },
   { icon: 'information-circle-outline', label: 'About', screen: null },
 ];
 
@@ -57,10 +58,14 @@ export function MoreScreen({ navigation }: any) {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.onboardingBtn}
-          onPress={() => navigation.navigate('Onboarding')}>
-          <Ionicons name="play-circle-outline" size={18} color={colors.orange} />
-          <Text style={styles.onboardingText}>View Onboarding Flow</Text>
+        {/* Temporary — remove once a proper account/settings screen exists */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={() => useAuthStore.getState().logout()}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="log-out-outline" size={18} color={colors.red} />
+          <Text style={styles.logoutText}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -98,10 +103,10 @@ const styles = StyleSheet.create({
   },
   menuLabel: { ...typography.body, color: colors.black87 },
   divider: { height: 1, backgroundColor: colors.gray100, marginHorizontal: 16 },
-  onboardingBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.orangeLight, borderRadius: 10,
-    paddingVertical: 14, justifyContent: 'center', marginTop: 16,
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.redLight,
+    borderRadius: 12, paddingVertical: 14, marginTop: 16,
   },
-  onboardingText: { ...typography.body, color: colors.orange, fontWeight: '600' },
+  logoutText: { ...typography.body, color: colors.red, fontWeight: '600' },
 });

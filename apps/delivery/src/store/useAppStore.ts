@@ -3,11 +3,9 @@ import { TripItem } from '../mock';
 
 interface AppState {
   isOnline: boolean;
-  isOnboarded: boolean;
   bookedGigIds: string[];
   activeOrder: TripItem | null;
   toggleOnline: () => void;
-  setOnboarded: (val: boolean) => void;
   toggleGigBooking: (id: string) => void;
   bookGigs: (ids: string[]) => void;
   setActiveOrder: (order: TripItem | null) => void;
@@ -15,13 +13,10 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   isOnline: false,
-  isOnboarded: true,
   bookedGigIds: [],
   activeOrder: null,
 
   toggleOnline: () => set((s) => ({ isOnline: !s.isOnline })),
-
-  setOnboarded: (val) => set({ isOnboarded: val }),
 
   toggleGigBooking: (id) =>
     set((s) => ({

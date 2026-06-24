@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, Animated, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
 
 interface Props {
   isOnline: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
-export function OnlineToggle({ isOnline, onToggle }: Props) {
+export function OnlineToggle({ isOnline, onToggle, disabled }: Props) {
   const anim = useRef(new Animated.Value(isOnline ? 1 : 0)).current;
 
   useEffect(() => {
@@ -29,19 +31,21 @@ export function OnlineToggle({ isOnline, onToggle }: Props) {
   });
 
   return (
-    <TouchableOpacity onPress={onToggle} activeOpacity={0.85} style={styles.wrap}>
+    <TouchableOpacity onPress={disabled ? undefined : onToggle} activeOpacity={disabled ? 1 : 0.85} style={[styles.wrap, disabled && styles.wrapDisabled]}>
       <Animated.View style={[styles.track, { backgroundColor: bg }]}>
         <Animated.View style={[styles.thumb, { transform: [{ translateX }] }]} />
       </Animated.View>
       <Text style={[styles.label, { color: isOnline ? colors.green : colors.gray300 }]}>
         {isOnline ? 'Online' : 'Offline'}
       </Text>
+      {disabled ? <Ionicons name="lock-closed" size={13} color={colors.gray300} /> : null}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wrapDisabled: { opacity: 0.5 },
   track: {
     width: 52,
     height: 28,

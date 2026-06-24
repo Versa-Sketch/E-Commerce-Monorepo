@@ -1,12 +1,29 @@
 import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { colors, typography, spacing } from '../../theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, spacing, typography } from '../../../theme';
+import { useAuthStore } from '../Store/useAuthStore';
 
-export function OtpScreen({ navigation }: any) {
+export function PhoneInputRoute({ navigation }: any) {
   const [phone, setPhone] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSendOtp = async () => {
+    if (phone.length !== 10) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await useAuthStore.getState().sendOtp(phone);
+      navigation.navigate('OtpVerify', { phone });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send OTP. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -14,7 +31,7 @@ export function OtpScreen({ navigation }: any) {
         <View style={styles.container}>
           <View style={styles.logoWrap}>
             <View style={styles.logoBox}>
-              <Text style={styles.logoText}>swiggy</Text>
+              <Text style={styles.logoText}>Local Sea</Text>
               <Text style={styles.logoSub}>Delivery</Text>
             </View>
           </View>
@@ -37,12 +54,21 @@ export function OtpScreen({ navigation }: any) {
             />
           </View>
 
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
           <TouchableOpacity
-            style={[styles.btn, phone.length !== 10 && styles.btnDisabled]}
-            onPress={() => phone.length === 10 && navigation.navigate('Aadhaar')}
+            style={[styles.btn, (phone.length !== 10 || submitting) && styles.btnDisabled]}
+            onPress={handleSendOtp}
+            disabled={phone.length !== 10 || submitting}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnText}>Send OTP</Text>
+            <Text style={styles.btnText}>{submitting ? 'Sending…' : 'Send OTP'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.createAccountRow} onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.createAccountText}>
+              Don't have an account? <Text style={styles.createAccountLink}>Sign up</Text>
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -56,15 +82,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 48 },
   logoBox: { alignItems: 'center' },
-  logoText: { fontSize: 32, fontWeight: '800', color: colors.orange, letterSpacing: -1 },
+  logoText: { fontSize: 42, fontWeight: '900', color: colors.orange, letterSpacing: -1 },
   logoSub: { fontSize: 12, fontWeight: '600', color: colors.orange, letterSpacing: 2 },
   heading: { ...typography.h1, color: colors.black87, marginBottom: 8 },
   sub: { ...typography.body, color: colors.gray700, marginBottom: 32 },
-  inputRow: { flexDirection: 'row', borderWidth: 1.5, borderColor: colors.gray100, borderRadius: 10, overflow: 'hidden', marginBottom: 24 },
+  inputRow: { flexDirection: 'row', borderWidth: 1.5, borderColor: colors.gray100, borderRadius: 10, overflow: 'hidden', marginBottom: spacing.sm },
   prefix: { backgroundColor: colors.gray50, paddingHorizontal: 14, justifyContent: 'center', borderRightWidth: 1, borderRightColor: colors.gray100 },
   prefixText: { ...typography.body, color: colors.black87, fontWeight: '600' },
   input: { flex: 1, paddingHorizontal: 14, paddingVertical: 14, ...typography.body, color: colors.black87 },
-  btn: { backgroundColor: colors.orange, borderRadius: 10, paddingVertical: 16, alignItems: 'center' },
+  error: { ...typography.small, color: colors.red, marginBottom: spacing.md },
+  btn: { backgroundColor: colors.orange, borderRadius: 10, paddingVertical: 16, alignItems: 'center', marginTop: spacing.md },
   btnDisabled: { backgroundColor: colors.gray300 },
   btnText: { ...typography.h3, color: colors.white },
+  createAccountRow: { marginTop: spacing.lg, alignItems: 'center' },
+  createAccountText: { ...typography.body, color: colors.gray700 },
+  createAccountLink: { color: colors.orange, fontWeight: '700' },
 });
