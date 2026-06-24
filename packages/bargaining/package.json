@@ -1,0 +1,45 @@
+{
+  "name": "@monorepo/bargaining",
+  "version": "1.0.0",
+  "description": "Shared price-negotiation (bargaining) UI, store, and client logic for customer and merchant apps",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "mobx": "^6.15.4"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-native": ">=0.85.0",
+    "react-native-svg": ">=15.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    },
+    "react-native": {
+      "optional": false
+    },
+    "react-native-svg": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "@types/react-native": "~0.73.0",
+    "typescript": "~6.0.3"
+  }
+}
