@@ -11,6 +11,7 @@ import { AuthProvider } from "../features/Auth/Providers/AuthProvider";
 import { ProfileProvider } from "../features/Profile/Providers/ProfileProvider";
 import { CartProvider } from "../features/Cart/Providers/CartProvider";
 import { OrderProvider } from "../features/Orders/Providers/OrderProvider";
+import { ReorderProvider } from "../features/Reorder/Providers/ReorderProvider";
 import { AddressProvider } from "../features/Addresses/Providers/AddressProvider";
 import { StoresProvider } from "../features/Stores/Providers/StoresProvider";
 import { BargainingProvider } from "../features/Bargaining/Providers/BargainingProvider";
@@ -32,7 +33,6 @@ function RootNavigation() {
         <Stack.Screen name="index" />
         <Stack.Screen name="landing" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="auth" />
         <Stack.Screen name="customer" />
         <Stack.Screen name="store" />
         <Stack.Screen name="delivery" />
@@ -101,6 +101,8 @@ export default function RootLayout() {
                     {}
                     <OrderProvider>
                       {}
+                      <ReorderProvider>
+                      {}
                       <AddressProvider>
                         {}
                         <StoresProvider>
@@ -110,6 +112,7 @@ export default function RootLayout() {
                           </BargainingProvider>
                         </StoresProvider>
                       </AddressProvider>
+                      </ReorderProvider>
                     </OrderProvider>
                   </CartProvider>
                 </ProfileProvider>

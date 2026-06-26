@@ -1,4 +1,4 @@
-import { ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const overlayContainer: ViewStyle = {
   flex: 1,
@@ -60,3 +60,16 @@ export const emptyStateText: TextStyle = {
   fontSize: 14,
   textAlign: 'center',
 };
+
+// Enhanced SearchOverlay Styles
+export const searchOverlayStyles = StyleSheet.create({
+  suggestionsContainer: {
+    paddingTop: 28,
+  },
+  suggestionItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+});

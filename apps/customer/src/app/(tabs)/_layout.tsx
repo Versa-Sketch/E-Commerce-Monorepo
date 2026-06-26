@@ -141,8 +141,8 @@ export default observer(function TabLayout() {
       <Tabs.Screen
         name="wishlist"
         options={{
-          title: 'Wishlist',
-          tabBarIcon: ({ focused }) => renderTabIcon(focused, 'heart', 'heart-outline', 'Wishlist'),
+          title: 'Reorder',
+          tabBarIcon: ({ focused }) => renderTabIcon(focused, 'repeat', 'repeat-outline', 'Reorder'),
         }}
       />
       <Tabs.Screen

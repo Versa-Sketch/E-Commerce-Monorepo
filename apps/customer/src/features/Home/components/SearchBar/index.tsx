@@ -1,41 +1,66 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme } from '../../../../theme/ThemeContext';
-import { searchBarContainer, searchInputStyle } from './styledcomponents';
+import { SEARCH_PLACEHOLDERS } from '../../Constants';
+import { searchBarStyles } from './styledcomponents';
 
 interface SearchBarProps {
-  value: string;
-  onChangeText: (text: string) => void;
-  onFocus?: () => void;
-  placeholder?: string;
+  placeholderIndex: number;
+  placeholderOpacity: SharedValue<number>;
+  placeholderTranslateY: SharedValue<number>;
+  onPress: () => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-  value,
-  onChangeText,
-  onFocus,
-  placeholder = 'Search stores, products...',
+  placeholderIndex,
+  placeholderOpacity,
+  placeholderTranslateY,
+  onPress,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+
+  const placeholderAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: placeholderOpacity.value,
+    transform: [{ translateY: placeholderTranslateY.value }],
+  }));
 
   return (
-    <View style={[searchBarContainer, { backgroundColor: theme.colors.surface }]}>
-      <Ionicons name="search" size={20} color={theme.colors.textSecondary} style={{ marginRight: 12 }} />
-      <TextInput
-        style={[searchInputStyle, { color: theme.colors.textPrimary }]}
-        placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
-        value={value}
-        onChangeText={onChangeText}
-        onFocus={onFocus}
-      />
-      {value ? (
-        <Pressable onPress={() => onChangeText('')}>
-          <Ionicons name="close-circle" size={18} color={theme.colors.textSecondary} />
-        </Pressable>
-      ) : null}
-    </View>
+    <Pressable
+      onPress={onPress}
+      style={[searchBarStyles.searchBarOuterWrapper, { paddingHorizontal: 20 }]}
+    >
+      <View
+        style={[
+          searchBarStyles.searchBarInnerWrapper,
+          {
+            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : '#FFFFFF',
+            borderColor: isDark ? 'rgba(75, 85, 99, 0.4)' : '#F3F4F6',
+          },
+        ]}
+      >
+        <Ionicons
+          name="search"
+          size={20}
+          color="#16A34A"
+          style={{ marginLeft: 12, marginRight: 8 }}
+        />
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Animated.Text
+            numberOfLines={1}
+            pointerEvents="none"
+            style={[
+              placeholderAnimatedStyle,
+              searchBarStyles.searchPlaceholderText,
+              { color: '#9CA3AF', fontFamily: theme.typography.fonts.medium },
+            ]}
+          >
+            {SEARCH_PLACEHOLDERS[placeholderIndex]}
+          </Animated.Text>
+        </View>
+      </View>
+    </Pressable>
   );
 };
 
