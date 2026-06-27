@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { observer } from 'mobx-react-lite';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { LoadingWrapper } from '../../Common/components/ui/LoadingWrapper';
 import { OrderModel } from '../../features/Orders/Models/OrderModel';
 import { useOrderStore } from '../../features/Orders/Providers/useOrderStore';
@@ -83,6 +83,7 @@ export default observer(function OrdersScreen() {
   );
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       {renderHeader()}
       {renderSegmentTabs()}
       <LoadingWrapper

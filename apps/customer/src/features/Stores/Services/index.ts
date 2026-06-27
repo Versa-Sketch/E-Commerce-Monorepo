@@ -16,6 +16,8 @@ export interface ShopFilters {
   category_id?: string;
   subcategory_id?: string;
   is_open?: boolean;
+  lat?: number;
+  lng?: number;
   page?: number;
   page_size?: number;
 }

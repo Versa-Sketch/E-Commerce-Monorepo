@@ -1,6 +1,6 @@
 import { Shop } from '@/types/shared';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Image, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, Text, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../../../theme/ThemeContext';
 import { formatDistance, formatEta, formatReviewCount } from '../../utils/shopFormatters';
@@ -46,6 +46,8 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
   const [imageError, setImageError] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
   const rating = parseFloat(shop.average_rating);
   const minOrder = parseFloat(shop.min_order);
@@ -119,15 +121,23 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
     }
 
     return (
-      <Pressable onPress={onPress}>
-        <View
-          style={{ width: '100%', height: BANNER_HEIGHT, backgroundColor: placeholder.background }}
-          onLayout={(e) => {
-            const w = Math.floor(e.nativeEvent.layout.width);
-            if (w > 0 && w !== carouselWidth) setCarouselWidth(w);
-          }}
-        >
-          {carouselWidth > 0 && (
+      <View
+        style={{ width: '100%', height: BANNER_HEIGHT, backgroundColor: placeholder.background }}
+        onLayout={(e) => {
+          const w = Math.floor(e.nativeEvent.layout.width);
+          if (w > 0 && w !== carouselWidth) setCarouselWidth(w);
+        }}
+        onTouchStart={(e) => {
+          touchStartX.current = e.nativeEvent.pageX;
+          touchStartY.current = e.nativeEvent.pageY;
+        }}
+        onTouchEnd={(e) => {
+          const dx = Math.abs(e.nativeEvent.pageX - touchStartX.current);
+          const dy = Math.abs(e.nativeEvent.pageY - touchStartY.current);
+          if (dx < 6 && dy < 6) onPress();
+        }}
+      >
+        {carouselWidth > 0 && (
             <ScrollView
               horizontal
               snapToInterval={carouselWidth}
@@ -176,8 +186,7 @@ export const ShopCard: React.FC<ShopCardProps> = ({ shop, onPress, style }) => {
               />
             ))}
           </View>
-        </View>
-      </Pressable>
+      </View>
     );
   };
 

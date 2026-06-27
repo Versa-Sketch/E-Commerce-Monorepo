@@ -134,12 +134,11 @@ export default observer(function TabLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Reorder',
-          tabBarIcon: ({ focused }) => renderTabIcon(focused, 'reload', 'reload-outline', 'Reorder'),
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="wishlist"
+        name="reorder"
         options={{
           title: 'Reorder',
           tabBarIcon: ({ focused }) => renderTabIcon(focused, 'repeat', 'repeat-outline', 'Reorder'),

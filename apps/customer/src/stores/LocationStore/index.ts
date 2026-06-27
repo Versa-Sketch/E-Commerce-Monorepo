@@ -24,31 +24,35 @@ class LocationStore {
     try {
       this.loading = true;
 
-      // 1. Check TTL: if cache is fresh (less than 10 minutes old), skip GPS request
       const cached = StorageService.getObject<IUserLocation>(STORAGE_KEYS.USER_LOCATION);
-      if (cached && Date.now() - cached.updatedAt < TEN_MINUTES) {
-        runInAction(() => {
-          this.location = cached;
-        });
-        return;
-      }
 
-      // 2. Request permission
+      // 1. Request permission first so we can compare fresh coords against cache
       const granted = await LocationService.requestPermission();
       if (!granted) {
+        // Fall back to cached location if permission denied
+        if (cached) runInAction(() => { this.location = cached; });
         return;
       }
 
-      // 3. Get coordinates
-      const coords = await LocationService.getCurrentCoordinates();
+      // 2. Get accurate coordinates (waits for ≤15m fix, 10s timeout)
+      const coords = await LocationService.getAccurateCoordinates();
 
-      // 4. Check significant movement (threshold: > 0.001 delta, ~110m)
-      const oldLat = cached?.latitude ?? 0;
-      const oldLng = cached?.longitude ?? 0;
+      // 3. Check TTL + distance — bypass cache if user moved > 200m
+      const cacheAge = cached ? Date.now() - cached.updatedAt : Infinity;
+      const distanceMoved = cached
+        ? LocationService.calculateDistance(cached, coords)
+        : Infinity;
+
+      if (cached && cacheAge < TEN_MINUTES && distanceMoved < 0.2) {
+        runInAction(() => { this.location = cached; });
+        return;
+      }
+
+      // 4. Check significant movement for reverse geocoding (> ~110m)
       const movedSignificantly =
         !cached ||
-        Math.abs(oldLat - coords.latitude) > 0.001 ||
-        Math.abs(oldLng - coords.longitude) > 0.001;
+        Math.abs((cached.latitude ?? 0) - coords.latitude) > 0.001 ||
+        Math.abs((cached.longitude ?? 0) - coords.longitude) > 0.001;
 
       let address: Partial<IUserLocation> = {};
       if (movedSignificantly) {

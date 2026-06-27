@@ -23,14 +23,38 @@ export const LocationService = {
     return status === 'granted';
   },
 
-  async getCurrentCoordinates(): Promise<Coordinates> {
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+  async getAccurateCoordinates(
+    accuracyThresholdM = 15,
+    timeoutMs = 10000,
+  ): Promise<Coordinates & { accuracy: number }> {
+    return new Promise(async (resolve, reject) => {
+      let bestFix: (Coordinates & { accuracy: number }) | null = null;
+      let subscription: Location.LocationSubscription | null = null;
+
+      const timer = setTimeout(() => {
+        subscription?.remove();
+        if (bestFix) resolve(bestFix);
+        else reject(new Error('Location timeout: no fix available'));
+      }, timeoutMs);
+
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 0,
+          timeInterval: 500,
+        },
+        (loc) => {
+          const { latitude, longitude, accuracy } = loc.coords;
+          const fix = { latitude, longitude, accuracy: accuracy ?? 999 };
+          if (!bestFix || fix.accuracy < bestFix.accuracy) bestFix = fix;
+          if (fix.accuracy <= accuracyThresholdM) {
+            clearTimeout(timer);
+            subscription?.remove();
+            resolve(fix);
+          }
+        },
+      );
     });
-    return {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    };
   },
 
   async reverseGeocode(latitude: number, longitude: number): Promise<Partial<IUserLocation>> {

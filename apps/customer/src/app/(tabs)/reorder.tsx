@@ -3,7 +3,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Skeleton } from '../../Common/components/ui/Skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { useReorderStore } from '../../features/Reorder/Providers/useReorderStore';
@@ -79,6 +79,30 @@ export default observer(function ReorderScreen() {
     };
     const existing = cartStore.items.find((i) => i.product.variantId === item.variant_id);
     cartStore.setQuantity(product, (existing?.quantity ?? 0) + 1);
+  };
+
+  const handleDecreaseFrequent = (item: FrequentItem) => {
+    const existing = cartStore.items.find((i) => i.product.variantId === item.variant_id);
+    if (!existing) return;
+    const product: Product = {
+      id: item.product_id,
+      storeId: item.shop_id,
+      storeName: item.shop_name,
+      name: item.product_name,
+      description: '',
+      imageUrl: item.product_image,
+      price: parseFloat(item.mrp),
+      discountPrice: parseFloat(item.selling_price),
+      gstPercent: 0,
+      inStock: item.is_in_stock,
+      stockCount: item.available_stock,
+      category: '',
+      isBargainable: false,
+      rating: 0,
+      variantId: item.variant_id,
+      variantName: item.variant_name,
+    };
+    cartStore.setQuantity(product, existing.quantity - 1);
   };
 
   const completedOrders = orderStore.completedOrders.slice(0, 5);
@@ -200,7 +224,38 @@ export default observer(function ReorderScreen() {
             </Text>
           </View>
 
-          {item.is_in_stock ? (
+          {!item.is_in_stock ? (
+            <View
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 13,
+                backgroundColor: theme.colors.surfaceSecondary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="close" size={14} color={theme.colors.textSecondary} />
+            </View>
+          ) : inCart ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#16A34A', borderRadius: 14, overflow: 'hidden' }}>
+              <Pressable
+                onPress={() => handleDecreaseFrequent(item)}
+                style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+              >
+                <Text style={{ fontSize: 16, color: '#fff', lineHeight: 18 }}>−</Text>
+              </Pressable>
+              <Text style={{ fontSize: 12, color: '#fff', fontFamily: theme.typography.fonts.bold, minWidth: 14, textAlign: 'center' }}>
+                {inCart.quantity}
+              </Text>
+              <Pressable
+                onPress={() => handleAddFrequent(item)}
+                style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+              >
+                <Text style={{ fontSize: 16, color: '#fff', lineHeight: 18 }}>+</Text>
+              </Pressable>
+            </View>
+          ) : (
             <Pressable
               onPress={() => handleAddFrequent(item)}
               style={{
@@ -214,19 +269,6 @@ export default observer(function ReorderScreen() {
             >
               <Text style={{ fontSize: 18, color: '#fff', lineHeight: 22, marginTop: -1 }}>+</Text>
             </Pressable>
-          ) : (
-            <View
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 13,
-                backgroundColor: theme.colors.surfaceSecondary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="close" size={14} color={theme.colors.textSecondary} />
-            </View>
           )}
         </View>
       </View>
@@ -278,9 +320,18 @@ export default observer(function ReorderScreen() {
         </View>
 
         {isFreqLoading && (
-          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-            <ActivityIndicator color="#16A34A" />
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 10 }} scrollEnabled={false}>
+            {[1, 2, 3, 4].map((i) => (
+              <View key={i} style={{ width: 118, backgroundColor: 'transparent' }}>
+                <Skeleton width={118} height={76} borderRadius={12} />
+                <View style={{ paddingTop: 8, gap: 6 }}>
+                  <Skeleton width={90} height={10} borderRadius={6} />
+                  <Skeleton width={60} height={10} borderRadius={6} />
+                  <Skeleton width={40} height={12} borderRadius={6} />
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         )}
 
         {isFreqError && (
@@ -305,9 +356,15 @@ export default observer(function ReorderScreen() {
         )}
 
         {!isFreqLoading && !isFreqError && reorderStore.frequentItems.length === 0 && (
-          <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
-            <Text style={{ color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium, fontSize: 13 }}>
-              Complete a few orders and your favourites will appear here.
+          <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24, paddingBottom: 28 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <Ionicons name="heart-outline" size={36} color="#16A34A" />
+            </View>
+            <Text style={{ fontSize: 15, fontFamily: theme.typography.fonts.bold, color: theme.colors.textPrimary, marginBottom: 6, textAlign: 'center' }}>
+              No favourites yet
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: theme.typography.fonts.medium, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 19 }}>
+              Complete a few orders and your most-ordered items will show up here for quick reorder.
             </Text>
           </View>
         )}
@@ -318,6 +375,7 @@ export default observer(function ReorderScreen() {
             data={reorderStore.frequentItems}
             keyExtractor={(item) => item.variant_id}
             renderItem={renderFreqCard}
+            extraData={cartStore.items.map((i) => `${i.product.variantId}:${i.quantity}`).join(',')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
             scrollEnabled
@@ -356,15 +414,40 @@ export default observer(function ReorderScreen() {
         </View>
 
         {orderStore.fetchStatus === API_STATUS.FETCHING && completedOrders.length === 0 && (
-          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-            <ActivityIndicator color="#16A34A" />
+          <View style={{ gap: 12, paddingHorizontal: 20 }}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 0.5, borderColor: theme.colors.border, padding: 12, gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Skeleton width={34} height={34} borderRadius={8} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width="60%" height={12} borderRadius={6} />
+                    <Skeleton width="40%" height={10} borderRadius={6} />
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <Skeleton width={70} height={24} borderRadius={6} />
+                  <Skeleton width={70} height={24} borderRadius={6} />
+                  <Skeleton width={50} height={24} borderRadius={6} />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
+                  <Skeleton width={80} height={12} borderRadius={6} />
+                  <Skeleton width={90} height={30} borderRadius={20} />
+                </View>
+              </View>
+            ))}
           </View>
         )}
 
         {completedOrders.length === 0 && orderStore.fetchStatus === API_STATUS.SUCCESS && (
-          <View style={{ paddingHorizontal: 20 }}>
-            <Text style={{ color: theme.colors.textSecondary, fontFamily: theme.typography.fonts.medium, fontSize: 13 }}>
-              No completed orders yet.
+          <View style={{ alignItems: 'center', paddingHorizontal: 32, paddingVertical: 28 }}>
+            <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="bag-handle-outline" size={40} color="#16A34A" />
+            </View>
+            <Text style={{ fontSize: 16, fontFamily: theme.typography.fonts.bold, color: theme.colors.textPrimary, marginBottom: 6, textAlign: 'center' }}>
+              No past orders
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: theme.typography.fonts.medium, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 19 }}>
+              Once you complete an order you'll be able to reorder it here in one tap.
             </Text>
           </View>
         )}

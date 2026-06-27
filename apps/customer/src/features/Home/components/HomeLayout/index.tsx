@@ -248,12 +248,16 @@ export const HomeLayout = observer(function HomeLayout() {
     }
   };
 
+  const locParams = locationStore.location
+    ? { lat: locationStore.location.latitude, lng: locationStore.location.longitude }
+    : {};
+
   const handleCategorySelect = (categoryId: string) => {
     if (selectedCategory === categoryId) {
       const targetId = 'all';
       if (!loadedCategories.current.has(targetId)) setCategoryLoading(true);
       setSelectedCategoryState(targetId);
-      storesStore.fetchShops();
+      storesStore.fetchShops({ ...locParams });
     } else {
       if (!loadedCategories.current.has(categoryId)) setCategoryLoading(true);
       setSelectedCategoryState(categoryId);
@@ -261,9 +265,9 @@ export const HomeLayout = observer(function HomeLayout() {
         (cat) => cat.id === categoryId,
       );
       if (isParent) {
-        storesStore.fetchShops({ category_id: categoryId });
+        storesStore.fetchShops({ ...locParams, category_id: categoryId });
       } else {
-        storesStore.fetchShops({ subcategory_id: categoryId });
+        storesStore.fetchShops({ ...locParams, subcategory_id: categoryId });
       }
     }
   };
@@ -302,7 +306,7 @@ export const HomeLayout = observer(function HomeLayout() {
     Promise.all([
       storesStore.fetchGlobalCategories(),
       storesStore.fetchFeaturedShops(),
-      storesStore.fetchShops(),
+      storesStore.fetchShops({ ...locParams }),
     ]).finally(() => setRefreshing(false));
   };
 
@@ -311,7 +315,7 @@ export const HomeLayout = observer(function HomeLayout() {
     storesStore.setTabBarVisible(true);
     storesStore.fetchGlobalCategories();
     storesStore.fetchFeaturedShops();
-    storesStore.fetchShops();
+    storesStore.fetchShops({ ...locParams });
     cartStore.hydrateAllCarts();
     addressStore.fetchAddresses();
     return () => {
@@ -485,7 +489,7 @@ export const HomeLayout = observer(function HomeLayout() {
           }}
           onRetry={() => {
             storesStore.fetchFeaturedShops();
-            storesStore.fetchShops();
+            storesStore.fetchShops({ ...locParams });
           }}
         />
       </ScrollView>

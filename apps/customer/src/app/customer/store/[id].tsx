@@ -10,6 +10,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -351,6 +352,7 @@ export default observer(function StoreDetailsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle="light-content" />
       <ScrollView stickyHeaderIndices={[2]} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Cover Section with Overlay Actions */}
         <View style={styles.coverContainer}>

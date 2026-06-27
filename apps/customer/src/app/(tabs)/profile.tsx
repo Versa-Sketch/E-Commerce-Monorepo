@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -46,10 +47,10 @@ export default observer(function ProfileScreen() {
 
   // Remaining Menu Items
   const MENU_ITEMS = [
-    { 
-      title: 'My Orders', 
-      icon: 'receipt-outline', 
-      onPress: () => router.push('/(tabs)/orders' as any) 
+    {
+      title: 'Your Orders',
+      icon: 'receipt-outline',
+      onPress: () => router.push('/(tabs)/orders' as any)
     },
     {
       title: 'Addresses',
@@ -75,6 +76,7 @@ export default observer(function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Block (No settings gear icon on top right) */}
         <View style={[styles.profileHeader, { backgroundColor: theme.colors.primary }]}>

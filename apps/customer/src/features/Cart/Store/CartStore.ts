@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable, runInAction } from "mobx";
 import {
   CartItemApi,
   CartProductsGroup,
@@ -12,11 +12,11 @@ import {
   PaymentVerifyRequest,
   PaymentVerifyResponse,
   Product,
-} from '../../../types/shared';
-import { CartItem, CartTotals, Coupon } from '../types/domain';
-import { API_STATUS, ApiStatus, FEES } from '../../../Common/Constants';
-import { normalizeError } from '../../../Common/utils/errorNormalizer';
-import { ICartService } from '../Services';
+} from "../../../types/shared";
+import { CartItem, CartTotals, Coupon } from "../types/domain";
+import { API_STATUS, ApiStatus, FEES } from "../../../Common/Constants";
+import { normalizeError } from "../../../Common/utils/errorNormalizer";
+import { ICartService } from "../Services";
 
 const BULK_SYNC_DEBOUNCE_MS = 600;
 const CART_POLL_INTERVAL_MS = 10000000000;
@@ -49,15 +49,20 @@ export class CartStore {
   checkoutError: string | null = null;
 
   private pendingByShop: Map<string, Map<string, number>> = new Map();
-  private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  private snapshotByShop: Map<string, Map<string, CartItem | undefined>> = new Map();
+  private debounceTimers: Map<string, ReturnType<typeof setTimeout>> =
+    new Map();
+  private snapshotByShop: Map<string, Map<string, CartItem | undefined>> =
+    new Map();
   private inFlightByShop: Map<string, Set<string>> = new Map();
   private mutationVersionByVariant: Map<string, number> = new Map();
   private inFlightVersionByShop: Map<string, Map<string, number>> = new Map();
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private service: ICartService, private onSyncError?: (message: string) => void) {
+  constructor(
+    private service: ICartService,
+    private onSyncError?: (message: string) => void,
+  ) {
     makeAutoObservable(this, {
       pendingByShop: false,
       debounceTimers: false,
@@ -75,13 +80,18 @@ export class CartStore {
 
   get totals(): CartTotals {
     const subtotal = this.items.reduce(
-      (acc, i) => acc + (i.product.discountPrice ?? i.product.price) * i.quantity,
-      0
+      (acc, i) =>
+        acc + (i.product.discountPrice ?? i.product.price) * i.quantity,
+      0,
     );
     const gstTotal = this.items.reduce(
       (acc, i) =>
-        acc + ((i.product.discountPrice ?? i.product.price) * i.quantity * i.product.gstPercent) / 100,
-      0
+        acc +
+        ((i.product.discountPrice ?? i.product.price) *
+          i.quantity *
+          i.product.gstPercent) /
+          100,
+      0,
     );
     const deliveryFee = this.items.length > 0 ? FEES.DEFAULT_DELIVERY_FEE : 0;
     const platformFee = this.items.length > 0 ? FEES.PLATFORM_FEE : 0;
@@ -89,17 +99,41 @@ export class CartStore {
     if (this.coupon.code && this.coupon.discount > 0) {
       couponDiscount = (subtotal * this.coupon.discount) / 100;
     }
-    let grandTotal = subtotal + gstTotal + deliveryFee + platformFee - couponDiscount - this.walletCreditsUsed;
+    let grandTotal =
+      subtotal +
+      gstTotal +
+      deliveryFee +
+      platformFee -
+      couponDiscount -
+      this.walletCreditsUsed;
     if (grandTotal < 0) grandTotal = 0;
-    return { subtotal, gstTotal, deliveryFee, platformFee, couponDiscount, grandTotal };
+    return {
+      subtotal,
+      gstTotal,
+      deliveryFee,
+      platformFee,
+      couponDiscount,
+      grandTotal,
+    };
   }
 
-  get groupedByStore(): { storeId: string; storeName: string; items: CartItem[] }[] {
-    const map = new Map<string, { storeId: string; storeName: string; items: CartItem[] }>();
+  get groupedByStore(): {
+    storeId: string;
+    storeName: string;
+    items: CartItem[];
+  }[] {
+    const map = new Map<
+      string,
+      { storeId: string; storeName: string; items: CartItem[] }
+    >();
     this.items.forEach((item) => {
       const key = item.product.storeId;
       if (!map.has(key)) {
-        map.set(key, { storeId: key, storeName: item.product.storeName || 'Store', items: [] });
+        map.set(key, {
+          storeId: key,
+          storeName: item.product.storeName || "Store",
+          items: [],
+        });
       }
       map.get(key)!.items.push(item);
     });
@@ -125,18 +159,30 @@ export class CartStore {
   getShopTotals(shopId: string): CartTotals {
     const shopItems = this.getShopItems(shopId);
     const subtotal = shopItems.reduce(
-      (acc, i) => acc + (i.product.discountPrice ?? i.product.price) * i.quantity,
-      0
+      (acc, i) =>
+        acc + (i.product.discountPrice ?? i.product.price) * i.quantity,
+      0,
     );
     const gstTotal = shopItems.reduce(
       (acc, i) =>
-        acc + ((i.product.discountPrice ?? i.product.price) * i.quantity * i.product.gstPercent) / 100,
-      0
+        acc +
+        ((i.product.discountPrice ?? i.product.price) *
+          i.quantity *
+          i.product.gstPercent) /
+          100,
+      0,
     );
     const deliveryFee = shopItems.length > 0 ? FEES.DEFAULT_DELIVERY_FEE : 0;
     const platformFee = shopItems.length > 0 ? FEES.PLATFORM_FEE : 0;
     const grandTotal = subtotal + gstTotal + deliveryFee + platformFee;
-    return { subtotal, gstTotal, deliveryFee, platformFee, couponDiscount: 0, grandTotal };
+    return {
+      subtotal,
+      gstTotal,
+      deliveryFee,
+      platformFee,
+      couponDiscount: 0,
+      grandTotal,
+    };
   }
 
   /** True while a quantity change for this variant is queued or in-flight to the server. */
@@ -157,7 +203,9 @@ export class CartStore {
    * debounced bulk-update sync for that shop's cart.
    */
   setQuantity(product: Product, quantity: number): void {
-    const existingIndex = this.items.findIndex((i) => i.product.id === product.id);
+    const existingIndex = this.items.findIndex(
+      (i) => i.product.id === product.id,
+    );
     const previousItem: CartItem | undefined =
       existingIndex !== -1 ? { ...this.items[existingIndex] } : undefined;
     if (quantity <= 0) {
@@ -174,7 +222,12 @@ export class CartStore {
     }
     if (product.variantId) {
       this.bumpMutationVersion(product.variantId);
-      this.queueBulkUpdate(product.storeId, product.variantId, Math.max(0, quantity), previousItem);
+      this.queueBulkUpdate(
+        product.storeId,
+        product.variantId,
+        Math.max(0, quantity),
+        previousItem,
+      );
     }
   }
 
@@ -209,12 +262,14 @@ export class CartStore {
     shopId: string,
     variantId: string,
     quantity: number,
-    previousItem: CartItem | undefined
+    previousItem: CartItem | undefined,
   ): void {
-    if (!this.pendingByShop.has(shopId)) this.pendingByShop.set(shopId, new Map());
+    if (!this.pendingByShop.has(shopId))
+      this.pendingByShop.set(shopId, new Map());
     const pending = this.pendingByShop.get(shopId)!;
     if (!pending.has(variantId)) {
-      if (!this.snapshotByShop.has(shopId)) this.snapshotByShop.set(shopId, new Map());
+      if (!this.snapshotByShop.has(shopId))
+        this.snapshotByShop.set(shopId, new Map());
       this.snapshotByShop.get(shopId)!.set(variantId, previousItem);
     }
     pending.set(variantId, quantity);
@@ -222,7 +277,7 @@ export class CartStore {
     if (existingTimer) clearTimeout(existingTimer);
     this.debounceTimers.set(
       shopId,
-      setTimeout(() => this.flushShopCart(shopId), BULK_SYNC_DEBOUNCE_MS)
+      setTimeout(() => this.flushShopCart(shopId), BULK_SYNC_DEBOUNCE_MS),
     );
   }
 
@@ -232,14 +287,20 @@ export class CartStore {
    * (e.g. checkout) that show a blocking loading state and only want the cart
    * to update once the result is known.
    */
-  async syncItemQuantity(product: Product, quantity: number): Promise<{ ok: boolean; error?: string }> {
-    if (!product.variantId) return { ok: false, error: 'This item cannot be updated.' };
+  async syncItemQuantity(
+    product: Product,
+    quantity: number,
+  ): Promise<{ ok: boolean; error?: string }> {
+    if (!product.variantId)
+      return { ok: false, error: "This item cannot be updated." };
     const shopId = product.storeId;
     const variantId = product.variantId;
     try {
       const cart =
         quantity > 0
-          ? await this.service.bulkUpdate(shopId, [{ variant_id: variantId, quantity }])
+          ? await this.service.bulkUpdate(shopId, [
+              { variant_id: variantId, quantity },
+            ])
           : await this.service.removeItem(shopId, variantId);
       runInAction(() => {
         this.shopCarts.set(shopId, cart);
@@ -271,7 +332,10 @@ export class CartStore {
     });
     const allVariantIds = Array.from(pending.keys());
     const requestVersions = new Map(
-      allVariantIds.map((variantId) => [variantId, this.getCurrentMutationVersion(variantId)])
+      allVariantIds.map((variantId) => [
+        variantId,
+        this.getCurrentMutationVersion(variantId),
+      ]),
     );
     this.inFlightByShop.set(shopId, new Set(allVariantIds));
     this.inFlightVersionByShop.set(shopId, requestVersions);
@@ -311,18 +375,21 @@ export class CartStore {
   private rollback(
     variantIds: string[],
     snapshot?: Map<string, CartItem | undefined>,
-    requestVersions?: Map<string, number>
+    requestVersions?: Map<string, number>,
   ): void {
     if (!snapshot) return;
     variantIds.forEach((variantId) => {
       if (
         requestVersions?.has(variantId) &&
-        requestVersions.get(variantId) !== this.getCurrentMutationVersion(variantId)
+        requestVersions.get(variantId) !==
+          this.getCurrentMutationVersion(variantId)
       ) {
         return;
       }
       const previousItem = snapshot.get(variantId);
-      const index = this.items.findIndex((i) => i.product.variantId === variantId);
+      const index = this.items.findIndex(
+        (i) => i.product.variantId === variantId,
+      );
       if (!previousItem || previousItem.quantity <= 0) {
         if (index !== -1) this.items.splice(index, 1);
       } else if (index !== -1) {
@@ -351,7 +418,11 @@ export class CartStore {
   }
 
   /** Builds a local `CartItem` (Product + quantity) from an API cart item. */
-  private mapApiItemToCartItem(apiItem: CartItemApi, shopId: string, shopName: string): CartItem {
+  private mapApiItemToCartItem(
+    apiItem: CartItemApi,
+    shopId: string,
+    shopName: string,
+  ): CartItem {
     const mrp = parseFloat(apiItem.mrp);
     const sellingPrice = parseFloat(apiItem.selling_price);
     const product: Product = {
@@ -359,14 +430,14 @@ export class CartStore {
       storeId: shopId,
       storeName: shopName,
       name: apiItem.product_name,
-      description: '',
+      description: "",
       imageUrl: apiItem.product_image,
       price: mrp,
       discountPrice: sellingPrice < mrp ? sellingPrice : undefined,
       gstPercent: 0,
       inStock: apiItem.is_in_stock,
       stockCount: Math.floor(parseFloat(apiItem.available_stock)),
-      category: '',
+      category: "",
       isBargainable: false,
       rating: 0,
       variantId: apiItem.variant_id,
@@ -377,32 +448,46 @@ export class CartStore {
   }
 
   /** Fully reconciles local items for this shop against the server's cart (adds, updates, removes). */
-  private hydrateFromShopCart(cart: CartResponse, acceptedVersions?: Map<string, number>): void {
+  private hydrateFromShopCart(
+    cart: CartResponse,
+    acceptedVersions?: Map<string, number>,
+  ): void {
     const apiVariantIds = new Set(cart.items.map((i) => i.variant_id));
     this.items = this.items.filter(
       (i) =>
         i.product.storeId !== cart.shop_id ||
-        this.shouldPreserveLocalVariant(i.product.variantId, acceptedVersions) ||
-        apiVariantIds.has(i.product.variantId ?? '')
+        this.shouldPreserveLocalVariant(
+          i.product.variantId,
+          acceptedVersions,
+        ) ||
+        apiVariantIds.has(i.product.variantId ?? ""),
     );
     cart.items.forEach((apiItem) => {
-      if (this.shouldPreserveLocalVariant(apiItem.variant_id, acceptedVersions)) return;
-      const existing = this.items.find((i) => i.product.variantId === apiItem.variant_id);
+      if (this.shouldPreserveLocalVariant(apiItem.variant_id, acceptedVersions))
+        return;
+      const existing = this.items.find(
+        (i) => i.product.variantId === apiItem.variant_id,
+      );
       if (existing) {
         existing.quantity = apiItem.quantity;
         return;
       }
-      this.items.push(this.mapApiItemToCartItem(apiItem, cart.shop_id, cart.shop_name));
+      this.items.push(
+        this.mapApiItemToCartItem(apiItem, cart.shop_id, cart.shop_name),
+      );
     });
   }
 
   private shouldPreserveLocalVariant(
     variantId?: string,
-    acceptedVersions?: Map<string, number>
+    acceptedVersions?: Map<string, number>,
   ): boolean {
     if (!variantId || !this.isVariantPendingOrInFlight(variantId)) return false;
     if (!acceptedVersions?.has(variantId)) return true;
-    return acceptedVersions.get(variantId) !== this.getCurrentMutationVersion(variantId);
+    return (
+      acceptedVersions.get(variantId) !==
+      this.getCurrentMutationVersion(variantId)
+    );
   }
 
   /** Cross-shop cart summaries, e.g. for a global cart badge/list. */
@@ -500,22 +585,31 @@ export class CartStore {
   }
 
   private async refreshAllCarts(): Promise<void> {
-    await Promise.all([this.fetchCartSummaries(), this.fetchCartsWithProducts()]);
-    const validShopIds = new Set(this.cartSummaries.map((summary) => summary.shop_id));
+    await Promise.all([
+      this.fetchCartSummaries(),
+      this.fetchCartsWithProducts(),
+    ]);
+    const validShopIds = new Set(
+      this.cartSummaries.map((summary) => summary.shop_id),
+    );
     runInAction(() => {
       this.items = this.items.filter(
-        (i) => validShopIds.has(i.product.storeId) || this.isShopPendingOrInFlight(i.product.storeId)
+        (i) =>
+          validShopIds.has(i.product.storeId) ||
+          this.isShopPendingOrInFlight(i.product.storeId),
       );
       this.cartsWithProducts.forEach((group) => {
-        const summary = this.cartSummaries.find((s) => s.shop_id === group.shop_id);
+        const summary = this.cartSummaries.find(
+          (s) => s.shop_id === group.shop_id,
+        );
         const cart: CartResponse = {
           cart_id: group.cart_id,
           shop_id: group.shop_id,
           shop_name: group.shop_name,
           item_count: group.item_count,
-          subtotal: summary?.subtotal ?? '0.00',
+          subtotal: summary?.subtotal ?? "0.00",
           is_below_min_order: summary?.is_below_min_order ?? false,
-          min_order: summary?.min_order ?? '0.00',
+          min_order: summary?.min_order ?? "0.00",
           active_bargain_session_id: summary?.active_bargain_session_id ?? null,
           items: group.items,
         };
@@ -548,27 +642,29 @@ export class CartStore {
   }
 
   async clearAllCarts(): Promise<void> {
-    const shopIds = Array.from(new Set(this.items.map((i) => i.product.storeId)));
+    const shopIds = Array.from(
+      new Set(this.items.map((i) => i.product.storeId)),
+    );
     if (shopIds.length === 0) return;
+
+    // Optimistic clear — update UI immediately before API responds
+    runInAction(() => {
+      this.items = [];
+      shopIds.forEach((id) => this.shopCarts.delete(id));
+      this.coupon = { code: null, discount: 0 };
+      this.walletCreditsUsed = 0;
+      shopIds.forEach((id) => {
+        this.pendingByShop.delete(id);
+        const timer = this.debounceTimers.get(id);
+        if (timer) clearTimeout(timer);
+        this.debounceTimers.delete(id);
+      });
+    });
+
     try {
-      const carts = await this.service.clearCarts(shopIds);
-      runInAction(() => {
-        carts.forEach((cart) => this.shopCarts.set(cart.shop_id, cart));
-        this.items = this.items.filter((i) => !shopIds.includes(i.product.storeId));
-        shopIds.forEach((shopId) => {
-          this.pendingByShop.delete(shopId);
-          const timer = this.debounceTimers.get(shopId);
-          if (timer) clearTimeout(timer);
-          this.debounceTimers.delete(shopId);
-        });
-        this.coupon = { code: null, discount: 0 };
-        this.walletCreditsUsed = 0;
-      });
+      await this.service.clearCarts(shopIds);
     } catch (e) {
-      runInAction(() => {
-        shopIds.forEach((shopId) => this.syncStatus.set(shopId, API_STATUS.ERROR));
-        this.onSyncError?.(normalizeError(e));
-      });
+      this.onSyncError?.(normalizeError(e));
     }
   }
 
@@ -594,14 +690,17 @@ export class CartStore {
   }
 
   /** Places an order for a single shop's cart. On COD success, clears that shop's cart locally. */
-  async checkoutShop(shopId: string, body: CheckoutRequest): Promise<CheckoutResponse | null> {
+  async checkoutShop(
+    shopId: string,
+    body: CheckoutRequest,
+  ): Promise<CheckoutResponse | null> {
     this.checkoutStatus = API_STATUS.FETCHING;
     this.checkoutError = null;
     try {
       const result = await this.service.checkoutShop(shopId, body);
       runInAction(() => {
         this.checkoutStatus = API_STATUS.SUCCESS;
-        if (body.payment_method === 'COD') {
+        if (body.payment_method === "COD") {
           this.clearLocalShopCart(shopId);
         }
       });
@@ -616,15 +715,19 @@ export class CartStore {
   }
 
   /** Places orders for every shop cart. On COD success, clears all carts locally. */
-  async checkoutAll(body: CheckoutRequest): Promise<CheckoutAllResponse | null> {
+  async checkoutAll(
+    body: CheckoutRequest,
+  ): Promise<CheckoutAllResponse | null> {
     this.checkoutStatus = API_STATUS.FETCHING;
     this.checkoutError = null;
-    const shopIds = Array.from(new Set(this.items.map((i) => i.product.storeId)));
+    const shopIds = Array.from(
+      new Set(this.items.map((i) => i.product.storeId)),
+    );
     try {
       const result = await this.service.checkoutAll(body);
       runInAction(() => {
         this.checkoutStatus = API_STATUS.SUCCESS;
-        if (body.payment_method === 'COD') {
+        if (body.payment_method === "COD") {
           shopIds.forEach((shopId) => this.clearLocalShopCart(shopId));
         }
       });
@@ -639,14 +742,18 @@ export class CartStore {
   }
 
   /** Verifies a Razorpay payment after the SDK callback. On success, clears carts for the placed orders. */
-  async verifyPayment(payload: PaymentVerifyRequest): Promise<PaymentVerifyResponse | null> {
+  async verifyPayment(
+    payload: PaymentVerifyRequest,
+  ): Promise<PaymentVerifyResponse | null> {
     this.checkoutStatus = API_STATUS.FETCHING;
     this.checkoutError = null;
     try {
       const result = await this.service.verifyPayment(payload);
       runInAction(() => {
         this.checkoutStatus = API_STATUS.SUCCESS;
-        result.orders.forEach((order) => this.clearLocalShopCart(order.shop_id));
+        result.orders.forEach((order) =>
+          this.clearLocalShopCart(order.shop_id),
+        );
       });
       return result;
     } catch (e) {
