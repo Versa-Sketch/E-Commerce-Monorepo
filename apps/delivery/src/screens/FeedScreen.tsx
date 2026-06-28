@@ -4,12 +4,16 @@ import {
   View, Text, ScrollView, TouchableOpacity, Pressable, StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { observer } from 'mobx-react-lite';
 import { OnlineToggle } from '../components/OnlineToggle';
 import { OnboardingStatusBanner } from '../components/OnboardingStatusBanner';
 import { BottomSheet } from '../components/BottomSheet';
-import { useAppStore } from '../store/useAppStore';
+import { appStore } from '../store/useAppStore';
 import { useAuthStore } from '../features/Auth/Store/useAuthStore';
 import { useOnboardingStore } from '../features/Onboarding/Store/useOnboardingStore';
+import { wsService } from '../services/websocket';
+import { STORAGE_KEYS } from '../constants';
+import { StorageService } from '../services/storage';
 import { mockDP, mockWallet, mockTrips } from '../mock';
 import { colors, typography } from '../theme';
 
@@ -18,21 +22,27 @@ function initialsOf(name: string | undefined): string {
   return name.trim().split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export function FeedScreen({ navigation }: any) {
-  const { isOnline, toggleOnline, setActiveOrder } = useAppStore();
+export const FeedScreen = observer(function FeedScreen({ navigation }: any) {
   const [geoSheet, setGeoSheet] = useState(!mockDP.isNearStore);
   const user = useAuthStore((s) => s.user);
   const onboardingStatus = useOnboardingStore((s) => s.onboardingStatus);
   const isApproved = onboardingStatus === 'APPROVED';
+  const isOnline = appStore.isOnline;
 
   function simulateOrder() {
-    setActiveOrder(mockTrips[1]);
+    appStore.setActiveOrder(mockTrips[1]);
     navigation.navigate('ActiveOrder');
   }
 
   function handleToggleOnline() {
     if (!isApproved) return;
-    toggleOnline();
+    appStore.toggleOnline();
+    if (appStore.isOnline) {
+      const token = StorageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+      if (token) wsService.connect(token);
+    } else {
+      wsService.disconnect();
+    }
   }
 
   return (
@@ -138,6 +148,17 @@ export function FeedScreen({ navigation }: any) {
           <Ionicons name="flash" size={16} color={colors.white} />
           <Text style={styles.demoBtnText}>Simulate Incoming Order</Text>
         </TouchableOpacity>
+
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[styles.demoBtn, { backgroundColor: '#27A259', marginTop: 8 }]}
+            onPress={() => navigation.navigate('TestTracking')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="navigate" size={16} color={colors.white} />
+            <Text style={styles.demoBtnText}>Test Live Tracking Map</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Geo-fence bottom sheet */}
@@ -163,7 +184,7 @@ export function FeedScreen({ navigation }: any) {
       </BottomSheet>
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.gray50 },

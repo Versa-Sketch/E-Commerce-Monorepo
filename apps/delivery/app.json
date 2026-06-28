@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DeliveryPartnerApp uses your location to share your live position with customers while you're online."
+        }
+      ]
+    ]
   }
 }

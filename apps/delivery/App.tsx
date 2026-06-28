@@ -8,6 +8,8 @@ import { StatusBar, View } from 'react-native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { hydrateStorage } from './src/services/storage';
 import { useAuthStore } from './src/features/Auth/Store/useAuthStore';
+import { DeliveryOfferSheet } from './src/components/DeliveryOfferSheet';
+import { navigationRef } from './src/services/navigationRef';
 
 // Make the NavigationContainer background match the app — eliminates the
 // white flash that appears between screens during slide-back gestures.
@@ -46,9 +48,10 @@ export default function App() {
       <SafeAreaProvider>
         <PaperProvider>
           <StatusBar translucent={false} backgroundColor="#ffffff" barStyle="dark-content" />
-          <NavigationContainer theme={AppTheme}>
+          <NavigationContainer ref={navigationRef} theme={AppTheme}>
             <RootNavigator />
           </NavigationContainer>
+          <DeliveryOfferSheet />
         </PaperProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

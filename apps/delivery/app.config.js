@@ -11,6 +11,9 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.deliverypartner.app',
+      config: {
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      },
     },
     android: {
       package: 'com.deliverypartner.app',
@@ -19,6 +22,11 @@ module.exports = {
         foregroundImage: './assets/adaptive-icon.png',
       },
       predictiveBackGestureEnabled: false,
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        },
+      },
     },
     web: {
       bundler: 'metro',

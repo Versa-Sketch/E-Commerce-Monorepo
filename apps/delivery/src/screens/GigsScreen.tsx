@@ -6,15 +6,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ShiftHeaderCard } from '../components/ShiftHeaderCard';
 import { GigSlotRow } from '../components/GigSlotRow';
-import { useAppStore } from '../store/useAppStore';
+import { observer } from 'mobx-react-lite';
+import { appStore } from '../store/useAppStore';
 import { mockGigs } from '../mock';
 import { colors, typography } from '../theme';
 
 type Filter = 'All' | 'Open' | 'Booked';
 
-export function GigsScreen({ navigation }: any) {
+export const GigsScreen = observer(function GigsScreen({ navigation }: any) {
   const [filter, setFilter] = useState<Filter>('Open');
-  const { bookedGigIds, toggleGigBooking, bookGigs } = useAppStore();
+  const { bookedGigIds } = appStore;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -37,7 +38,7 @@ export function GigsScreen({ navigation }: any) {
 
   function handleBook() {
     if (selected.size === 0) return;
-    bookGigs(Array.from(selected));
+    appStore.bookGigs(Array.from(selected));
     setSelected(new Set());
     Alert.alert('Booked!', 'Your selected gig slots have been booked.');
   }
@@ -136,7 +137,7 @@ export function GigsScreen({ navigation }: any) {
       </View>
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.gray50 },

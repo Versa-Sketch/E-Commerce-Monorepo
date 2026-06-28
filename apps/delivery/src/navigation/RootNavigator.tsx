@@ -16,6 +16,7 @@ import { VehicleRoute } from '../features/Onboarding/Routes/VehicleRoute';
 import { WorkPrefsRoute } from '../features/Onboarding/Routes/WorkPrefsRoute';
 import { useOnboardingStore } from '../features/Onboarding/Store/useOnboardingStore';
 import { STEP_ROUTE_NAME } from '../features/Onboarding/utils/stepOrder';
+import { useLocationPing } from '../hooks/useLocationPing';
 import { MainTabs } from './MainTabs';
 
 const Root = createNativeStackNavigator();
@@ -28,6 +29,8 @@ export function RootNavigator() {
   const loadStatus = useOnboardingStore((s) => s.loadStatus);
   const prefillLoaded = useOnboardingStore((s) => s.prefillLoaded);
   const loadDetails = useOnboardingStore((s) => s.loadDetails);
+
+  useLocationPing();
 
   useEffect(() => {
     if (isAuthenticated && !onboardingLoaded) loadStatus();

@@ -23,6 +23,13 @@ export { usePlacesAutocomplete } from './hooks/usePlacesAutocomplete';
 export type { UsePlacesAutocompleteOptions, UsePlacesAutocompleteResult } from './hooks/usePlacesAutocomplete';
 export { useDirections } from './hooks/useDirections';
 export type { UseDirectionsOptions, UseDirectionsResult } from './hooks/useDirections';
+export { useSimulatedRoute } from './hooks/useSimulatedRoute';
+export type { UseSimulatedRouteOptions, UseSimulatedRouteResult } from './hooks/useSimulatedRoute';
+
+export { OrderTrackingScreen } from './components/OrderTrackingScreen';
+export type { OrderTrackingScreenProps } from './components/OrderTrackingScreen';
+export { OrderTrackingPanel } from './components/OrderTrackingPanel';
+export type { OrderTrackingPanelProps, OrderTrackingMode, OrderStatus } from './components/OrderTrackingPanel';
 
 export { googleMapsClient } from './client/googleMapsClient';
 export { decodePolyline } from './utils/polyline';

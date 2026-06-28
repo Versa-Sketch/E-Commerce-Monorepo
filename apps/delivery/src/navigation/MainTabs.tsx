@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeedStack } from './FeedStack';
 import { MoreStack } from './MoreStack';
 import { EarningsScreen } from '../screens/EarningsScreen';
-import { MapScreen } from '../screens/MapScreen';
 import { PocketScreen } from '../screens/PocketScreen';
 import { colors, typography } from '../theme';
 
@@ -14,7 +13,6 @@ const tabIcon = (name: string, focused: boolean, size: number) => {
   const icons: Record<string, [string, string]> = {
     Feed: ['home', 'home-outline'],
     Earnings: ['bar-chart', 'bar-chart-outline'],
-    Map: ['map', 'map-outline'],
     Pocket: ['wallet', 'wallet-outline'],
     More: ['menu', 'menu-outline'],
   };
@@ -48,7 +46,6 @@ export function MainTabs() {
     >
       <Tab.Screen name="Feed" component={FeedStack} />
       <Tab.Screen name="Earnings" component={EarningsScreen} />
-      <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Pocket" component={PocketScreen} />
       <Tab.Screen name="More" component={MoreStack} />
     </Tab.Navigator>

@@ -8,9 +8,6 @@ import { typography } from '../theme';
 
 export const APPROVED_BANNER_SEEN_KEY = 'delivery_approved_banner_seen';
 
-// Semantic status colors — distinct from the app's brand palette (which maps
-// green/orange to black per the design decision in theme/index.ts), since
-// these convey review-state meaning, not branding.
 const tone = {
   amber: { bg: '#FFF8E1', border: '#FFE7A0', icon: '#8A6116', title: '#5C4310', body: '#8A6116' },
   red: { bg: '#FCEBEB', border: '#F7C1C1', icon: '#791F1F', title: '#501313', body: '#791F1F' },
