@@ -20,6 +20,7 @@ export default observer(function BargainSessionScreen() {
   const [offerSheetItemId, setOfferSheetItemId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    console.log('[BargainSessionScreen] sessionId:', sessionId);
     if (sessionId) bargainingStore.loadSession(sessionId);
     return () => bargainingStore.disconnect();
   }, [sessionId]);

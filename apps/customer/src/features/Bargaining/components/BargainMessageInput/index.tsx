@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { useTheme } from '../../../../theme/ThemeContext';
 import { useBargainingStore } from '../../Providers/useBargainingStore';
+import { useAuthStore } from '../../../Auth/Providers/useAuthStore';
 import { Button } from '../../../../Common/components/ui/Button';
 import { Input } from '../../../../Common/components/ui/Input';
 import { containerStyle, inputWrapperStyle, quickActionsRowStyle, sendButtonStyle, wrapperStyle } from './styledcomponents';
@@ -17,6 +18,7 @@ interface BargainMessageInputProps {
 export const BargainMessageInput: React.FC<BargainMessageInputProps> = observer(({ onMakeOffer }) => {
   const { theme } = useTheme();
   const bargainingStore = useBargainingStore();
+  const authStore = useAuthStore();
   const [text, setText] = useState('');
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,7 +42,11 @@ export const BargainMessageInput: React.FC<BargainMessageInputProps> = observer(
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    bargainingStore.sendChatMessage(trimmed);
+    bargainingStore.sendChatMessage(
+      trimmed,
+      authStore.currentUser?.id,
+      authStore.currentUser?.name,
+    );
     setText('');
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     bargainingStore.setTyping(false);

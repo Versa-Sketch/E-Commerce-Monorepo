@@ -62,35 +62,29 @@ export const StoreGroupCard: React.FC<StoreGroupCardProps> = observer(
       ? parseFloat(previewCart.subtotal) + parseFloat(previewCart.delivery_charge)
       : cartStore.getShopTotals(storeGroup.storeId).grandTotal;
 
-    // TEMP: routed to the @monorepo/bargaining preview screen instead of the real
-    // session flow while the new UI is being reviewed. Swap the body back to the
-    // commented block below to return to the real flow.
     const handleBargainShop = async () => {
-      router.push('/dev-preview/bargain-chat');
+      try {
+        if (!cartStore.shopCarts.has(storeGroup.storeId)) {
+          await cartStore.getShopCart(storeGroup.storeId);
+        }
+        const cart = cartStore.shopCarts.get(storeGroup.storeId);
+        if (cart?.active_bargain_session_id) {
+          router.push(`/customer/bargain/session/${cart.active_bargain_session_id}`);
+          return;
+        }
+        const cartId = cart?.cart_id;
+        if (!cartId) {
+          Alert.alert(
+            "Unable to open bargain history",
+            "Please try again in a moment.",
+          );
+          return;
+        }
+        router.push({ pathname: '/customer/bargain/cart/[cartId]', params: { cartId } });
+      } catch (e) {
+        Alert.alert("Unable to open bargain", "Please try again in a moment.");
+      }
     };
-    // const handleBargainShop = async () => {
-    //   try {
-    //     if (!cartStore.shopCarts.has(storeGroup.storeId)) {
-    //       await cartStore.getShopCart(storeGroup.storeId);
-    //     }
-    //     const cart = cartStore.shopCarts.get(storeGroup.storeId);
-    //     if (cart?.active_bargain_session_id) {
-    //       router.push(`/customer/bargain/session/${cart.active_bargain_session_id}`);
-    //       return;
-    //     }
-    //     const cartId = cart?.cart_id;
-    //     if (!cartId) {
-    //       Alert.alert(
-    //         "Unable to open bargain history",
-    //         "Please try again in a moment.",
-    //       );
-    //       return;
-    //     }
-    //     router.push({ pathname: '/customer/bargain/cart/[cartId]', params: { cartId } });
-    //   } catch (e) {
-    //     Alert.alert("Unable to open bargain", "Please try again in a moment.");
-    //   }
-    // };
 
     return (
       <View style={[storeGroupCardStyle, { backgroundColor: theme.colors.surface }]}>

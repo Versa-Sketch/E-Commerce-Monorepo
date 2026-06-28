@@ -36,6 +36,7 @@ class LocationStore {
 
       // 2. Get accurate coordinates (waits for ≤15m fix, 10s timeout)
       const coords = await LocationService.getAccurateCoordinates();
+      console.log('[Location] fresh fix — lat:', coords.latitude, 'lng:', coords.longitude, 'accuracy:', coords.accuracy, 'm');
 
       // 3. Check TTL + distance — bypass cache if user moved > 200m
       const cacheAge = cached ? Date.now() - cached.updatedAt : Infinity;
@@ -44,6 +45,7 @@ class LocationStore {
         : Infinity;
 
       if (cached && cacheAge < TEN_MINUTES && distanceMoved < 0.2) {
+        console.log('[Location] using cache — lat:', cached.latitude, 'lng:', cached.longitude);
         runInAction(() => { this.location = cached; });
         return;
       }
@@ -86,6 +88,8 @@ class LocationStore {
         ...address,
         updatedAt: Date.now(),
       };
+
+      console.log('[Location] lat:', coords.latitude, 'lng:', coords.longitude, 'accuracy:', coords.accuracy, 'm');
 
       runInAction(() => {
         this.location = newLocation;

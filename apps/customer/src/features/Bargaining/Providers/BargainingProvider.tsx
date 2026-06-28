@@ -8,7 +8,10 @@ interface BargainingProviderProps {
   children: React.ReactNode;
 }
 export const BargainingProvider: React.FC<BargainingProviderProps> = ({ children }) => {
-  const [store] = useState(() => new BargainingStore(bargainingService, bargainSocketFactory));
+  const [store] = useState(() => {
+    console.log('[Bargaining] mode: REAL API (REST + WebSocket)');
+    return new BargainingStore(bargainingService, bargainSocketFactory);
+  });
   return (
     <BargainingStoreContext.Provider value={store}>
       {children}

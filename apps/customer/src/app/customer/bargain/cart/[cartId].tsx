@@ -35,6 +35,7 @@ export default observer(function BargainCartHistoryScreen() {
   const bargainingStore = useBargainingStore();
 
   useEffect(() => {
+    console.log('[BargainCartScreen] cartId:', cartId);
     if (cartId) bargainingStore.loadCartHistory(cartId);
   }, [cartId]);
 

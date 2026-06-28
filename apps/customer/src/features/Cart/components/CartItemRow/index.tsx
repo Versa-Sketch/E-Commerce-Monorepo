@@ -35,37 +35,31 @@ export const CartItemRow: React.FC<CartItemRowProps> = observer(({ item, onQtyCh
   const discountedPrice = item.product.discountPrice ?? item.product.price;
   const hasDiscount = discountedPrice < originalPrice;
 
-  // TEMP: routed to the @monorepo/bargaining preview screen instead of the real
-  // session flow while the new UI is being reviewed. Swap the body back to the
-  // commented block below to return to the real flow.
   const handleBargainPrice = async () => {
-    router.push('/dev-preview/bargain-chat');
+    try {
+      if (!cartStore.shopCarts.has(item.product.storeId)) {
+        await cartStore.getShopCart(item.product.storeId);
+      }
+      const shopCart = cartStore.shopCarts.get(item.product.storeId);
+      const cartItemId = shopCart?.items.find((i) => i.variant_id === item.product.variantId)?.cart_item_id;
+      const query = cartItemId ? `?focusCartItemId=${cartItemId}` : '';
+      if (shopCart?.active_bargain_session_id) {
+        router.push(`/customer/bargain/session/${shopCart.active_bargain_session_id}${query}`);
+        return;
+      }
+      const cartId = shopCart?.cart_id;
+      if (!cartId) {
+        Alert.alert('Unable to open bargain history', 'Please try again in a moment.');
+        return;
+      }
+      router.push({
+        pathname: '/customer/bargain/cart/[cartId]',
+        params: cartItemId ? { cartId, focusCartItemId: cartItemId } : { cartId },
+      });
+    } catch (e) {
+      Alert.alert('Unable to open bargain', 'Please try again in a moment.');
+    }
   };
-  // const handleBargainPrice = async () => {
-  //   try {
-  //     if (!cartStore.shopCarts.has(item.product.storeId)) {
-  //       await cartStore.getShopCart(item.product.storeId);
-  //     }
-  //     const shopCart = cartStore.shopCarts.get(item.product.storeId);
-  //     const cartItemId = shopCart?.items.find((i) => i.variant_id === item.product.variantId)?.cart_item_id;
-  //     const query = cartItemId ? `?focusCartItemId=${cartItemId}` : '';
-  //     if (shopCart?.active_bargain_session_id) {
-  //       router.push(`/customer/bargain/session/${shopCart.active_bargain_session_id}${query}`);
-  //       return;
-  //     }
-  //     const cartId = shopCart?.cart_id;
-  //     if (!cartId) {
-  //       Alert.alert('Unable to open bargain history', 'Please try again in a moment.');
-  //       return;
-  //     }
-  //     router.push({
-  //       pathname: '/customer/bargain/cart/[cartId]',
-  //       params: cartItemId ? { cartId, focusCartItemId: cartItemId } : { cartId },
-  //     });
-  //   } catch (e) {
-  //     Alert.alert('Unable to open bargain', 'Please try again in a moment.');
-  //   }
-  // };
   return (
     <View
       style={[

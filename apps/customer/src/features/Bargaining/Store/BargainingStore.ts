@@ -53,10 +53,12 @@ export class BargainingStore {
   }
 
   async startSession(cartId: string): Promise<BargainSession> {
+    console.log('[Bargaining] startSession → cartId:', cartId);
     this.sessionStatus = API_STATUS.FETCHING;
     this.sessionError = null;
     try {
       const session = this.normalizeSession(await this.service.startSession(cartId));
+      console.log('[Bargaining] startSession ✓ sessionId:', session.session_id);
       runInAction(() => {
         this.session = session;
         this.sessionStatus = API_STATUS.SUCCESS;
@@ -73,10 +75,12 @@ export class BargainingStore {
   }
 
   async loadSession(sessionId: string): Promise<void> {
+    console.log('[Bargaining] loadSession → sessionId:', sessionId);
     this.sessionStatus = API_STATUS.FETCHING;
     this.sessionError = null;
     try {
       const session = this.normalizeSession(await this.service.getSession(sessionId));
+      console.log('[Bargaining] loadSession ✓ messages:', session.messages?.length, 'offers:', Object.keys(session.offers ?? {}).length);
       runInAction(() => {
         this.session = session;
         this.sessionStatus = API_STATUS.SUCCESS;
@@ -91,10 +95,12 @@ export class BargainingStore {
   }
 
   async loadCartHistory(cartId: string): Promise<void> {
+    console.log('[Bargaining] loadCartHistory → cartId:', cartId);
     this.cartHistoryStatus = API_STATUS.FETCHING;
     this.cartHistoryError = null;
     try {
       const history = await this.service.getCartHistory(cartId);
+      console.log('[Bargaining] loadCartHistory ✓ sessions:', (history as any)?.sessions?.length ?? JSON.stringify(history));
       runInAction(() => {
         this.cartHistory = history;
         this.cartHistoryStatus = API_STATUS.SUCCESS;
@@ -127,12 +133,19 @@ export class BargainingStore {
   connectSocket(): void {
     if (!this.session) return;
     this.disconnect();
+    console.log('[Bargaining] connectSocket → sessionId:', this.session.session_id);
     const socket = this.socketFactory.create();
     this.socket = socket;
     socket.connect(
       this.session.session_id,
-      (event) => this.handleEvent(event),
-      (status) => runInAction(() => (this.connectionStatus = status))
+      (event) => {
+        console.log('[Bargaining] WS event:', event.type);
+        this.handleEvent(event);
+      },
+      (status) => {
+        console.log('[Bargaining] WS status:', status);
+        runInAction(() => (this.connectionStatus = status));
+      }
     );
   }
 
@@ -144,14 +157,31 @@ export class BargainingStore {
   }
 
   sendOffer(cartItemId: string, offeredAmount: string): void {
+    console.log('[Bargaining] sendOffer → cartItemId:', cartItemId, 'amount:', offeredAmount);
     this.socket?.send({ type: 'bargain_offer', cart_item_id: cartItemId, offered_amount: offeredAmount });
   }
 
   respondToOffer(offerId: string, action: BargainOfferAction, counterAmount?: string): void {
+    console.log('[Bargaining] respondToOffer → offerId:', offerId, 'action:', action, 'counter:', counterAmount);
     this.socket?.send({ type: 'bargain_response', offer_id: offerId, action, counter_amount: counterAmount });
   }
 
-  sendChatMessage(message: string): void {
+  sendChatMessage(message: string, senderId?: string, senderName?: string): void {
+    console.log('[Bargaining] sendChatMessage →', message);
+    if (this.session && senderId) {
+      runInAction(() => {
+        this.session!.messages.push({
+          message_id: `optimistic-${Date.now()}`,
+          sender_id: senderId,
+          sender_name: senderName ?? 'You',
+          message,
+          message_type: 'TEXT',
+          bargain_offer_id: null,
+          created_at: new Date().toISOString(),
+          status: 'SENT',
+        });
+      });
+    }
     this.socket?.send({ type: 'chat_message', message });
   }
 
@@ -198,7 +228,9 @@ export class BargainingStore {
           this.applyCartUpdate(event.payload.cart);
           return;
         case 'chat_message':
-          session?.messages.push(event.payload);
+          if (session && !session.messages.some(m => m.message_id === event.payload.message_id)) {
+            session.messages.push(event.payload);
+          }
           return;
         case 'messages_seen':
           if (!session) return;
