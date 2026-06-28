@@ -17,11 +17,11 @@ export const BANNER_AUTOPLAY_INTERVAL = 4000; // 4 seconds
 
 // Search placeholder constants
 export const SEARCH_PLACEHOLDERS = [
-  "Search for 'Milk'",
-  "Search for 'Bread'",
-  "Search for 'Vegetables'",
-  "Search for 'Medicines'",
-  "Search for 'Snacks'",
+  "Search for vegetables, fruits, groceries...",
+  "Search for 'fresh milk'...",
+  "Search for 'organic tomatoes'...",
+  "Search for 'farm fresh eggs'...",
+  "Search for 'soft bread'...",
 ];
 export const PLACEHOLDER_ROTATE_INTERVAL = 3000;
 

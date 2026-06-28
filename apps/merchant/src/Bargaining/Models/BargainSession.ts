@@ -167,7 +167,15 @@ export class BargainSession {
   appendMessage(messageData: Record<string, any>) {
     const messageId = messageData.message_id;
     if (messageId && this.messages.some((m) => m.messageId === messageId)) return;
-    this.messages.push(new BargainChatMessage(messageData));
+    const senderId = messageData.sender_id;
+    const optimisticIdx = this.messages.findIndex(
+      (m) => m.messageId.startsWith('optimistic-') && m.senderId === senderId
+    );
+    if (optimisticIdx >= 0) {
+      this.messages[optimisticIdx] = new BargainChatMessage(messageData);
+    } else {
+      this.messages.push(new BargainChatMessage(messageData));
+    }
   }
 
   /** Merges cart-item price/lock/quantity changes (from `cart_updated`). */

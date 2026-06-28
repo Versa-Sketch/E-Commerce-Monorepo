@@ -3,21 +3,12 @@ import AppClient from '../../../infrastructure/AppClient';
 import { extractErrorMessage } from '../../../Common/utils/errorNormalizer';
 import { REORDER_ENDPOINTS } from '../Constants';
 import { FrequentItem, ReorderResult } from '../types';
-
-interface FrequentOrderedParams {
-  shop_id?: string;
-  limit?: number;
-}
-
-interface IReorderService {
-  getFrequentlyOrdered(params?: FrequentOrderedParams): Promise<FrequentItem[]>;
-  reorder(orderId: string): Promise<ReorderResult>;
-}
+import { IReorderService } from './index';
 
 class ReorderApiService implements IReorderService {
   constructor(private client: AxiosInstance) {}
 
-  async getFrequentlyOrdered(params?: FrequentOrderedParams): Promise<FrequentItem[]> {
+  async getFrequentlyOrdered(params?: { shop_id?: string; limit?: number }): Promise<FrequentItem[]> {
     try {
       const response = await this.client.get(REORDER_ENDPOINTS.FREQUENTLY_ORDERED, { params });
       return response.data?.data ?? response.data;

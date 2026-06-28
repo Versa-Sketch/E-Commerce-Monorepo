@@ -106,8 +106,10 @@ export class BargainingStore {
         this.cartHistoryStatus = API_STATUS.SUCCESS;
       });
     } catch (e) {
+      const msg = normalizeError(e);
+      console.error('[Bargaining] loadCartHistory failed:', msg, e);
       runInAction(() => {
-        this.cartHistoryError = normalizeError(e);
+        this.cartHistoryError = msg;
         this.cartHistoryStatus = API_STATUS.ERROR;
       });
     }
@@ -168,11 +170,11 @@ export class BargainingStore {
 
   sendChatMessage(message: string, senderId?: string, senderName?: string): void {
     console.log('[Bargaining] sendChatMessage →', message);
-    if (this.session && senderId) {
+    if (this.session) {
       runInAction(() => {
         this.session!.messages.push({
           message_id: `optimistic-${Date.now()}`,
-          sender_id: senderId,
+          sender_id: senderId ?? '',
           sender_name: senderName ?? 'You',
           message,
           message_type: 'TEXT',
@@ -227,11 +229,19 @@ export class BargainingStore {
           session.offers[event.payload.offer.cart_item_id] = event.payload.offer;
           this.applyCartUpdate(event.payload.cart);
           return;
-        case 'chat_message':
-          if (session && !session.messages.some(m => m.message_id === event.payload.message_id)) {
+        case 'chat_message': {
+          if (!session) return;
+          if (session.messages.some(m => m.message_id === event.payload.message_id)) return;
+          const optimisticIdx = session.messages.findIndex(
+            m => m.message_id.startsWith('optimistic-') && m.sender_id === event.payload.sender_id
+          );
+          if (optimisticIdx >= 0) {
+            session.messages.splice(optimisticIdx, 1, event.payload);
+          } else {
             session.messages.push(event.payload);
           }
           return;
+        }
         case 'messages_seen':
           if (!session) return;
           session.seen_by = { ...session.seen_by, [event.payload.user_id]: event.payload.seen_at };

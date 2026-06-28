@@ -90,7 +90,7 @@ export class CartStore {
         ((i.product.discountPrice ?? i.product.price) *
           i.quantity *
           i.product.gstPercent) /
-          100,
+        100,
       0,
     );
     const deliveryFee = this.items.length > 0 ? FEES.DEFAULT_DELIVERY_FEE : 0;
@@ -169,7 +169,7 @@ export class CartStore {
         ((i.product.discountPrice ?? i.product.price) *
           i.quantity *
           i.product.gstPercent) /
-          100,
+        100,
       0,
     );
     const deliveryFee = shopItems.length > 0 ? FEES.DEFAULT_DELIVERY_FEE : 0;
@@ -299,8 +299,8 @@ export class CartStore {
       const cart =
         quantity > 0
           ? await this.service.bulkUpdate(shopId, [
-              { variant_id: variantId, quantity },
-            ])
+            { variant_id: variantId, quantity },
+          ])
           : await this.service.removeItem(shopId, variantId);
       runInAction(() => {
         this.shopCarts.set(shopId, cart);
@@ -382,7 +382,7 @@ export class CartStore {
       if (
         requestVersions?.has(variantId) &&
         requestVersions.get(variantId) !==
-          this.getCurrentMutationVersion(variantId)
+        this.getCurrentMutationVersion(variantId)
       ) {
         return;
       }

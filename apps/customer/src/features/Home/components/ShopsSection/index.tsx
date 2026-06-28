@@ -1,13 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useTheme } from '../../../../theme/ThemeContext';
-import { ShopCard } from '../../../../features/Stores/components/ShopCard';
-import { ShopCardSkeleton } from '../../../../features/Stores/components/ShopCard/Skeleton';
-import { FeaturedShopCard } from '../../../../features/Stores/components/FeaturedShopCard';
-import { FeaturedShopCardSkeleton } from '../../../../features/Stores/components/FeaturedShopCard/Skeleton';
-import { shopsSectionStyles } from './styledcomponents';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useTheme } from "../../../../theme/ThemeContext";
+import { ShopCard } from "../../../../features/Stores/components/ShopCard";
+import { ShopCardSkeleton } from "../../../../features/Stores/components/ShopCard/Skeleton";
+import { FeaturedShopCard } from "../../../../features/Stores/components/FeaturedShopCard";
+import { FeaturedShopCardSkeleton } from "../../../../features/Stores/components/FeaturedShopCard/Skeleton";
+import { shopsSectionStyles } from "./styledcomponents";
 
 interface Shop {
   id: string;
@@ -178,7 +178,7 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
   return (
     <View style={shopsSectionStyles.container}>
       {/* Featured Shops Section */}
-      {featuredShops.length > 0 && (
+      {/* {featuredShops.length > 0 && (
         <View style={shopsSectionStyles.featuredSection}>
           <View
             style={[
@@ -220,17 +220,15 @@ export const ShopsSection: React.FC<ShopsSectionProps> = ({
             ))}
           </ScrollView>
         </View>
-      )}
+      )} */}
 
       {/* Shops Near You Section */}
       <View style={shopsSectionStyles.nearYouSection}>
-        <View
-          style={[shopsSectionStyles.sectionHeaderRow, { marginTop: 12 }]}
-        >
+        <View style={[shopsSectionStyles.sectionHeaderRow, { marginTop: 12 }]}>
           <View
             style={[
               shopsSectionStyles.sectionIconBadge,
-              { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
+              { backgroundColor: "rgba(16, 185, 129, 0.1)" },
             ]}
           >
             <Ionicons name="storefront" size={16} color="#16A34A" />

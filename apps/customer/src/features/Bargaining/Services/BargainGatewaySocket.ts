@@ -44,7 +44,7 @@ class BargainGatewaySocket {
   }
 
   private routeMessage(event: GatewayEvent): void {
-    const sessionId = event.session_id ?? (event.type === 'session_started' ? event.payload.session_id : undefined);
+    const sessionId = event.session_id ?? event.payload?.session_id;
     if (!sessionId) return;
     this.subscribers.get(sessionId)?.onMessage(event);
   }

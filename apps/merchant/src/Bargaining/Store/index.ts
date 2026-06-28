@@ -252,6 +252,21 @@ export class BargainingStore {
   sendMerchantMessage(sessionId: string, text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+    runInAction(() => {
+      const session = this.sessions.find((s) => s.sessionId === sessionId);
+      if (session) {
+        session.appendMessage({
+          message_id: `optimistic-${Date.now()}`,
+          sender_id: this.currentUserId ?? 'merchant',
+          sender_name: 'You',
+          message: trimmed,
+          message_type: 'TEXT',
+          bargain_offer_id: null,
+          created_at: new Date().toISOString(),
+          status: 'SENT',
+        });
+      }
+    });
     console.log("[Bargaining] WS send chat_message", sessionId, trimmed);
     this.gateway.send({
       type: "chat_message",

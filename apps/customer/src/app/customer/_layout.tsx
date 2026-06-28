@@ -11,7 +11,6 @@ export default function CustomerLayout() {
       }}
     >
       <Stack.Screen name="store/[id]" />
-      <Stack.Screen name="product/[id]" />
       <Stack.Screen name="bargain/session/[sessionId]" />
       <Stack.Screen name="cart" />
       <Stack.Screen name="checkout" />

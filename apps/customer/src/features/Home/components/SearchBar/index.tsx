@@ -4,7 +4,6 @@ import { Pressable, View } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useTheme } from '../../../../theme/ThemeContext';
 import { SEARCH_PLACEHOLDERS } from '../../Constants';
-import { searchBarStyles } from './styledcomponents';
 
 interface SearchBarProps {
   placeholderIndex: number;
@@ -19,7 +18,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   placeholderTranslateY,
   onPress,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   const placeholderAnimatedStyle = useAnimatedStyle(() => ({
     opacity: placeholderOpacity.value,
@@ -29,36 +28,53 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <Pressable
       onPress={onPress}
-      style={[searchBarStyles.searchBarOuterWrapper, { paddingHorizontal: 20 }]}
+      style={{
+        paddingHorizontal: 20,
+        marginVertical: 8,
+        width: '100%',
+      }}
     >
       <View
-        style={[
-          searchBarStyles.searchBarInnerWrapper,
-          {
-            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : '#FFFFFF',
-            borderColor: isDark ? 'rgba(75, 85, 99, 0.4)' : '#F3F4F6',
-          },
-        ]}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          height: 58,
+          borderRadius: 20,
+          backgroundColor: '#FFFFFF',
+          paddingHorizontal: 16,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          elevation: 6,
+        }}
       >
+        {/* Search Icon */}
         <Ionicons
-          name="search"
-          size={20}
+          name="search-outline"
+          size={22}
           color="#16A34A"
-          style={{ marginLeft: 12, marginRight: 8 }}
+          style={{ marginRight: 10 }}
         />
+
+        {/* Animated Placeholder Text */}
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Animated.Text
             numberOfLines={1}
             pointerEvents="none"
             style={[
               placeholderAnimatedStyle,
-              searchBarStyles.searchPlaceholderText,
-              { color: '#9CA3AF', fontFamily: theme.typography.fonts.medium },
+              {
+                color: '#9CA3AF',
+                fontFamily: theme.typography.fonts.medium,
+                fontSize: 14,
+              },
             ]}
           >
             {SEARCH_PLACEHOLDERS[placeholderIndex]}
           </Animated.Text>
         </View>
+
       </View>
     </Pressable>
   );
