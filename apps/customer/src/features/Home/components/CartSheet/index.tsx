@@ -8,6 +8,9 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  LinearTransition,
+  useDerivedValue,
+  interpolate,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
@@ -19,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../../theme/ThemeContext';
 import { MOCK_PRODUCTS } from '../../../../constants';
 import { cartSheetStyles } from './styledcomponents';
+import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const REVEAL_WIDTH = 110;
@@ -50,10 +54,17 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
   onGetShopItemCount,
   onGetShopTotal,
 }) => {
+  const cardWidth = SCREEN_WIDTH - 40;
+
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const containerHeight = useSharedValue(-1);
   const isDismissed = useSharedValue(false);
+  const isDragging = useSharedValue(false);
+  const hasTriggeredHaptic = useSharedValue(false);
+
+  const activeScale = useSharedValue(1);
+  const activeOpacity = useSharedValue(1);
 
   const itemCount = onGetShopItemCount(group.storeId);
   const total = onGetShopTotal(group.storeId);
@@ -63,19 +74,28 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
     onDelete(group.storeId);
   }, [group.storeId, onDelete]);
 
+  const triggerHaptic = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  }, []);
+
   const handleXPress = useCallback(() => {
     if (isDismissed.value) return;
-    if (translateX.value < -REVEAL_WIDTH / 2) {
-      translateX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
-    } else {
-      translateX.value = withTiming(-REVEAL_WIDTH, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
-  }, []);
+    isDismissed.value = true;
+    activeScale.value = withTiming(0.96, { duration: 240 });
+    activeOpacity.value = withTiming(0, { duration: 240 });
+    translateX.value = withTiming(-SCREEN_WIDTH - 50, { duration: 240 }, () => {
+      containerHeight.value = withTiming(0, { duration: 200 }, () => {
+        runOnJS(doDelete)();
+      });
+    });
+  }, [doDelete]);
 
   const handleRemovePress = useCallback(() => {
     if (isDismissed.value) return;
     isDismissed.value = true;
-    translateX.value = withTiming(-SCREEN_WIDTH - 60, { duration: 230 }, () => {
+    activeScale.value = withTiming(0.96, { duration: 240 });
+    activeOpacity.value = withTiming(0, { duration: 240 });
+    translateX.value = withTiming(-SCREEN_WIDTH - 50, { duration: 240 }, () => {
       containerHeight.value = withTiming(0, { duration: 200 }, () => {
         runOnJS(doDelete)();
       });
@@ -87,41 +107,94 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
     .failOffsetY([-15, 15])
     .onBegin(() => {
       startX.value = translateX.value;
+      isDragging.value = true;
     })
     .onUpdate((e) => {
       if (isDismissed.value) return;
-      translateX.value = Math.min(0, Math.max(-SCREEN_WIDTH, startX.value + e.translationX));
+
+      // Clamp translation so it never moves right of 0 and clamps at -cardWidth on left
+      const newX = Math.min(0, Math.max(-cardWidth, startX.value + e.translationX));
+      translateX.value = newX;
+
+      // Haptic Feedback: Trigger impactLight once when crossing 35% threshold
+      const threshold = -cardWidth * 0.35;
+      if (newX < threshold) {
+        if (!hasTriggeredHaptic.value) {
+          hasTriggeredHaptic.value = true;
+          runOnJS(triggerHaptic)();
+        }
+      } else {
+        hasTriggeredHaptic.value = false;
+      }
     })
     .onEnd((e) => {
+      isDragging.value = false;
       if (isDismissed.value) return;
 
-      const cur = translateX.value;
-      const isFullDismiss =
-        cur < -DISMISS_THRESHOLD ||
-        (e.velocityX < -DISMISS_VELOCITY && cur < -REVEAL_WIDTH * 1.4);
+      const threshold = -cardWidth * 0.35;
+      const isFullDismiss = translateX.value < threshold || e.velocityX < -1000;
 
       if (isFullDismiss) {
         isDismissed.value = true;
-        translateX.value = withTiming(-SCREEN_WIDTH - 60, { duration: 230 }, () => {
+        activeScale.value = withTiming(0.96, { duration: 240 });
+        activeOpacity.value = withTiming(0, { duration: 240 });
+        translateX.value = withTiming(-SCREEN_WIDTH - 50, { duration: 240 }, () => {
           containerHeight.value = withTiming(0, { duration: 200 }, () => {
             runOnJS(doDelete)();
           });
         });
-        return;
-      }
-
-      if (cur < -REVEAL_WIDTH / 2) {
-        translateX.value = withSpring(-REVEAL_WIDTH, { damping: 20, stiffness: 220 });
       } else {
-        translateX.value = withSpring(0, { damping: 20, stiffness: 220 });
+        translateX.value = withSpring(0, { damping: 18, stiffness: 180 });
       }
     });
 
-  const rowStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const dragScale = useDerivedValue(() => {
+    return withSpring(isDragging.value ? 0.98 : 1, { damping: 15 });
+  });
 
-  // X button follows the card but is outside GestureDetector to avoid gesture conflict
+  const dragElevation = useDerivedValue(() => {
+    return withSpring(isDragging.value ? 12 : 6, { damping: 15 });
+  });
+
+  const dragShadowOpacity = useDerivedValue(() => {
+    return withSpring(isDragging.value ? 0.15 : 0.05, { damping: 15 });
+  });
+
+  const foregroundStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { scale: isDismissed.value ? activeScale.value : dragScale.value },
+      ],
+      opacity: activeOpacity.value,
+      shadowColor: '#000000',
+      shadowOffset: {
+        width: 0,
+        height: isDragging.value ? 8 : 3,
+      },
+      shadowOpacity: dragShadowOpacity.value,
+      shadowRadius: isDragging.value ? 12 : 5,
+      elevation: dragElevation.value,
+    };
+  });
+
+  const backgroundStyle = useAnimatedStyle(() => {
+    const distance = Math.abs(translateX.value);
+    const progress = Math.min(1, distance / (cardWidth * 0.35));
+    return {
+      opacity: progress,
+    };
+  });
+
+  const trashIconStyle = useAnimatedStyle(() => {
+    const distance = Math.abs(translateX.value);
+    const progress = Math.min(1, distance / (cardWidth * 0.35));
+    return {
+      transform: [{ scale: 0.8 + 0.2 * progress }],
+      opacity: progress,
+    };
+  });
+
   const xBtnStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
@@ -132,12 +205,12 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
 
   return (
     <Animated.View
+      layout={LinearTransition.springify()}
       style={[
         containerStyle,
         {
-          marginBottom: 10,
-          borderRadius: 14,
-          overflow: 'hidden',
+          marginBottom: 8,
+          borderRadius: 16,
         },
       ]}
       onLayout={(e) => {
@@ -146,41 +219,51 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
         }
       }}
     >
-      {/* Remove panel — right-aligned, revealed as card slides left */}
-      <Pressable
-        onPress={handleRemovePress}
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: REVEAL_WIDTH,
-          backgroundColor: isDark ? 'rgba(239,68,68,0.18)' : '#FEE2E2',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
+      {/* Background Layer */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#EF4444',
+            borderRadius: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            paddingRight: 24,
+          },
+          backgroundStyle,
+        ]}
       >
-        <Text
-          style={{
-            color: '#A32D2D',
-            fontSize: 13,
-            fontFamily: theme.typography.fonts.bold,
-          }}
-        >
-          Remove
-        </Text>
-      </Pressable>
+        <Pressable onPress={handleRemovePress} style={{ height: '100%', justifyContent: 'center' }}>
+          <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, trashIconStyle]}>
+            <Ionicons name="trash-outline" size={32} color="#FFFFFF" />
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: '600',
+                fontFamily: theme.typography.fonts.semiBold,
+              }}
+            >
+              Remove
+            </Text>
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
 
-      {/* Sliding card — no border radius (outer container clips it) */}
+      {/* Sliding card */}
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={rowStyle}>
+        <Animated.View style={foregroundStyle}>
           <View
             style={[
               cartSheetStyles.cartRow,
               {
                 backgroundColor: theme.colors.surfaceSecondary,
-                // right padding leaves room for the X button overlay
-                paddingRight: 46,
+                paddingRight: 40,
               },
             ]}
           >
@@ -256,7 +339,7 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
         </Animated.View>
       </GestureDetector>
 
-      {/* X button — outside GestureDetector so it doesn't conflict with pan */}
+      {/* X button */}
       <Animated.View
         pointerEvents="box-none"
         style={[
@@ -267,6 +350,7 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
             top: 0,
             bottom: 0,
             justifyContent: 'center',
+            zIndex: 10,
           },
         ]}
       >
@@ -274,9 +358,9 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
           onPress={handleXPress}
           hitSlop={10}
           style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
+            width: 22,
+            height: 22,
+            borderRadius: 11,
             borderWidth: 0.5,
             borderColor: isDark ? 'rgba(239,68,68,0.4)' : '#FECACA',
             backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#FFF5F5',
@@ -284,7 +368,7 @@ const CartRowItem: React.FC<CartRowItemProps> = ({
             alignItems: 'center',
           }}
         >
-          <Ionicons name="close" size={14} color="#EF4444" />
+          <Ionicons name="close" size={12} color="#EF4444" />
         </Pressable>
       </Animated.View>
     </Animated.View>

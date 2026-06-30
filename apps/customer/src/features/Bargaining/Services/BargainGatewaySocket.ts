@@ -30,9 +30,11 @@ class BargainGatewaySocket {
   }
 
   subscribe(sessionId: string, onMessage: (event: BargainServerEvent) => void, onStatusChange?: (status: BargainConnectionStatus) => void): () => void {
+    console.log('[BargainGateway] subscribe → sessionId:', sessionId);
     this.subscribers.set(sessionId, { onMessage, onStatusChange });
     this.socket.connect();
     return () => {
+      console.log('[BargainGateway] unsubscribe → sessionId:', sessionId);
       if (this.subscribers.get(sessionId)?.onMessage === onMessage) {
         this.subscribers.delete(sessionId);
       }

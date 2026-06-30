@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ThemeContext, useTheme } from '../../../../theme/ThemeContext';
 import { useBargainingStore } from '../../Providers/useBargainingStore';
+import { useAuthStore } from '../../../Auth/Providers/useAuthStore';
 import { Button } from '../../../../Common/components/ui/Button';
 import { Chip } from '../../../../Common/components/ui/Chip';
 import { Input } from '../../../../Common/components/ui/Input';
@@ -45,6 +46,7 @@ export const BargainMakeOfferSheet: React.FC<BargainMakeOfferSheetProps> = obser
   const themeContext = useTheme();
   const { theme, isDark } = themeContext;
   const bargainingStore = useBargainingStore();
+  const authStore = useAuthStore();
   const items = bargainingStore.session?.cart.items ?? [];
 
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -118,7 +120,7 @@ export const BargainMakeOfferSheet: React.FC<BargainMakeOfferSheetProps> = obser
       setError(`Your offer must be less than ₹${selectedItem.selling_price}.`);
       return;
     }
-    bargainingStore.sendOffer(selectedItem.cart_item_id, offered.toFixed(2));
+    bargainingStore.sendOffer(selectedItem.cart_item_id, offered.toFixed(2), authStore.currentUser?.id);
     onClose();
   };
 

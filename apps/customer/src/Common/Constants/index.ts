@@ -19,7 +19,8 @@ export const STORAGE_KEYS = {
 } as const;
 export const API_CONFIG = {
   // BASE_URL: "http://127.0.0.1:8000/api",
-  BASE_URL: "https://local-ecommerce-backend-production.up.railway.app/api",
+  // BASE_URL: "https://local-ecommerce-backend-production.up.railway.app/api",
+  BASE_URL: "https://web-production-4c447.up.railway.app/api",
   // BASE_URL: "http://10.10.48.106:8000/api",
 
   TIMEOUT: 10000,

@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
   USER_LOCATION: "localio_user_location",
 };
 export const API_CONFIG = {
-  BASE_URL: " https://local-ecommerce-backend-production.up.railway.app/",
+  BASE_URL: "https://web-production-4c447.up.railway.app/api",
   TIMEOUT: 10000,
 };
 export const FEES = {

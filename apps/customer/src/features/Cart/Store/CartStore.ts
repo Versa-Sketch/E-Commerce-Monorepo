@@ -620,22 +620,28 @@ export class CartStore {
   }
 
   async clearShopCart(shopId: string): Promise<void> {
+    const removedItems = this.items.filter((i) => i.product.storeId === shopId);
+
+    runInAction(() => {
+      this.items = this.items.filter((i) => i.product.storeId !== shopId);
+      this.pendingByShop.delete(shopId);
+      const timer = this.debounceTimers.get(shopId);
+      if (timer) clearTimeout(timer);
+      this.debounceTimers.delete(shopId);
+      if (this.items.length === 0) {
+        this.coupon = { code: null, discount: 0 };
+        this.walletCreditsUsed = 0;
+      }
+    });
+
     try {
       const cart = await this.service.clearCart(shopId);
       runInAction(() => {
-        this.items = this.items.filter((i) => i.product.storeId !== shopId);
         this.shopCarts.set(shopId, cart);
-        this.pendingByShop.delete(shopId);
-        const timer = this.debounceTimers.get(shopId);
-        if (timer) clearTimeout(timer);
-        this.debounceTimers.delete(shopId);
-        if (this.items.length === 0) {
-          this.coupon = { code: null, discount: 0 };
-          this.walletCreditsUsed = 0;
-        }
       });
     } catch (e) {
       runInAction(() => {
+        this.items = [...this.items, ...removedItems];
         this.syncStatus.set(shopId, API_STATUS.ERROR);
       });
     }

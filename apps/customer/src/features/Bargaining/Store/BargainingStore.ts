@@ -3,6 +3,7 @@ import { BargainConnectionStatus, IBargainingService, IBargainSocket, IBargainSo
 import {
   BargainCartHistory,
   BargainCartUpdate,
+  BargainOffer,
   BargainOfferAction,
   BargainServerEvent,
   BargainSession,
@@ -27,12 +28,14 @@ export class BargainingStore {
   sessionHistoryError: string | null = null;
 
   private socket: IBargainSocket | null = null;
+  private connectedSessionId: string | null = null;
 
   constructor(private service: IBargainingService, private socketFactory: IBargainSocketFactory) {
     makeAutoObservable(this, {
       service: false,
       socketFactory: false,
       socket: false,
+      connectedSessionId: false,
     } as never);
   }
 
@@ -63,7 +66,6 @@ export class BargainingStore {
         this.session = session;
         this.sessionStatus = API_STATUS.SUCCESS;
       });
-      this.connectSocket();
       return session;
     } catch (e) {
       runInAction(() => {
@@ -134,6 +136,8 @@ export class BargainingStore {
 
   connectSocket(): void {
     if (!this.session) return;
+    if (this.connectedSessionId === this.session.session_id) return;
+    this.connectedSessionId = this.session.session_id;
     this.disconnect();
     console.log('[Bargaining] connectSocket → sessionId:', this.session.session_id);
     const socket = this.socketFactory.create();
@@ -152,14 +156,42 @@ export class BargainingStore {
   }
 
   disconnect(): void {
+    this.connectedSessionId = null;
     this.socket?.disconnect();
     this.socket = null;
     this.connectionStatus = 'closed';
     this.typingUsers.clear();
   }
 
-  sendOffer(cartItemId: string, offeredAmount: string): void {
+  sendOffer(cartItemId: string, offeredAmount: string, senderId?: string): void {
     console.log('[Bargaining] sendOffer → cartItemId:', cartItemId, 'amount:', offeredAmount);
+    if (this.session) {
+      const optimisticOfferId = `optimistic-offer-${Date.now()}`;
+      const optimisticOffer: BargainOffer = {
+        offer_id: optimisticOfferId,
+        cart_item_id: cartItemId,
+        parent_id: null,
+        offered_by: 'CUSTOMER',
+        offered_amount: offeredAmount,
+        original_price: offeredAmount,
+        accepted_amount: null,
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+      };
+      runInAction(() => {
+        this.session!.offers[cartItemId] = optimisticOffer;
+        this.session!.messages.push({
+          message_id: optimisticOfferId,
+          sender_id: senderId ?? '',
+          sender_name: 'You',
+          message: `Offered ₹${offeredAmount}`,
+          message_type: 'OFFER',
+          bargain_offer_id: optimisticOfferId,
+          created_at: new Date().toISOString(),
+          status: 'SENT',
+        });
+      });
+    }
     this.socket?.send({ type: 'bargain_offer', cart_item_id: cartItemId, offered_amount: offeredAmount });
   }
 
@@ -218,7 +250,22 @@ export class BargainingStore {
         case 'session_started':
           this.session = this.normalizeSession(event.payload);
           return;
-        case 'new_offer':
+        case 'new_offer': {
+          if (!session) return;
+          const realOffer = event.payload.offer;
+          session.offers[realOffer.cart_item_id] = realOffer;
+          const optimisticMsgIdx = session.messages.findIndex(
+            m => m.message_type === 'OFFER' && m.message_id.startsWith('optimistic-offer-')
+          );
+          if (optimisticMsgIdx >= 0) {
+            session.messages[optimisticMsgIdx] = {
+              ...session.messages[optimisticMsgIdx],
+              message_id: realOffer.offer_id,
+              bargain_offer_id: realOffer.offer_id,
+            };
+          }
+          return;
+        }
         case 'offer_rejected':
         case 'counter_offer':
           if (!session) return;

@@ -24,10 +24,12 @@ export class SocketClient {
     const url = await this.getUrl();
     if (this.manuallyClosed) return;
 
+    console.log('[WS] connecting →', url);
     const ws = new WebSocket(url);
     this.ws = ws;
 
     ws.onopen = () => {
+      console.log('[WS] connected ✓');
       this.reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
       this.setStatus('open');
     };
@@ -40,16 +42,19 @@ export class SocketClient {
       }
       this.messageHandlers.forEach((handler) => handler(data));
     };
-    ws.onerror = () => {
+    ws.onerror = (e) => {
+      console.log('[WS] error', e);
       this.setStatus('error');
     };
-    ws.onclose = () => {
+    ws.onclose = (e) => {
+      console.log('[WS] closed — code:', e.code, 'clean:', e.wasClean, 'reason:', e.reason || '(none)', 'manual:', this.manuallyClosed);
       this.setStatus('closed');
       if (!this.manuallyClosed) this.scheduleReconnect();
     };
   }
 
   disconnect(): void {
+    console.log('[WS] disconnect called');
     this.manuallyClosed = true;
     this.clearReconnectTimer();
     this.ws?.close();

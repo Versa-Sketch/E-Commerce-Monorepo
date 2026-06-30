@@ -94,15 +94,15 @@ export const cartSheetStyles = StyleSheet.create({
   cartRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 8,
     borderRadius: 16,
   },
   cartThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 8,
     overflow: 'hidden',
-    marginRight: 12,
+    marginRight: 10,
     flexShrink: 0,
   },
   cartThumbnailImage: {
@@ -114,11 +114,11 @@ export const cartSheetStyles = StyleSheet.create({
     marginRight: 8,
   },
   cartCardShopName: {
-    fontSize: 15,
+    fontSize: 13,
     marginBottom: 2,
   },
   cartItemCount: {
-    fontSize: 11,
+    fontSize: 10,
   },
   cartPriceCol: {
     alignItems: 'flex-end',
@@ -127,16 +127,16 @@ export const cartSheetStyles = StyleSheet.create({
     marginRight: 8,
   },
   cartPriceVal: {
-    fontSize: 14,
+    fontSize: 12,
   },
   cartViewBtn: {
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   cartViewBtnText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
   },
   cartRowDeleteToggle: {
     width: 26,
