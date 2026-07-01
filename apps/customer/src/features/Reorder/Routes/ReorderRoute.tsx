@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Skeleton } from '../../../Common/components/ui/Skeleton';
 import { API_STATUS } from '../../../Common/Constants';
@@ -191,7 +192,7 @@ export default observer(function ReorderRoute() {
         )}
 
         {reorderStore.frequentItems.length > 0 && (
-          <FlatList
+          <FlashList
             horizontal
             data={reorderStore.frequentItems}
             keyExtractor={(item) => item.variant_id}
@@ -206,7 +207,6 @@ export default observer(function ReorderRoute() {
             extraData={cartStore.items.map((i) => `${i.product.variantId}:${i.quantity}`).join(',')}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
-            scrollEnabled
           />
         )}
 

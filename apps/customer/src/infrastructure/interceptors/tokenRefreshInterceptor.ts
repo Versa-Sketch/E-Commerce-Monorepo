@@ -1,9 +1,12 @@
-import { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { router } from 'expo-router';
-import { StorageService } from '../services/storage';
-import { STORAGE_KEYS, API_CONFIG } from '../Common/Constants';
-import { getAuthStoreInstance } from '../features/Auth/Providers/authStoreInstance';
-import axios from 'axios';
+import { StorageService } from '../../services/storage';
+import { STORAGE_KEYS, API_CONFIG } from '../../Common/Constants';
+import { getAuthStoreInstance } from '../../features/Auth/Providers/authStoreInstance';
+import { ResponseInterceptor } from './types';
+
+type RetryableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
 function redirectToLogin(): void {
   const authStore = getAuthStoreInstance();
   if (authStore) {
@@ -15,24 +18,15 @@ function redirectToLogin(): void {
   }
   router.replace('/landing');
 }
-export function applyRequestMiddleware(client: AxiosInstance): void {
-  client.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-      const token = StorageService.getString(STORAGE_KEYS.AUTH_TOKEN);
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error: unknown) => Promise.reject(error)
-  );
-}
-export function applyResponseMiddleware(client: AxiosInstance): void {
-  client.interceptors.response.use(
-    (response: AxiosResponse) => response,
-    async (error: AxiosError & { config: InternalAxiosRequestConfig & { _retry?: boolean } }) => {
-      const originalRequest = error.config;
-      if (error.response?.status === 401) {
+
+export function makeTokenRefreshInterceptor(client: AxiosInstance): ResponseInterceptor {
+  return {
+    type: 'response',
+    onRejected: async (error: unknown) => {
+      const axiosError = error as AxiosError & { config: RetryableConfig };
+      const originalRequest = axiosError.config;
+
+      if (axiosError.response?.status === 401 && originalRequest) {
         if (!originalRequest._retry) {
           originalRequest._retry = true;
           const refreshToken = StorageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
@@ -50,7 +44,7 @@ export function applyResponseMiddleware(client: AxiosInstance): void {
                 originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               }
               return client(originalRequest);
-            } catch (refreshError) {
+            } catch {
               redirectToLogin();
               return Promise.reject(error);
             }
@@ -58,10 +52,9 @@ export function applyResponseMiddleware(client: AxiosInstance): void {
           redirectToLogin();
           return Promise.reject(error);
         }
-        // Already retried once with a refreshed token and still unauthorized.
         redirectToLogin();
       }
       return Promise.reject(error);
-    }
-  );
+    },
+  };
 }

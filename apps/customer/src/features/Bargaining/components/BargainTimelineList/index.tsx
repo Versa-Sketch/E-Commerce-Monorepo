@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { FlashList, FlashListRef } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../theme/ThemeContext';
 import { Badge } from '../../../../Common/components/ui/Badge';
@@ -103,7 +104,7 @@ export const BargainTimelineList: React.FC<BargainTimelineListProps> = ({
   const { theme } = useTheme();
   const authStore = useAuthStore();
   const currentUserId = authStore.currentUser?.id;
-  const listRef = useRef<FlatList<TimelineRow>>(null);
+  const listRef = useRef<FlashListRef<TimelineRow>>(null);
   const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
 
   const hasPastSessions = (pastSessions?.length ?? 0) > 0;
@@ -348,7 +349,7 @@ export const BargainTimelineList: React.FC<BargainTimelineListProps> = ({
   };
 
   return (
-    <FlatList
+    <FlashList
       ref={listRef}
       data={rows}
       keyExtractor={(row) => (row.kind === 'past_summary' ? `summary-${row.session.session_id}` : row.key)}
